@@ -10,5 +10,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src", "scripts/checkTree.ts"]
+  "include": ["src", "scripts/checkTree.ts", "scripts/checkRetro.ts"]
 }

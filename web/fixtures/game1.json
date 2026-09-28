@@ -1,0 +1,5 @@
+{"id":"test0001","moves":"e4 e5 Nf3 Nc6 Bc4 Bc5 a3 Qh4 Nxh4",
+ "analysis":[{"eval":20},{"eval":25},{"eval":20},{"eval":25},{"eval":20},{"eval":30},
+  {"eval":-10,"best":"e1g1","variation":"O-O Nf6 d3","judgment":{"name":"Inaccuracy","comment":"Inaccuracy. O-O was best."}},
+  {"eval":900,"best":"g8f6","variation":"Nf6 d3 d6","judgment":{"name":"Blunder","comment":"Blunder. Nf6 was best."}},
+  {"mate":12}]}
