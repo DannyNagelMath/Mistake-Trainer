@@ -1,12 +1,15 @@
 // analysisCtrl.ts: the object retroCtrl calls `root`. It holds the tree and the position the
 // board shows, and implements RetroRoot. It plays the role of lila's AnalyseCtrl
-// (ui/analyse/src/ctrl.ts); steps 2-4 will add the board and page rendering to it.
+// (ui/analyse/src/ctrl.ts); steps 3-4 will add board input and page rendering to it.
 
 import { opposite, parseUci, makeUci, type Color, type Move } from 'chessops';
 import { Chess, normalizeMove } from 'chessops/chess';
 import { makeFen, parseFen } from 'chessops/fen';
 import { makeSanAndPlay, parseSan } from 'chessops/san';
-import { scalachessCharPair } from 'chessops/compat';
+import { scalachessCharPair, chessgroundDests } from 'chessops/compat';
+import type { Api as CgApi } from '@lichess-org/chessground/api'; // Step 3a
+import type { Config as CgConfig } from '@lichess-org/chessground/config'; // Step 3a
+import type { Key } from '@lichess-org/chessground/types'; // Step 3a
 
 import { make as makeRetro, type RetroCtrl, type RetroRoot } from './retroCtrl';
 import * as treeOps from './tree';
@@ -54,6 +57,7 @@ export class AnalysisCtrl implements RetroRoot {
   node: TreeNode; // the node the board shows
   path = ''; // the path of `node`; '' is the starting position
   retro?: RetroCtrl; // set while "Learn from your mistakes" is open
+  cg?: CgApi; // Step 3a: the board; undefined in the headless scripts
   private readonly orientation: Color; // your color in the game; it goes at the bottom
   private flipped = false;
 
@@ -68,6 +72,25 @@ export class AnalysisCtrl implements RetroRoot {
 
   mainlinePlyToPath = (ply: number): string => treeOps.mainlinePlyToPath(this.mainline, ply);
 
+  // Step 3a: the board settings for the current node, like lila's makeCgOpts.
+  // Step 3a/3b: the board settings for the current node, like lila's makeCgOpts.
+  cgConfig = (): CgConfig => {
+    const pos = positionOf(this.node);
+    return {
+      fen: this.node.fen,
+      orientation: this.bottomColor(),
+      turnColor: pos.turn,
+      lastMove: this.node.uci
+        ? [this.node.uci.slice(0, 2) as Key, this.node.uci.slice(2, 4) as Key]
+        : undefined, // undefined clears the highlight, e.g. at the starting position
+      check: pos.isCheck(),
+      movable: {
+        color: pos.isEnd() ? undefined : pos.turn, // as in lila's analysis board, the side to move can move
+        dests: chessgroundDests(pos),
+      },
+    };
+  };
+
   // Shows the node at `path`. In lila, userJump also stops autoplay and clears the board's
   // selected square, then jump() updates the board, plays sounds, and so on.
   userJump = (path: string): void => {
@@ -75,7 +98,7 @@ export class AnalysisCtrl implements RetroRoot {
     this.node = this.tree.nodeAtPath(path);
     this.path = path;
     if (pathChanged) this.retro?.onJump();
-    // Step 3: update the board here.
+    this.cg?.set(this.cgConfig()); // Step 3a: `?.` skips this when there is no board
   };
 
   // Plays a move from the current position and shows the result,
@@ -109,7 +132,36 @@ export class AnalysisCtrl implements RetroRoot {
     this.playMove(move);
   };
 
-  setAutoShapes = (): void => {}; // Step 3: draw the move you played as a pale red arrow.
+    // Step 3b: called by the board after you drag a piece, like lila's AnalyseCtrl.userMove.
+  // Trim: lila opens a promotion chooser; this always promotes to a queen.
+  userMove = (orig: Key, dest: Key): void => {
+    const piece = this.cg?.state.pieces.get(dest); // the board has already moved the piece
+    const promotes = piece?.role === 'pawn' && (dest[1] === '1' || dest[1] === '8');
+    this.playUci(orig + dest + (promotes ? 'q' : ''));
+  };
+
+  // Step 3c: draw the move you played as a pale red arrow.
+  // keep this line if you don't want the pale red arrow showing your in-game move
+  // setAutoShapes = (): void => {};
+
+    // Step 3c: draws the game's bad move as a pale red arrow while you're solving,
+  // like lila's setAutoShapes and autoShape.ts.
+  setAutoShapes = (): void => {
+    const bad = this.retro?.showBadNode();
+    this.cg?.setAutoShapes(
+      bad?.uci
+        ? [
+            {
+              orig: bad.uci.slice(0, 2) as Key,
+              dest: bad.uci.slice(2, 4) as Key,
+              brush: 'paleRed',
+              modifiers: { lineWidth: 8 },
+            },
+          ]
+        : [], // an empty list clears the arrow
+    );
+  };
+
 
   redraw = (): void => {}; // Step 4: re-render the page.
 
@@ -117,7 +169,9 @@ export class AnalysisCtrl implements RetroRoot {
   // That's how the panel's "Review Black's mistakes" button works.
   flip = (): void => {
     this.flipped = !this.flipped;
+    this.cg?.set({ orientation: this.bottomColor() }); // Step 3a: turn the board over
     if (this.retro) this.retro = makeRetro(this, this.bottomColor());
+    this.setAutoShapes(); // Step 3c
     this.redraw();
   };
 

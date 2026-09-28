@@ -11,7 +11,7 @@ import { scalachessCharPair } from 'chessops/compat';
 import { AnalysisCtrl } from '../src/analysisCtrl';
 import type { TreeNode } from '../src/tree';
 
-const file = process.argv[2] ?? 'fixtures/game1.json';
+const file = process.argv[2] ?? 'fixtures/real1.json';
 const ctrl = new AnalysisCtrl(JSON.parse(readFileSync(file, 'utf8')));
 const retro = () => ctrl.retro!; // the ! tells TypeScript it is defined, which it is while the panel is open
 
