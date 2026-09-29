@@ -31,6 +31,14 @@ export function bind<K extends keyof GlobalEventHandlersEventMap>(
   );
 }
 
+// Like bind, but f can stop the browser's default action (e.g. scrolling the page) by calling
+// e.preventDefault() or returning false.
+export const bindNonPassive = <K extends keyof GlobalEventHandlersEventMap>(
+  eventName: K,
+  f: (ev: GlobalEventHandlersEventMap[K]) => any,
+  redraw?: () => void,
+): Hooks => bind(eventName, f, redraw, false);
+
 export type LooseVNode = VNodeChildElement | boolean;
 export type LooseVNodes = LooseVNode | LooseVNodes[];
 

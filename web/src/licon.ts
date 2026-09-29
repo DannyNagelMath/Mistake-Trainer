@@ -3,6 +3,13 @@
 // lila writes the characters themselves, which are invisible in most editors; these are the same
 // characters written as escapes, with lila's hex codes.
 export const licon = {
+  GraduateCap: '',
+  ChasingArrows: '',
   PlayTriangle: '',
+  GreaterThan: '',
+  LessThan: '',
   X: '',
+  JumpLast: '',
+  JumpFirst: '',
+  Hamburger: '',
 } as const;

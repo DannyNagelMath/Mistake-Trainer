@@ -34,6 +34,7 @@ function fill<T>(text: string, ...args: T[]): (T | string)[] {
 
 export const i18n = {
   site: {
+    analysis: 'Analysis board',
     bestWasX: format('Best was %s'),
     blackDidntMove: "Black didn't move",
     blackIsVictorious: 'Black is victorious',
@@ -52,9 +53,11 @@ export const i18n = {
     findBetterMoveForBlack: 'Find a better move for black',
     findBetterMoveForWhite: 'Find a better move for white',
     finished: 'Finished',
+    flipBoard: 'Flip board',
     insufficientMaterial: 'Insufficient material',
     learnFromThisMistake: 'Learn from this mistake',
     learnFromYourMistakes: 'Learn from your mistakes',
+    menu: 'Menu',
     next: 'Next',
     noMistakesFoundForBlack: 'No mistakes found for black',
     noMistakesFoundForWhite: 'No mistakes found for white',

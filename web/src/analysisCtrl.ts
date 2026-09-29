@@ -11,6 +11,9 @@ import type { Api as CgApi } from '@lichess-org/chessground/api'; // Step 3a
 import type { Config as CgConfig } from '@lichess-org/chessground/config'; // Step 3a
 import type { Key } from '@lichess-org/chessground/types'; // Step 3a
 
+import { toggle, type Toggle } from './common';
+import { ForkCtrl } from './fork';
+import Navigate from './navigate';
 import { make as makeRetro, type RetroCtrl, type RetroRoot } from './retroCtrl';
 import * as treeOps from './tree';
 import { TreeView } from './treeView';
@@ -20,6 +23,7 @@ import type { LichessGameJson, TreeNode } from './tree';
 export interface GameTree {
   root: TreeNode;
   nodeAtPath(path: string): TreeNode;
+  getNodeList(path: string): TreeNode[]; // Step 7
   pathIsMainline(path: string): boolean;
   deleteNodeAt(path: string): void;
 }
@@ -28,6 +32,13 @@ function makeGameTree(root: TreeNode): GameTree {
   return {
     root,
     nodeAtPath: path => treeOps.nodeAtPath(root, path),
+
+    // Step 7: the root, then each node along the path, ending with the node at `path`.
+    getNodeList(path) {
+      const nodes = [root];
+      for (let i = 2; i <= path.length; i += 2) nodes.push(treeOps.nodeAtPath(root, path.slice(0, i)));
+      return nodes;
+    },
 
     // True if every step of the path follows children[0].
     pathIsMainline(path) {
@@ -57,6 +68,8 @@ export class AnalysisCtrl implements RetroRoot {
   readonly mainline: TreeNode[]; // the root node, then one node per game move
   node: TreeNode; // the node the board shows
   path = ''; // the path of `node`; '' is the starting position
+  nodeList: TreeNode[]; // Step 7: the root, then each node along `path`, ending with `node`
+  onMainline = true; // Step 7: whether `path` follows the game's moves
   retro?: RetroCtrl; // set while "Learn from your mistakes" is open
   cg?: CgApi; // Step 3a: the board; undefined in the headless scripts
   readonly redraw: () => void; // Step 4a: re-renders the page; passed in, as in lila
@@ -69,11 +82,16 @@ export class AnalysisCtrl implements RetroRoot {
   readonly treeView: TreeView;
   showComments = true;
   // Trim: lila's SettingsCtrl, which the user changes in the analysis settings menu.
-  // These are lila's defaults.
+  // These are lila's defaults. Step 7: shift+i switches `inline`.
   readonly settings = {
     inline: false, // two-column move list, rather than a paragraph
     showStaticAnalysis: true, // show the server analysis: evals, glyphs, comments, engine lines
   };
+
+  // Step 7: navigation and the menu.
+  readonly fork: ForkCtrl; // the choice of continuations shown under the move list
+  readonly navigate: Navigate; // first / prev / next / last, for the buttons, keys, and scroll wheel
+  readonly actionMenu: Toggle = toggle(false); // whether the ☰ menu is open
 
   // Step 4a: redraw is passed in, like lila's AnalyseCtrl(opts, redraw). It can't be set later,
   // because retroCtrl copies root.redraw when it's created. The scripts get the default, a no-op.
@@ -83,9 +101,12 @@ export class AnalysisCtrl implements RetroRoot {
     this.mainline = treeOps.mainline(this.tree.root);
     this.gamePath = this.mainline.map(n => n.id).join('');
     this.node = this.tree.root;
+    this.nodeList = [this.tree.root];
     this.orientation = orientation;
     this.redraw = redraw;
     this.treeView = new TreeView(this);
+    this.fork = new ForkCtrl(this);
+    this.navigate = new Navigate(this);
   }
 
   bottomColor = (): Color => (this.flipped ? opposite(this.orientation) : this.orientation);
@@ -143,8 +164,17 @@ export class AnalysisCtrl implements RetroRoot {
     if (pathChanged) this.treeView.requestAutoScroll(treeOps.distance(this.path, path) > 8 ? 'instant' : 'smooth');
     this.node = this.tree.nodeAtPath(path);
     this.path = path;
+    this.nodeList = this.tree.getNodeList(path); // Step 7: like lila's setPath
+    this.onMainline = this.tree.pathIsMainline(path);
     if (pathChanged) this.retro?.onJump();
     this.cg?.set(this.cgConfig()); // Step 3a: `?.` skips this when there is no board
+  };
+
+  // Step 7: like lila's userJumpIfCan. Trim: lila checks that a study allows the jump, and can
+  // start the board's animation from the parent move when stepping between variations (sideStep).
+  userJumpIfCan = (path: string): void => {
+    if (path === this.path) return;
+    this.userJump(path);
   };
 
   // Plays a move from the current position and shows the result,
@@ -217,7 +247,14 @@ export class AnalysisCtrl implements RetroRoot {
   flip = (): void => {
     this.flipped = !this.flipped;
     this.cg?.set({ orientation: this.bottomColor() }); // Step 3a: turn the board over
-    if (this.retro) this.retro = makeRetro(this, this.bottomColor());
+    if (this.retro) {
+      // Fix: lila doesn't clear this.retro first. While the new retro is starting up, it jumps to
+      // its first mistake, and userJump tells the OLD retro about that jump. If the old one is
+      // solving a mistake on exactly that move (e.g. black's mistake at ply 38, when white's first
+      // is at ply 39), it takes the jump as the game move played, calls onFail, and jumps back.
+      this.retro = undefined;
+      this.retro = makeRetro(this, this.bottomColor());
+    }
     this.setAutoShapes(); // Step 3c
     this.redraw();
   };
@@ -225,9 +262,24 @@ export class AnalysisCtrl implements RetroRoot {
   // Opens "Learn from your mistakes" for the color at the bottom of the board, or closes it.
   toggleRetro = (): void => {
     if (this.retro) this.retro = undefined;
-    else this.retro = makeRetro(this, this.bottomColor());
+    else {
+      this.actionMenu(false); // Step 7: lila's closeTools. Trim: it also closes the explorer and practice mode.
+      this.retro = makeRetro(this, this.bottomColor());
+    }
     this.setAutoShapes();
   };
+
+  // Step 7: from lila. Trim: lila closes the opening explorer when opening the menu.
+  toggleActionMenu = (): void => {
+    this.actionMenu.toggle();
+  };
+
+  // Step 7: which tool is open from the controls bar, if any. Trim: lila's can also be the opening explorer.
+  activeControlBarTool = (): 'action-menu' | false => (this.actionMenu() ? 'action-menu' : false);
+
+  // Step 7: which mode the tools column is in. Trim: lila's can also be 'practice', 'ceval'
+  // (engine lines shown), or 'learn-practice' (a practice study).
+  activeControlMode = (): 'retro' | false => (this.retro ? 'retro' : false);
 }
 
 function positionOf(node: TreeNode): Chess {

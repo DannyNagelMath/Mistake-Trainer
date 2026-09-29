@@ -5,6 +5,7 @@ import { init, attributesModule, classModule, eventListenersModule, propsModule 
 
 import game from '../fixtures/real1.json';
 import { AnalysisCtrl } from './analysisCtrl';
+import * as keyboard from './keyboard';
 import type { LichessGameJson } from './tree';
 import { view } from './view';
 
@@ -33,5 +34,9 @@ function redraw(): void {
 // up is too early: toggleRetro hasn't stored it in ctrl.retro yet.
 ctrl.toggleRetro();
 redraw();
+
+// Step 7: keyboard shortcuts. lila binds them in AnalyseCtrl's constructor; here they're bound
+// in the page only, so the headless scripts, which have no page, can still create an AnalysisCtrl.
+keyboard.bind(ctrl);
 
 (window as any).ctrl = ctrl; // for testing from the browser console; remove later
