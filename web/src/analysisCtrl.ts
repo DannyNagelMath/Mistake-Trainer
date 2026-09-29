@@ -76,6 +76,11 @@ export class AnalysisCtrl implements RetroRoot {
 
   mainlinePlyToPath = (ply: number): string => treeOps.mainlinePlyToPath(this.mainline, ply);
 
+  // Step 5: for the retro panel, which says "Waiting for analysis" until this is true.
+  // Trim: lila checks for an eval on the root node. The API's analysis starts after the first
+  // move, so our root never has one; this checks the first move instead.
+  hasFullComputerAnalysis = (): boolean => !!this.mainline[1]?.eval;
+
   // Step 3a: the board settings for the current node, like lila's makeCgOpts.
   // Step 3a/3b: the board settings for the current node, like lila's makeCgOpts.
   cgConfig = (): CgConfig => {
@@ -120,6 +125,7 @@ export class AnalysisCtrl implements RetroRoot {
       this.node.children.push({ id, ply: this.node.ply + 1, san, uci, fen: makeFen(pos.toSetup()), children: [] });
     }
     this.userJump(this.path + id);
+    this.redraw(); // Step 5: like the end of lila's addNode, so the panel shows the result of the move
   };
 
   // The board will report moves as UCI, like "e2e4" or "e7e8q".

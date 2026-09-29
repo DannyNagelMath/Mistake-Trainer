@@ -6,6 +6,8 @@ import { Chessground } from '@lichess-org/chessground';
 import { h, type VNode } from 'snabbdom';
 
 import type { AnalysisCtrl } from './analysisCtrl';
+import retroView from './retroView';
+import { hl } from './snabbdom';
 
 // Like lila's ground.ts render, followed by the relevant part of AnalyseCtrl.setChessground.
 // lila puts a counter in the class (cgv1, cgv2, ...) and raises it to force a brand-new board.
@@ -31,11 +33,14 @@ function renderBoard(ctrl: AnalysisCtrl): VNode {
   return h('div.analyse__board.main-board', [renderGround(ctrl)]);
 }
 
-// Empty for now. Steps 4c-6 fill them in from lila's renderTools and renderControls.
-function renderTools(): VNode {
-  return h('div.analyse__tools');
+// Like lila's renderTools (view/tools.ts). Step 5: the "Learn from your mistakes" panel.
+// Trim: no engine lines, move list (step 6), explorer, practice mode, or action menu.
+// hl leaves out retroView's result when it's undefined, i.e. when the panel is closed.
+function renderTools(ctrl: AnalysisCtrl): VNode {
+  return hl('div.analyse__tools', [retroView(ctrl)]);
 }
 
+// Empty for now. Step 7 fills it in from lila's renderControls.
 function renderControls(): VNode {
   return h('div.analyse__controls.analyse-controls');
 }
@@ -44,5 +49,5 @@ function renderControls(): VNode {
 // the fixtures are all standard chess.
 // Trim: no data-active-tool / data-active-mode attributes or state classes (comp-off, gauge-on, ...) yet.
 export function view(ctrl: AnalysisCtrl): VNode {
-  return h('main.analyse.variant-standard', [renderBoard(ctrl), renderTools(), renderControls()]);
+  return h('main.analyse.variant-standard', [renderBoard(ctrl), renderTools(ctrl), renderControls()]);
 }

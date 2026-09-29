@@ -28,6 +28,10 @@ function redraw(): void {
   vnode = patch(vnode, view(ctrl));
 }
 
+// Step 5: redraw to show the panel, as lila's "Learn from your mistakes" button does
+// (bind('click', ctrl.toggleRetro, ctrl.redraw)). The redraw that retroCtrl does while it starts
+// up is too early: toggleRetro hasn't stored it in ctrl.retro yet.
 ctrl.toggleRetro();
+redraw();
 
 (window as any).ctrl = ctrl; // for testing from the browser console; remove later
