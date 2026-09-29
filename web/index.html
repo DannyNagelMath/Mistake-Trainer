@@ -1,15 +1,57 @@
 <!doctype html>
-<html lang="en">
+<!--
+  Step 4b: the page around the app, like lila's app/views/base/page.scala (master, commit 27ffc8b)
+  as rendered with lila's default preferences. The files in /lila come from scripts/buildLilaCss.ts.
+  Trim: no site header, CSP, favicons, preloads, or scripts other than ours.
+  Trim: lila's default background is "system", which adds the class "light" in a script when the
+  system prefers light. This is fixed to dark; for light, change "dark" to "light" in both places.
+-->
+<html lang="en" class="dark" style="---ui-roundness:7px;---bg-opacity:100;">
   <head>
-    <meta charset="UTF-8" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, viewport-fit=cover" />
     <title>Lichess project</title>
+    <!-- The stylesheets of lila's analysis page, in the same order. -->
+    <link rel="stylesheet" href="/lila/css/lib.theme.all.css" />
+    <link rel="stylesheet" href="/lila/css/site.css" />
+    <link rel="stylesheet" href="/lila/css/analyse.round.css" />
+    <!-- The icon font, from layout.scala (lichessFontFaceCss). -->
     <style>
-      /* Temporary until step 4b, when lila's CSS sizes the board. */
-      .cg-wrap { width: 480px; height: 480px; }
+      @font-face {
+        font-family: 'lichess';
+        font-display: block;
+        src: url('/lila/font/lichess.woff2') format('woff2');
+      }
+    </style>
+    <!-- The piece images, from PieceSetImages.scala. The CSS draws each piece with these variables. -->
+    <style>
+      :root {
+        ---white-pawn: url(/lila/piece/cburnett/wP.svg);
+        ---white-knight: url(/lila/piece/cburnett/wN.svg);
+        ---white-bishop: url(/lila/piece/cburnett/wB.svg);
+        ---white-rook: url(/lila/piece/cburnett/wR.svg);
+        ---white-queen: url(/lila/piece/cburnett/wQ.svg);
+        ---white-king: url(/lila/piece/cburnett/wK.svg);
+        ---black-pawn: url(/lila/piece/cburnett/bP.svg);
+        ---black-knight: url(/lila/piece/cburnett/bN.svg);
+        ---black-bishop: url(/lila/piece/cburnett/bB.svg);
+        ---black-rook: url(/lila/piece/cburnett/bR.svg);
+        ---black-queen: url(/lila/piece/cburnett/bQ.svg);
+        ---black-king: url(/lila/piece/cburnett/bK.svg);
+      }
     </style>
   </head>
-  <body>
-    <main class="analyse"></main>
+  <!-- ---zoom is lila's page zoom setting (0-100, default 80); it scales the board. -->
+  <body
+    class="coords-in"
+    data-theme="dark"
+    data-board="brown"
+    data-piece-set="cburnett"
+    style="---board-opacity:100;---board-brightness:100;---board-contrast:100;---board-hue:0;---zoom:80;"
+  >
+    <div id="main-wrap" class="is2d">
+      <main class="analyse"></main>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
