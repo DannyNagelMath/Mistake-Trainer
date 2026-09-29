@@ -7,10 +7,11 @@
     "check": "tsc --noEmit && tsc --noEmit -p scripts",
     "check-tree": "tsx scripts/checkTree.ts",
     "test": "vitest run",
-    "build": "tsc --noEmit && vite build"
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p scripts"
   },
   "devDependencies": {
-    "@types/node": "^26.6.2",
+    "@types/node": "^24.19.0",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vite": "^8.3.1",
@@ -18,6 +19,7 @@
   },
   "dependencies": {
     "@lichess-org/chessground": "10.4.0",
-    "chessops": "^0.15.1"
+    "chessops": "0.15.1",
+    "snabbdom": "3.5.1"
   }
 }

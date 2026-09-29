@@ -58,14 +58,18 @@ export class AnalysisCtrl implements RetroRoot {
   path = ''; // the path of `node`; '' is the starting position
   retro?: RetroCtrl; // set while "Learn from your mistakes" is open
   cg?: CgApi; // Step 3a: the board; undefined in the headless scripts
+  readonly redraw: () => void; // Step 4a: re-renders the page; passed in, as in lila
   private readonly orientation: Color; // your color in the game; it goes at the bottom
   private flipped = false;
 
-  constructor(game: LichessGameJson, orientation: Color = 'white') {
+  // Step 4a: redraw is passed in, like lila's AnalyseCtrl(opts, redraw). It can't be set later,
+     // because retroCtrl copies root.redraw when it's created. The scripts get the default, a no-op.
+  constructor(game: LichessGameJson, orientation: Color = 'white', redraw: () => void = () => {}) {
     this.tree = makeGameTree(treeOps.buildTree(game));
     this.mainline = treeOps.mainline(this.tree.root);
     this.node = this.tree.root;
     this.orientation = orientation;
+    this.redraw = redraw;
   }
 
   bottomColor = (): Color => (this.flipped ? opposite(this.orientation) : this.orientation);
@@ -162,8 +166,8 @@ export class AnalysisCtrl implements RetroRoot {
     );
   };
 
-
-  redraw = (): void => {}; // Step 4: re-render the page.
+  // redraw removed in step 4a-2
+  // redraw = (): void => {}; // Step 4: re-render the page.
 
   // Like lila's flip: if "Learn from your mistakes" is open, restart it for the new bottom color.
   // That's how the panel's "Review Black's mistakes" button works.

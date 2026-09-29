@@ -1,5 +1,5 @@
 // retroCtrl.ts: the "Learn from your mistakes" state machine, trimmed from lila's
-// ui/analyse/src/retrospect/retroCtrl.ts (master, commit e007e77).
+// ui/analyse/src/retrospect/retroCtrl.ts (master, commit 27ffc8b).
 // Every change from lila's version is marked with a comment starting "Trim:".
 
 import type { Color } from 'chessops';
