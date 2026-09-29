@@ -1,10 +1,13 @@
-// components.ts: moves written out as text, like "15...Qh4?". Copied from lila's
-// ui/analyse/src/view/components.ts (renderIndexAndMove, renderIndex, renderMoveNodes; master,
-// commit 27ffc8b), with plyToTurn from ui/lib/src/game/chess.ts and renderEval from
-// ui/lib/src/ceval/util.ts. The retro panel uses these now, and the move list will in step 6.
+// components.ts: moves written out as text, like "15...Qh4?", and the game's result. Copied from
+// lila's ui/analyse/src/view/components.ts (renderResult, renderIndexAndMove, renderIndex,
+// renderMoveNodes; master, commit 27ffc8b), with plyToTurn from ui/lib/src/game/chess.ts and
+// renderEval from ui/lib/src/ceval/util.ts. Used by the retro panel and the move list.
 
 import { h, type VNode } from 'snabbdom';
 
+import type { AnalysisCtrl } from './analysisCtrl';
+import { hl } from './snabbdom';
+import { status, statusOf } from './status';
 import type { TreeNode } from './tree';
 import type { EvalScore } from './winningChances';
 
@@ -49,4 +52,19 @@ export function renderMoveNodes(
   // Trim: lila marks moves that have arrows or circles drawn on them (node.shapes) here.
   if (withEval && evalText && ev) nodes.push(h('eval', evalText.replace('-', '−')));
   return nodes;
+}
+
+// Step 6: the result and how the game ended, under the move list, e.g. "0-1" and
+// "White resigned • Black is victorious".
+// Trim: lila also shows a study chapter's result, and its Termination tag.
+export function renderResult(ctrl: AnalysisCtrl): VNode[] {
+  const render = (result: string, statusText: string) => [hl('div.result', result), hl('div.status', statusText)];
+  const game = ctrl.game;
+  if (game.status && status[game.status] >= status.mate) {
+    const winner = game.winner;
+    const result = winner === 'white' ? '1-0' : winner === 'black' ? '0-1' : '½-½';
+    const ply = ctrl.mainline[ctrl.mainline.length - 1].ply; // lila's game.turns
+    return render(result, statusOf({ winner, status: game.status, ply }));
+  }
+  return [];
 }

@@ -28,9 +28,17 @@ export interface LichessGameJson {
   moves: string; // space-separated SAN
   initialFen?: string; // present only for games started from a custom position
   analysis?: LichessAnalysisEntry[]; // analysis[i] describes the position after moves[i]
+  status?: string; // Step 6: how the game ended, e.g. 'mate', 'resign', 'outoftime' (lila's StatusName)
+  winner?: 'white' | 'black'; // Step 6: absent for draws
 }
 
-// ---------- Output: the subset of lila's TreeNode that retrospect reads ----------
+// ---------- Output: the subset of lila's TreeNode that retrospect and the move list read ----------
+
+// Step 6: lila's TreeComment has an id too, and `by` can be a study member.
+export interface TreeComment {
+  by: string;
+  text: string;
+}
 
 export interface TreeNode {
   id: string; // 2 characters; '' for the root. A path is these ids joined together.
@@ -41,6 +49,7 @@ export interface TreeNode {
   eval?: { cp?: number; mate?: number };
   comp?: boolean; // only the first node of an engine line is marked comp = true
   glyphs?: { id: number; symbol: string; name: string }[];
+  comments?: TreeComment[]; // Step 6: e.g. "Mistake. Nf3 was best." by 'lichess', on the judged move
   children: TreeNode[]; // children[0] is always the mainline continuation
 }
 
@@ -65,6 +74,8 @@ export function buildTree(game: LichessGameJson): TreeNode {
     const entry = game.analysis?.[i];
     if (entry) node.eval = toEval(entry);
     if (entry?.judgment) node.glyphs = [GLYPHS[entry.judgment.name]];
+    // Step 6: lila's server adds the same text as a comment by 'lichess' (modules/tree TreeBuilder).
+    if (entry?.judgment) node.comments = [{ by: 'lichess', text: entry.judgment.comment }];
 
     parent.children.push(node); // pushed first, so it's children[0]
     if (entry?.variation) parent.children.push(buildCompLine(before, entry.variation, node.ply));
@@ -143,4 +154,21 @@ export function nodeAtPath(root: TreeNode, path: string): TreeNode {
     node = child;
   }
   return node;
+}
+// ---------- Step 6: helpers from lila's ui/lib/src/tree/ops.ts, for the move list ----------
+
+// True if there's a variation within maxDepth moves of `node`, or the line is longer than that.
+export const hasBranching = (node: TreeNode, maxDepth: number): boolean =>
+  maxDepth <= 0 || !!node.children[1] || (!!node.children[0] && hasBranching(node.children[0], maxDepth - 1));
+
+// True if `descendant` is `container` or somewhere in the moves after it.
+export function contains(container: TreeNode, descendant: TreeNode): boolean {
+  return container === descendant || !!container.children?.some(child => contains(child, descendant));
+}
+
+// How many moves apart two paths are, going back to where they split and forward again.
+export function distance(a: string, b: string): number {
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i] && a[i + 1] === b[i + 1]) i += 2;
+  return (a.length + b.length) / 2 - i;
 }

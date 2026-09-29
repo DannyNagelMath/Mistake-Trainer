@@ -6,6 +6,7 @@ import { Chessground } from '@lichess-org/chessground';
 import { h, type VNode } from 'snabbdom';
 
 import type { AnalysisCtrl } from './analysisCtrl';
+import { renderResult } from './components';
 import retroView from './retroView';
 import { hl } from './snabbdom';
 
@@ -34,11 +35,19 @@ function renderBoard(ctrl: AnalysisCtrl): VNode {
 }
 
 // Like lila's renderTools (view/tools.ts). Step 5: the "Learn from your mistakes" panel.
-// Trim: no engine lines, move list (step 6), explorer, practice mode, or action menu.
+// Step 6: the move list above it.
+// Trim: no engine lines, explorer, practice mode, or action menu.
 // hl leaves out retroView's result when it's undefined, i.e. when the panel is closed.
 function renderTools(ctrl: AnalysisCtrl): VNode {
-  return hl('div.analyse__tools', [retroView(ctrl)]);
+  return hl('div.analyse__tools', [renderMoveList(ctrl), retroView(ctrl)]);
 }
+
+// Step 6: like lila's renderMoveList (view/tools.ts). div.analyse__moves is the part that scrolls.
+// Trim: lila hides the moves in some studies, and adds a "next chapter" button in studies.
+const renderMoveList = (ctrl: AnalysisCtrl): VNode =>
+  hl('div.analyse__moves.areplay', { hook: ctrl.treeView.hook() }, [
+    hl('div', [ctrl.treeView.render(), renderResult(ctrl)]),
+  ]);
 
 // Empty for now. Step 7 fills it in from lila's renderControls.
 function renderControls(): VNode {

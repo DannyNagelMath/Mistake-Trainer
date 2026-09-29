@@ -13,6 +13,7 @@ import type { Key } from '@lichess-org/chessground/types'; // Step 3a
 
 import { make as makeRetro, type RetroCtrl, type RetroRoot } from './retroCtrl';
 import * as treeOps from './tree';
+import { TreeView } from './treeView';
 import type { LichessGameJson, TreeNode } from './tree';
 
 // The tree plus the operations retroCtrl needs, like lila's TreeWrapper (ui/lib/src/tree/tree.ts).
@@ -62,14 +63,29 @@ export class AnalysisCtrl implements RetroRoot {
   private readonly orientation: Color; // your color in the game; it goes at the bottom
   private flipped = false;
 
+  // Step 6: for the move list.
+  readonly game: LichessGameJson; // lila keeps the game's details in ctrl.data.game
+  readonly gamePath: string; // the path of the game's last move
+  readonly treeView: TreeView;
+  showComments = true;
+  // Trim: lila's SettingsCtrl, which the user changes in the analysis settings menu.
+  // These are lila's defaults.
+  readonly settings = {
+    inline: false, // two-column move list, rather than a paragraph
+    showStaticAnalysis: true, // show the server analysis: evals, glyphs, comments, engine lines
+  };
+
   // Step 4a: redraw is passed in, like lila's AnalyseCtrl(opts, redraw). It can't be set later,
-     // because retroCtrl copies root.redraw when it's created. The scripts get the default, a no-op.
+  // because retroCtrl copies root.redraw when it's created. The scripts get the default, a no-op.
   constructor(game: LichessGameJson, orientation: Color = 'white', redraw: () => void = () => {}) {
+    this.game = game;
     this.tree = makeGameTree(treeOps.buildTree(game));
     this.mainline = treeOps.mainline(this.tree.root);
+    this.gamePath = this.mainline.map(n => n.id).join('');
     this.node = this.tree.root;
     this.orientation = orientation;
     this.redraw = redraw;
+    this.treeView = new TreeView(this);
   }
 
   bottomColor = (): Color => (this.flipped ? opposite(this.orientation) : this.orientation);
@@ -80,6 +96,25 @@ export class AnalysisCtrl implements RetroRoot {
   // Trim: lila checks for an eval on the root node. The API's analysis starts after the first
   // move, so our root never has one; this checks the first move instead.
   hasFullComputerAnalysis = (): boolean => !!this.mainline[1]?.eval;
+
+  // Step 6: the moves after `node` that the move list shows, from lila's visibleChildren.
+  // An engine line is hidden while its mistake is unsolved, unless the board is on it.
+  // Trim: lila also shows it if the engine is checking your move (retro.forceCeval), which needs the engine.
+  visibleChildren = (node: TreeNode = this.node): TreeNode[] =>
+    node.children.filter(
+      kid =>
+        !kid.comp ||
+        (this.settings.showStaticAnalysis && !this.retro?.hideComputerLine(kid)) ||
+        treeOps.contains(kid, this.node),
+    );
+
+  // Step 6: the eval to show beside a move, from lila's allowedEval.
+  // Trim: lila prefers the local engine's eval (node.ceval) when the engine is on.
+  allowedEval = (node: TreeNode = this.node): TreeNode['eval'] | false =>
+    this.settings.showStaticAnalysis && node.eval;
+
+  // Step 6: from lila's showMoveGlyphs. Trim: lila also shows them in studies.
+  showMoveGlyphs = (): boolean => this.settings.showStaticAnalysis;
 
   // Step 3a: the board settings for the current node, like lila's makeCgOpts.
   // Step 3a/3b: the board settings for the current node, like lila's makeCgOpts.
@@ -104,6 +139,8 @@ export class AnalysisCtrl implements RetroRoot {
   // selected square, then jump() updates the board, plays sounds, and so on.
   userJump = (path: string): void => {
     const pathChanged = path !== this.path;
+    // Step 6: like lila's jump, scroll the move list to the new move: smoothly if it's close.
+    if (pathChanged) this.treeView.requestAutoScroll(treeOps.distance(this.path, path) > 8 ? 'instant' : 'smooth');
     this.node = this.tree.nodeAtPath(path);
     this.path = path;
     if (pathChanged) this.retro?.onJump();
