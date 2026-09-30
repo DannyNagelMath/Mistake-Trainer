@@ -18,5 +18,4 @@ export const licon = {
   JumpFirst: '\ue035',
   Hamburger: '\ue039',
   UltraBullet: '\ue059',
-  Logo: '\ue07a',
 } as const;
