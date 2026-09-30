@@ -14,6 +14,7 @@ import type { Key } from '@lichess-org/chessground/types'; // Step 3a
 import { toggle, type Toggle } from './common';
 import { ForkCtrl } from './fork';
 import Navigate from './navigate';
+import { nextGlyphSymbol } from './nodeFinder';
 import { make as makeRetro, type RetroCardOpts, type RetroCtrl, type RetroRoot } from './retroCtrl';
 import * as treeOps from './tree';
 import { TreeView } from './treeView';
@@ -200,6 +201,19 @@ export class AnalysisCtrl implements RetroRoot {
     this.onMainline = this.tree.pathIsMainline(path);
     if (pathChanged) this.retro?.onJump();
     this.cg?.set(this.cgConfig()); // Step 3a: `?.` skips this when there is no board
+  };
+
+  // Step 8: from lila. Jump to the game's move at `ply`.
+  jumpToMain = (ply: number): void => this.userJump(this.mainlinePlyToPath(ply));
+
+  // Step 8: from lila, for the eval chart: its points are numbered from 0, for the first move.
+  jumpToIndex = (index: number): void => this.jumpToMain(index + 1 + this.tree.root.ply);
+
+  // Step 8: from lila, for the advice summary: the next move by `color` marked `symbol`.
+  jumpToGlyphSymbol = (color: Color, symbol: string): void => {
+    const node = nextGlyphSymbol(color, symbol, this.mainline, this.node.ply);
+    if (node) this.jumpToMain(node.ply);
+    this.redraw();
   };
 
   // Step 7: like lila's userJumpIfCan. Trim: lila checks that a study allows the jump, and can

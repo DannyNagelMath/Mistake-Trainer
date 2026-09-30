@@ -49,6 +49,18 @@
     data-piece-set="cburnett"
     style="---board-opacity:100;---board-brightness:100;---board-contrast:100;---board-hue:0;---zoom:80;"
   >
+    <!-- Step 8: the top of lila's site header (layout.scala siteHeader), with our own name. It also
+         makes room above the board, where the CSS puts the top player strip.
+         Trim: no menu, search, notifications, or account buttons. &#xe07a; is licon.Logo. -->
+    <header id="top">
+      <div class="site-title-nav">
+        <a class="site-title" href="/">
+          <div class="site-icon" data-icon="&#xe07a;"></div>
+          <div class="site-name">Lichess project</div>
+        </a>
+      </div>
+      <div class="site-buttons"></div>
+    </header>
     <div id="main-wrap" class="is2d">
       <main class="analyse"></main>
     </div>

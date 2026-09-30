@@ -32,12 +32,22 @@ export interface LichessGameJson {
   winner?: 'white' | 'black'; // Step 6: absent for draws
   variant?: string; // Step 9: e.g. 'standard' or 'chess960'
   players?: { white: LichessPlayer; black: LichessPlayer }; // Step 9
+  // Step 8: for the player strips and the side panel.
+  clocks?: number[]; // clocks[i]: the clock of whoever played moves[i], just after it, in centiseconds
+  clock?: { initial: number; increment: number }; // the time control, in seconds
+  createdAt?: number; // milliseconds since 1970
+  speed?: string; // e.g. 'blitz'
+  rated?: boolean;
 }
 
 // Step 9: `user` is absent for the computer and anonymous players.
 export interface LichessPlayer {
   user?: { id: string; name: string }; // id is the lowercase username
   rating?: number;
+  ratingDiff?: number; // Step 8: how much the game changed the rating
+  provisional?: boolean; // Step 8: a rating with few games behind it, shown with a "?"
+  aiLevel?: number; // Step 8: for Stockfish
+  analysis?: { inaccuracy: number; mistake: number; blunder: number; acpl: number; accuracy?: number }; // Step 8
 }
 
 // ---------- Output: the subset of lila's TreeNode that retrospect and the move list read ----------
@@ -58,6 +68,7 @@ export interface TreeNode {
   comp?: boolean; // only the first node of an engine line is marked comp = true
   glyphs?: { id: number; symbol: string; name: string }[];
   comments?: TreeComment[]; // Step 6: e.g. "Mistake. Nf3 was best." by 'lichess', on the judged move
+  clock?: number; // Step 8: the clock of whoever just moved, in centiseconds; at the root, the starting time
   children: TreeNode[]; // children[0] is always the mainline continuation
 }
 
@@ -70,6 +81,7 @@ export function buildTree(game: LichessGameJson): TreeNode {
     // ply 0 for a normal game; games from a custom position start later
     ply: (pos.fullmoves - 1) * 2 + (pos.turn === 'white' ? 0 : 1),
     fen: makeFen(pos.toSetup()),
+    clock: game.clock && game.clock.initial * 100, // Step 8: like lila's, the starting time
     children: [],
   };
 
@@ -79,6 +91,7 @@ export function buildTree(game: LichessGameJson): TreeNode {
     const before = pos.clone(); // kept in case an engine line starts from here
     const node = playSan(pos, sans[i], parent.ply + 1); // mutates pos
 
+    node.clock = game.clocks?.[i]; // Step 8
     const entry = game.analysis?.[i];
     if (entry) node.eval = toEval(entry);
     if (entry?.judgment) node.glyphs = [GLYPHS[entry.judgment.name]];

@@ -16,11 +16,12 @@ type Glyph = NonNullable<TreeNode['glyphs']>[number];
 // The move number that `ply` belongs to: plies 1 and 2 are move 1.
 const plyToTurn = (ply: number): number => Math.floor((ply - 1) / 2) + 1;
 
-// Centipawns as pawns, e.g. -153 as "-1.5". lila imports renderEval under this name.
-function normalizeEval(e: number): string {
+// Centipawns as pawns, e.g. -153 as "-1.5". Step 8: exported for the eval chart.
+export function renderEval(e: number): string {
   e = Math.max(Math.min(Math.round(e / 10) / 10, 99), -99);
   return (e > 0 ? '+' : '') + e.toFixed(1);
 }
+const normalizeEval = renderEval; // lila imports renderEval under this name
 
 export const renderIndexAndMove = (node: TreeNode, withEval: boolean, withGlyphs: boolean): VNode[] =>
   node.san ? [renderIndex(node.ply, true), ...renderMoveNodes(node, withEval, withGlyphs)] : [];
