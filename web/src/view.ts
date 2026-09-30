@@ -15,11 +15,11 @@ import retroView from './retroView';
 import { bindNonPassive, hl } from './snabbdom';
 
 // Like lila's ground.ts render, followed by the relevant part of AnalyseCtrl.setChessground.
-// lila puts a counter in the class (cgv1, cgv2, ...) and raises it to force a brand-new board.
-// We never need that, so it stays cgv1. As in lila there's no destroy hook: this element is
-// created once and never removed, so the board lives as long as the page.
+// lila puts a counter in the class (cgv1, cgv2, ...) and raises it to force a brand-new board:
+// a different class makes snabbdom replace the element, and the insert hook makes a new board.
+// Step 9: we raise it for every card (AnalysisCtrl.loadGame).
 function renderGround(ctrl: AnalysisCtrl): VNode {
-  return h('div.cg-wrap.cgv1', {
+  return h('div.cg-wrap.cgv' + ctrl.cgVersion, {
     hook: {
       insert: vnode => {
         const config = ctrl.cgConfig();
@@ -29,6 +29,10 @@ function renderGround(ctrl: AnalysisCtrl): VNode {
         });
         ctrl.setAutoShapes(); // lila's setChessground ends by calling setAutoShapes too
       },
+      // Step 9: not in lila, which replaces boards rarely. Chessground listens on the whole page
+      // (for dragging and resizing), and destroy removes those listeners. snabbdom destroys the
+      // old element before inserting the new one, so ctrl.cg is still the old board here.
+      destroy: () => ctrl.cg?.destroy(),
     },
   });
 }

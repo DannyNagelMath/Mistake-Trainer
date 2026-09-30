@@ -30,6 +30,14 @@ export interface LichessGameJson {
   analysis?: LichessAnalysisEntry[]; // analysis[i] describes the position after moves[i]
   status?: string; // Step 6: how the game ended, e.g. 'mate', 'resign', 'outoftime' (lila's StatusName)
   winner?: 'white' | 'black'; // Step 6: absent for draws
+  variant?: string; // Step 9: e.g. 'standard' or 'chess960'
+  players?: { white: LichessPlayer; black: LichessPlayer }; // Step 9
+}
+
+// Step 9: `user` is absent for the computer and anonymous players.
+export interface LichessPlayer {
+  user?: { id: string; name: string }; // id is the lowercase username
+  rating?: number;
 }
 
 // ---------- Output: the subset of lila's TreeNode that retrospect and the move list read ----------

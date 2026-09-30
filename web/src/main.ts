@@ -1,42 +1,51 @@
-// Step 4b: the board's CSS now comes from lila's stylesheets, loaded in index.html.
+// Step 4b: the board's CSS comes from lila's stylesheets, loaded in index.html.
+// Step 9: the page reviews the cards in public/data/deck.json (built by scripts/buildDeck.ts),
+// rather than one fixture game.
 
-import type { Color } from 'chessops';
 import { init, attributesModule, classModule, eventListenersModule, propsModule } from 'snabbdom';
 
-import game from '../fixtures/real1.json';
-import { AnalysisCtrl } from './analysisCtrl';
+import { loadDeck } from './deck';
+import { DeckCtrl } from './deckCtrl';
 import * as keyboard from './keyboard';
-import type { LichessGameJson } from './tree';
 import { view } from './view';
-
-// Hard-coded until "work out Dan's color from username" is done.
-const MY_COLOR: Color = 'white';
 
 // Step 4a: the same snabbdom setup as lila's (ui/analyse/src/view/util.ts).
 const patch = init([classModule, attributesModule, propsModule, eventListenersModule]);
 
+const element = document.querySelector('main.analyse') as HTMLElement;
+
+// Step 9: without a deck (or with an empty one), say how to build it instead.
+const deck = await loadDeck();
+if (!deck?.cards.length) {
+  element.textContent = deck
+    ? `The deck has no cards: none of the games in it have mistakes by ${deck.username}.`
+    : 'No deck yet. Build one from web with: npx tsx scripts/buildDeck.ts <your Lichess username>';
+  throw new Error('No cards to review');
+}
+
 // Step 4a: like lila's start.ts. Render into the page's <main class="analyse">, then re-render
 // the whole view on every redraw. snabbdom compares the new view with the old one and only
 // touches the parts of the page that changed.
-const element = document.querySelector('main.analyse') as HTMLElement;
-const ctrl = new AnalysisCtrl(game as LichessGameJson, MY_COLOR, redraw);
-let vnode = patch(element, view(ctrl)); // the board is created here, by renderGround's insert hook
+const deckCtrl = new DeckCtrl(deck, redraw);
+let vnode = patch(element, view(deckCtrl.analysis)); // the board is created here, by renderGround's insert hook
 
 // A function declaration rather than an arrow function, so it already exists when the
 // constructor above receives it.
 function redraw(): void {
-  // console.count('redraw'); // temporary, for the step 4a check
-  vnode = patch(vnode, view(ctrl));
+  vnode = patch(vnode, view(deckCtrl.analysis));
 }
 
 // Step 5: redraw to show the panel, as lila's "Learn from your mistakes" button does
 // (bind('click', ctrl.toggleRetro, ctrl.redraw)). The redraw that retroCtrl does while it starts
 // up is too early: toggleRetro hasn't stored it in ctrl.retro yet.
-ctrl.toggleRetro();
+// Step 9: in card mode, it opens at the first card's mistake.
+deckCtrl.analysis.toggleRetro();
 redraw();
 
 // Step 7: keyboard shortcuts. lila binds them in AnalyseCtrl's constructor; here they're bound
 // in the page only, so the headless scripts, which have no page, can still create an AnalysisCtrl.
-keyboard.bind(ctrl);
+keyboard.bind(deckCtrl.analysis);
 
-(window as any).ctrl = ctrl; // for testing from the browser console; remove later
+// For testing from the browser console; remove later.
+(window as any).ctrl = deckCtrl.analysis;
+(window as any).deck = deckCtrl;

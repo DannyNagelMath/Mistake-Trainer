@@ -14,7 +14,7 @@ import type { Key } from '@lichess-org/chessground/types'; // Step 3a
 import { toggle, type Toggle } from './common';
 import { ForkCtrl } from './fork';
 import Navigate from './navigate';
-import { make as makeRetro, type RetroCtrl, type RetroRoot } from './retroCtrl';
+import { make as makeRetro, type RetroCardOpts, type RetroCtrl, type RetroRoot } from './retroCtrl';
 import * as treeOps from './tree';
 import { TreeView } from './treeView';
 import type { LichessGameJson, TreeNode } from './tree';
@@ -63,22 +63,28 @@ function makeGameTree(root: TreeNode): GameTree {
 // Every function below is written as an arrow function (`name = (...) => ...`) rather than as
 // a method, so it still works when passed around and called on its own. retroCtrl relies on
 // that for redraw and toggleRetro, and the board's event handlers will in step 3.
+// Step 9: the fields marked `!` are set in initialize, which the constructor calls.
 export class AnalysisCtrl implements RetroRoot {
-  readonly tree: GameTree;
-  readonly mainline: TreeNode[]; // the root node, then one node per game move
-  node: TreeNode; // the node the board shows
-  path = ''; // the path of `node`; '' is the starting position
-  nodeList: TreeNode[]; // Step 7: the root, then each node along `path`, ending with `node`
-  onMainline = true; // Step 7: whether `path` follows the game's moves
+  tree!: GameTree;
+  mainline!: TreeNode[]; // the root node, then one node per game move
+  node!: TreeNode; // the node the board shows
+  path!: string; // the path of `node`; '' is the starting position
+  nodeList!: TreeNode[]; // Step 7: the root, then each node along `path`, ending with `node`
+  onMainline!: boolean; // Step 7: whether `path` follows the game's moves
   retro?: RetroCtrl; // set while "Learn from your mistakes" is open
   cg?: CgApi; // Step 3a: the board; undefined in the headless scripts
   readonly redraw: () => void; // Step 4a: re-renders the page; passed in, as in lila
-  private readonly orientation: Color; // your color in the game; it goes at the bottom
-  private flipped = false;
+  private orientation!: Color; // your color in the game; it goes at the bottom
+  private flipped!: boolean;
+  card?: RetroCardOpts; // Step 9: set when reviewing a card from the deck
+  // Step 9: like lila's cgVersion.js. Raising it makes the next redraw replace the board with a
+  // new one (see renderGround in view.ts). Trim: lila also keeps cgVersion.dom, to tell when
+  // the new board exists; we never use the board in between.
+  cgVersion = 1;
 
   // Step 6: for the move list.
-  readonly game: LichessGameJson; // lila keeps the game's details in ctrl.data.game
-  readonly gamePath: string; // the path of the game's last move
+  game!: LichessGameJson; // lila keeps the game's details in ctrl.data.game
+  gamePath!: string; // the path of the game's last move
   readonly treeView: TreeView;
   showComments = true;
   // Trim: lila's SettingsCtrl, which the user changes in the analysis settings menu.
@@ -89,25 +95,51 @@ export class AnalysisCtrl implements RetroRoot {
   };
 
   // Step 7: navigation and the menu.
-  readonly fork: ForkCtrl; // the choice of continuations shown under the move list
+  fork!: ForkCtrl; // the choice of continuations shown under the move list
   readonly navigate: Navigate; // first / prev / next / last, for the buttons, keys, and scroll wheel
   readonly actionMenu: Toggle = toggle(false); // whether the ☰ menu is open
 
   // Step 4a: redraw is passed in, like lila's AnalyseCtrl(opts, redraw). It can't be set later,
   // because retroCtrl copies root.redraw when it's created. The scripts get the default, a no-op.
-  constructor(game: LichessGameJson, orientation: Color = 'white', redraw: () => void = () => {}) {
+  // Step 9: `card` is for reviewing a card from the deck.
+  constructor(
+    game: LichessGameJson,
+    orientation: Color = 'white',
+    redraw: () => void = () => {},
+    card?: RetroCardOpts,
+  ) {
+    this.redraw = redraw;
+    this.treeView = new TreeView(this);
+    this.navigate = new Navigate(this);
+    this.initialize(game, orientation, card);
+  }
+
+  // Step 9: set up for a game, like lila's initialize, which its constructor calls too.
+  // Trim: lila reads the orientation from the game data.
+  private initialize(game: LichessGameJson, orientation: Color, card: RetroCardOpts | undefined): void {
     this.game = game;
     this.tree = makeGameTree(treeOps.buildTree(game));
     this.mainline = treeOps.mainline(this.tree.root);
     this.gamePath = this.mainline.map(n => n.id).join('');
-    this.node = this.tree.root;
-    this.nodeList = [this.tree.root];
-    this.orientation = orientation;
-    this.redraw = redraw;
-    this.treeView = new TreeView(this);
     this.fork = new ForkCtrl(this);
-    this.navigate = new Navigate(this);
+    this.orientation = orientation;
+    this.flipped = false;
+    this.card = card;
+    // lila's setPath(root), from reloadData or the constructor.
+    this.node = this.tree.root;
+    this.path = '';
+    this.nodeList = [this.tree.root];
+    this.onMainline = true;
   }
+
+  // Step 9: show another game, like lila's reloadData, which studies use to change chapter.
+  // It closes "Learn from your mistakes" and the menu; the caller opens the panel again if needed.
+  loadGame = (game: LichessGameJson, orientation: Color, card?: RetroCardOpts): void => {
+    this.retro = undefined;
+    this.actionMenu(false);
+    this.initialize(game, orientation, card);
+    this.cgVersion++;
+  };
 
   bottomColor = (): Color => (this.flipped ? opposite(this.orientation) : this.orientation);
 
@@ -244,14 +276,17 @@ export class AnalysisCtrl implements RetroRoot {
 
   // Like lila's flip: if "Learn from your mistakes" is open, restart it for the new bottom color.
   // That's how the panel's "Review Black's mistakes" button works.
+  // Step 9: not in card mode, where the card's mistake stays on even with the board turned over.
   flip = (): void => {
     this.flipped = !this.flipped;
     this.cg?.set({ orientation: this.bottomColor() }); // Step 3a: turn the board over
-    if (this.retro) {
+    if (this.retro && !this.card) {
       // Fix: lila doesn't clear this.retro first. While the new retro is starting up, it jumps to
       // its first mistake, and userJump tells the OLD retro about that jump. If the old one is
       // solving a mistake on exactly that move (e.g. black's mistake at ply 38, when white's first
       // is at ply 39), it takes the jump as the game move played, calls onFail, and jumps back.
+      // Clearing it also means the new retro's first redraw removes the panel, so the panel is
+      // built again with buttons wired to the new retro; the buttons are wired when inserted.
       this.retro = undefined;
       this.retro = makeRetro(this, this.bottomColor());
     }
@@ -264,7 +299,8 @@ export class AnalysisCtrl implements RetroRoot {
     if (this.retro) this.retro = undefined;
     else {
       this.actionMenu(false); // Step 7: lila's closeTools. Trim: it also closes the explorer and practice mode.
-      this.retro = makeRetro(this, this.bottomColor());
+      // Step 9: in card mode, always your color, even with the board turned over.
+      this.retro = makeRetro(this, this.card ? this.orientation : this.bottomColor());
     }
     this.setAutoShapes();
   };

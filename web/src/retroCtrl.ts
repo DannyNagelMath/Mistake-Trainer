@@ -1,6 +1,7 @@
 // retroCtrl.ts: the "Learn from your mistakes" state machine, trimmed from lila's
 // ui/analyse/src/retrospect/retroCtrl.ts (master, commit 27ffc8b).
-// Every change from lila's version is marked with a comment starting "Trim:".
+// Every change from lila's version is marked with a comment starting "Trim:", except card
+// mode (reviewing a single mistake from the deck), whose additions are marked "Step 9:".
 
 import type { Color } from 'chessops';
 
@@ -49,6 +50,17 @@ export interface RetroRoot {
   redraw: Redraw;
   flip(): void; // flip the board; if retro is open, restart it for the new bottom color
   toggleRetro(): void; // open or close "Learn from your mistakes"
+  card?: RetroCardOpts; // Step 9: set when reviewing a card, rather than a whole game
+}
+
+// Step 9: not in lila. In card mode, retroCtrl shows one given mistake. The game's other
+// mistakes still count as candidates, so their engine lines stay hidden in the move list.
+// When the card is done (solved, solution viewed, or skipped), "Next" deals the next card.
+export interface RetroCardOpts {
+  ply: Ply; // the mistake to show: the ply of the move that was played
+  next(): boolean; // deal the next card; false when the session is over
+  progress(): [number, number]; // for the title: [cards done, cards in the session]
+  restart(): void; // start a new session, for the button at the end
 }
 
 // ---------- Everything below is lila's code except where marked ----------
@@ -75,6 +87,7 @@ export interface RetroCtrl {
   node(): TreeNode;
   redraw: Redraw;
   forceCeval(): boolean;
+  card?: RetroCardOpts; // Step 9
 }
 
 interface NodeWithPath {
@@ -98,6 +111,7 @@ export function make(root: RetroRoot, color: Color): RetroCtrl {
   let solvedPlies: number[] = [];
   const current = prop<Retrospection | null>(null);
   const feedback = prop<Feedback>('find');
+  const card = root.card; // Step 9
 
   function safeRedraw() {
     root.redraw(); // Trim: lila skips this in blind mode.
@@ -113,13 +127,14 @@ export function make(root: RetroRoot, color: Color): RetroCtrl {
       root.mainline,
       n => n.ply % 2 === colorModulo && !explorerCancelPlies.includes(n.ply),
     );
-    return candidateNodes.find(n => !isPlySolved(n.ply));
+    return candidateNodes.find(n => !isPlySolved(n.ply) && (!card || n.ply === card.ply)); // Step 9: in card mode, only the card's
   }
 
   function jumpToNext(): void {
     feedback('find');
     const node = findNextNode();
     if (!node) {
+      if (card?.next()) return; // Step 9: this card is done; the next one takes over
       current(null);
       return safeRedraw();
     }
@@ -238,7 +253,7 @@ export function make(root: RetroRoot, color: Color): RetroCtrl {
     onMergeAnalysisData,
     feedback,
     isSolving,
-    completion: () => [solvedPlies.length, candidateNodes.length],
+    completion: () => card?.progress() ?? [solvedPlies.length, candidateNodes.length], // Step 9: the session's progress, in card mode
     reset() {
       solvedPlies = [];
       jumpToNext();
@@ -254,5 +269,6 @@ export function make(root: RetroRoot, color: Color): RetroCtrl {
     node: () => root.node,
     redraw: root.redraw,
     forceCeval: () => feedback() === 'eval',
+    card, // Step 9
   };
 }

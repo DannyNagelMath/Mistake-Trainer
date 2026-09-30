@@ -1,6 +1,7 @@
 // retroView.ts: the "Learn from your mistakes" panel, from lila's
 // ui/analyse/src/retrospect/retroView.ts (master, commit 27ffc8b).
-// Every change from lila's version is marked with a comment starting "Trim:".
+// Every change from lila's version is marked with a comment starting "Trim:", except card
+// mode (see retroCtrl.ts), whose additions are marked "Step 9:".
 
 import { opposite, type Color } from 'chessops';
 import type { VNode } from 'snabbdom';
@@ -122,6 +123,21 @@ const feedback = {
           hl('div.player', [hl('div.icon'), hl('div.instruction', i18n.site.waitingForAnalysis)]),
         ),
       ];
+    // Step 9: in card mode, the end of the session. The text isn't one of lila's translations.
+    if (ctrl.card) {
+      const [, total] = ctrl.card.progress();
+      return [
+        hl('div.player', [
+          hl('div.no-square', hl('piece.king.' + ctrl.color)),
+          hl('div.instruction', [
+            hl('em', `Session complete: you've been through all ${total} cards`),
+            hl('div.choices.end', [
+              hl('a', { key: 'restart', hook: bind('click', ctrl.card.restart) }, 'Start a new session'),
+            ]),
+          ]),
+        ]),
+      ];
+    }
     const nothing = !ctrl.completion()[1];
     return [
       hl('div.player', [
