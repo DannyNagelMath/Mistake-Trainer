@@ -58,10 +58,16 @@ export interface RetroRoot {
 // When the card is done (solved, solution viewed, or skipped), "Next" deals the next card.
 export interface RetroCardOpts {
   ply: Ply; // the mistake to show: the ply of the move that was played
-  next(): boolean; // deal the next card; false when the session is over
+  next(): boolean; // deal the next card; false when nothing more is due
   progress(): [number, number]; // for the title: [cards done, cards in the session]
-  restart(): void; // start a new session, for the button at the end
+  restart(): void; // look for more cards, for the button at the end
+  summary(): string; // for the end of the session
+  // Called with each outcome: the right move ('win'), a wrong one ('fail'), "View the solution"
+  // ('view'), or "Skip this move" ('skip'). The deck grades the card on the first one.
+  onResult(result: CardResult): void;
 }
+
+export type CardResult = 'win' | 'fail' | 'view' | 'skip'; // Step 9
 
 // ---------- Everything below is lila's code except where marked ----------
 
@@ -191,6 +197,7 @@ export function make(root: RetroRoot, color: Color): RetroCtrl {
   // Trim: removed isCevalReady and checkCeval (the engine check above).
 
   function onWin(): void {
+    card?.onResult('win'); // Step 9
     solveCurrent();
     // Trim: removed `if (site.blindMode) jumpToNext();`
     feedback('win');
@@ -198,6 +205,7 @@ export function make(root: RetroRoot, color: Color): RetroCtrl {
   }
 
   function onFail(): void {
+    card?.onResult('fail'); // Step 9
     feedback('fail');
     const bad = {
       node: root.node,
@@ -209,12 +217,14 @@ export function make(root: RetroRoot, color: Color): RetroCtrl {
   }
 
   function viewSolution() {
+    card?.onResult('view'); // Step 9
     feedback('view');
     root.userJump(current()!.solution.path);
     solveCurrent();
   }
 
   function skip() {
+    card?.onResult('skip'); // Step 9
     solveCurrent();
     jumpToNext();
   }

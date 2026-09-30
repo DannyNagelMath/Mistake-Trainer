@@ -123,21 +123,19 @@ const feedback = {
           hl('div.player', [hl('div.icon'), hl('div.instruction', i18n.site.waitingForAnalysis)]),
         ),
       ];
-    // Step 9: in card mode, the end of the session. The text isn't one of lila's translations.
-    if (ctrl.card) {
-      const [, total] = ctrl.card.progress();
+    // Step 9: in card mode, nothing more is due. The text isn't one of lila's translations.
+    if (ctrl.card)
       return [
         hl('div.player', [
           hl('div.no-square', hl('piece.king.' + ctrl.color)),
           hl('div.instruction', [
-            hl('em', `Session complete: you've been through all ${total} cards`),
+            hl('em', ctrl.card.summary()),
             hl('div.choices.end', [
-              hl('a', { key: 'restart', hook: bind('click', ctrl.card.restart) }, 'Start a new session'),
+              hl('a', { key: 'restart', hook: bind('click', ctrl.card.restart) }, 'Check for due cards'),
             ]),
           ]),
         ]),
       ];
-    }
     const nothing = !ctrl.completion()[1];
     return [
       hl('div.player', [

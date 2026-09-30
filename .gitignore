@@ -13,3 +13,4 @@ dist/
 pipeline/data/
 web/public/data
 web/public/lila
+web/data
