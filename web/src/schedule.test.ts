@@ -3,8 +3,8 @@ import { createEmptyCard, Rating, State, type CardInput } from 'ts-fsrs';
 import { expect, test } from 'vitest';
 
 import type { Card } from './deck';
-import type { ReviewHistory } from './reviews';
-import { cardsLeft, gradeOf, NEW_CARDS_PER_DAY, newCardsToday, nextDue, pickNext, scheduler } from './schedule';
+import type { ReviewEntry, ReviewHistory } from './reviews';
+import { cardsLeft, gradeOf, NEW_CARDS_PER_DAY, newCardsInLastDay, nextAvailable, pickNext, scheduler } from './schedule';
 
 const now = new Date('2026-09-30T12:00:00');
 const minutes = (n: number) => new Date(now.getTime() + n * 60_000);
@@ -15,7 +15,11 @@ const deck = ['a/1', 'b/3', 'c/5', 'd/7'].map(card);
 // A schedule in the given state, due at the given time.
 const scheduled = (state: State, due: Date): CardInput => ({ ...createEmptyCard(now), state, due });
 
-const history = (cards: Record<string, CardInput> = {}): ReviewHistory => ({ cards, log: [] });
+const history = (cards: Record<string, CardInput> = {}, log: ReviewEntry[] = []): ReviewHistory => ({ cards, log });
+
+// A log entry: the card reviewed at `at`, in `state` before the review. Only what schedule.ts reads.
+const reviewed = (cardId: string, at: Date, state = State.Review): ReviewEntry =>
+  ({ cardId, result: 'win', log: { state, review: at } }) as unknown as ReviewEntry;
 
 test('with no history, new cards come in deck order', () => {
   expect(pickNext(deck, history(), now)?.id).toBe('a/1');
@@ -84,19 +88,62 @@ test('the card just shown only comes again when there is no other', () => {
   expect(pickNext(deck, onlyA, now, 'a/1')?.id).toBe('a/1');
 });
 
-test('at most NEW_CARDS_PER_DAY new cards a day', () => {
-  const h = history();
-  const review = { state: State.New, review: now } as never;
-  h.log = Array.from({ length: NEW_CARDS_PER_DAY }, (_, i) => ({ cardId: `x/${i}`, result: 'win', log: review }));
-  expect(newCardsToday(h, now)).toBe(NEW_CARDS_PER_DAY);
+test('at most NEW_CARDS_PER_DAY new cards in any 24 hours, not per calendar day', () => {
+  // NEW_CARDS_PER_DAY new cards started an hour ago, from games not in the deck
+  const log = Array.from({ length: NEW_CARDS_PER_DAY }, (_, i) => reviewed(`x${i}/1`, minutes(-60), State.New));
+  const h = history({}, log);
+  expect(newCardsInLastDay(h, now)).toBe(NEW_CARDS_PER_DAY);
   expect(pickNext(deck, h, now)).toBeUndefined();
-  expect(newCardsToday(h, new Date('2026-10-01T12:00:00'))).toBe(0); // a new day
+  expect(pickNext(deck, h, minutes(60 * 23 - 1))).toBeUndefined(); // past midnight, but within 24 hours
+  expect(newCardsInLastDay(h, minutes(60 * 23))).toBe(0); // 24 hours after they were started
+  expect(pickNext(deck, h, minutes(60 * 23))?.id).toBe('a/1');
 });
 
-test('nextDue is the earliest due time of the reviewed cards', () => {
-  expect(nextDue(deck, history())).toBeUndefined();
-  const h = history({ 'a/1': scheduled(State.Review, minutes(90)), 'b/3': scheduled(State.Learning, minutes(9)) });
-  expect(nextDue(deck, h)).toEqual(minutes(9));
+// Two more cards from game g, and one from game h.
+const gameDeck = ['g/1', 'g/3', 'g/5', 'h/7'].map(card);
+
+test("after a card from a game is reviewed, the game's other cards wait 24 hours", () => {
+  const h = history(
+    {
+      'g/1': scheduled(State.Review, minutes(60 * 47)), // reviewed an hour ago
+      'g/3': scheduled(State.Review, minutes(-10)), // due, but from the same game
+    },
+    [reviewed('g/1', minutes(-60))],
+  );
+  expect(pickNext(deck, h, now)?.id).toBe('a/1'); // games a to d aren't affected
+  expect(pickNext(gameDeck, h, now)?.id).toBe('h/7'); // not g/3, nor the new g/5
+  expect(cardsLeft(gameDeck, h, now)).toBe(1);
+  expect(pickNext(gameDeck, h, minutes(60 * 23 - 1))?.id).toBe('h/7'); // still within 24 hours
+  expect(pickNext(gameDeck, h, minutes(60 * 23))?.id).toBe('g/3'); // 24 hours after the review
+});
+
+test('waiting games only affect the queue, not the FSRS schedules', () => {
+  const h = history(
+    { 'g/1': scheduled(State.Review, minutes(60 * 47)), 'g/3': scheduled(State.Review, minutes(-10)) },
+    [reviewed('g/1', minutes(-60))],
+  );
+  const before = JSON.stringify(h);
+  pickNext(gameDeck, h, now);
+  cardsLeft(gameDeck, h, now);
+  nextAvailable(gameDeck, h, now);
+  expect(JSON.stringify(h)).toBe(before);
+});
+
+test('nextAvailable is when the next card can come up', () => {
+  // new cards can come up at once
+  expect(nextAvailable(deck, history(), now)).toEqual(now);
+  // with every card reviewed: the earliest due time
+  const due = (n: number) => scheduled(State.Review, minutes(n));
+  expect(nextAvailable(deck, history({ 'a/1': due(90), 'b/3': due(9), 'c/5': due(300), 'd/7': due(200) }), now)).toEqual(
+    minutes(9),
+  );
+  // a due card from a waiting game: when the game stops waiting
+  const onlyG = ['g/1', 'g/3'].map(card);
+  const waiting = history({ 'g/1': due(60 * 47), 'g/3': due(-10) }, [reviewed('g/1', minutes(-60))]);
+  expect(nextAvailable(onlyG, waiting, now)).toEqual(minutes(60 * 23));
+  // new cards with the limit reached: when the oldest of the last 24 hours' new cards is 24 hours old
+  const log = Array.from({ length: NEW_CARDS_PER_DAY }, (_, i) => reviewed(`x${i}/1`, minutes(-60 + i), State.New));
+  expect(nextAvailable(deck, history({}, log), now)).toEqual(minutes(60 * 23));
 });
 
 test('only the right move is Good; anything else is Again', () => {

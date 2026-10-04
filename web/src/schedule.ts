@@ -4,6 +4,11 @@
 //   2. then new cards (never reviewed), up to NEW_CARDS_PER_DAY a day, in the deck's random order.
 // A card is due once FSRS's due time for it has passed, to the millisecond. The scheduler below
 // puts every review at least a day out, so a card never comes back within 24 hours.
+// "A day" always means 24 hours counted from a review, never a calendar day:
+//   - at most NEW_CARDS_PER_DAY new cards in any 24 hours;
+//   - after you review a card, the other cards from its game wait until 24 hours after that
+//     review, so you don't see two positions from one game on the same day. They only wait in
+//     the queue: their FSRS schedules don't change.
 // This file also has the scheduler and grades a card from what you did first (gradeOf). They're
 // plain functions and values, so schedule.test.ts can check them without a page.
 
@@ -11,7 +16,7 @@ import { fsrs, Rating, State, type Grade } from 'ts-fsrs';
 
 import type { Card } from './deck';
 import type { CardResult } from './retroCtrl';
-import type { ReviewHistory } from './reviews';
+import type { ReviewEntry, ReviewHistory } from './reviews';
 
 // export const NEW_CARDS_PER_DAY = 20; // Anki's default
 
@@ -26,20 +31,46 @@ export const scheduler = fsrs({ learning_steps: [], relearning_steps: [] });
 // Like a Lichess puzzle, only your first attempt counts: the right move is Good, anything else Again.
 export const gradeOf = (result: CardResult): Grade => (result === 'win' ? Rating.Good : Rating.Again);
 
+const DAY = 24 * 60 * 60_000; // in milliseconds
+
 const dueTime = (history: ReviewHistory, card: Card): number => new Date(history.cards[card.id].due).getTime();
+const reviewTime = (entry: ReviewEntry): number => new Date(entry.log.review).getTime();
 
-const sameDay = (a: Date, b: Date): boolean => a.toDateString() === b.toDateString(); // in local time
+// Card ids are `${gameId}/${ply}` (deck.ts), and the log only has the id.
+const gameOf = (cardId: string): string => cardId.slice(0, cardId.lastIndexOf('/'));
 
-// How many new cards you've started today.
-export const newCardsToday = (history: ReviewHistory, now: Date): number =>
-  history.log.filter(e => e.log.state === State.New && sameDay(new Date(e.log.review), now)).length;
+// The times you started new cards in the 24 hours up to `now`, oldest first.
+const newCardStarts = (history: ReviewHistory, now: Date): number[] =>
+  history.log
+    .filter(e => e.log.state === State.New && reviewTime(e) > now.getTime() - DAY && reviewTime(e) <= now.getTime())
+    .map(reviewTime)
+    .sort((a, b) => a - b);
 
-// The cards for each of the two rules, each in the order they'd be shown.
+// How many new cards you've started in the 24 hours up to `now`.
+export const newCardsInLastDay = (history: ReviewHistory, now: Date): number => newCardStarts(history, now).length;
+
+// For each game you've reviewed, when its cards can come up again: 24 hours after its latest review.
+function gameRestEnds(history: ReviewHistory): Map<string, number> {
+  const ends = new Map<string, number>();
+  for (const entry of history.log) {
+    const game = gameOf(entry.cardId),
+      end = reviewTime(entry) + DAY;
+    if (end > (ends.get(game) ?? 0)) ends.set(game, end);
+  }
+  return ends;
+}
+
+// The cards for each of the two rules, each in the order they'd be shown, leaving out cards
+// whose game is waiting.
 function queues(deck: Card[], history: ReviewHistory, now: Date) {
+  const restEnds = gameRestEnds(history);
+  const gameWaiting = (c: Card) => (restEnds.get(c.gameId) ?? 0) > now.getTime();
   const reviewed = deck.filter(c => history.cards[c.id]).sort((a, b) => dueTime(history, a) - dueTime(history, b));
   return {
-    due: reviewed.filter(c => dueTime(history, c) <= now.getTime()),
-    fresh: deck.filter(c => !history.cards[c.id]).slice(0, Math.max(0, NEW_CARDS_PER_DAY - newCardsToday(history, now))),
+    due: reviewed.filter(c => dueTime(history, c) <= now.getTime() && !gameWaiting(c)),
+    fresh: deck
+      .filter(c => !history.cards[c.id] && !gameWaiting(c))
+      .slice(0, Math.max(0, NEW_CARDS_PER_DAY - newCardsInLastDay(history, now))),
   };
 }
 
@@ -51,14 +82,23 @@ export function pickNext(deck: Card[], history: ReviewHistory, now: Date, avoid?
   return order.find(c => c.id !== avoid) ?? order[0];
 }
 
-// How many more cards are waiting now: the due ones, and today's remaining new ones.
+// How many more cards can come up now: the due ones, and the new ones the limit still allows.
 export function cardsLeft(deck: Card[], history: ReviewHistory, now: Date): number {
   const { due, fresh } = queues(deck, history, now);
   return due.length + fresh.length;
 }
 
-// When the next card is due, or undefined if you've never reviewed one; new cards wait for tomorrow.
-export function nextDue(deck: Card[], history: ReviewHistory): Date | undefined {
-  const times = deck.filter(c => history.cards[c.id]).map(c => dueTime(history, c));
+// When the next card can come up, for the end of a session; undefined for an empty deck.
+// A reviewed card comes up when it's due and its game has stopped waiting, whichever is later.
+// A new card comes up when its game has stopped waiting and the new-card limit allows another:
+// at the limit, that's when enough of the last 24 hours' new cards are 24 hours old.
+export function nextAvailable(deck: Card[], history: ReviewHistory, now: Date): Date | undefined {
+  const restEnds = gameRestEnds(history);
+  const starts = newCardStarts(history, now);
+  const newCardAllowed =
+    starts.length < NEW_CARDS_PER_DAY ? now.getTime() : starts[starts.length - NEW_CARDS_PER_DAY] + DAY;
+  const times = deck.map(c =>
+    Math.max(history.cards[c.id] ? dueTime(history, c) : newCardAllowed, restEnds.get(c.gameId) ?? 0),
+  );
   return times.length ? new Date(Math.min(...times)) : undefined;
 }

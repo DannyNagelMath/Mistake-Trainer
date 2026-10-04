@@ -12,7 +12,7 @@ import { AnalysisCtrl } from './analysisCtrl';
 import type { Card, Deck } from './deck';
 import type { CardResult, RetroCardOpts } from './retroCtrl';
 import { saveReview, type ReviewEntry, type ReviewHistory } from './reviews';
-import { cardsLeft, gradeOf, nextDue, pickNext, scheduler } from './schedule';
+import { cardsLeft, gradeOf, NEW_CARDS_PER_DAY, nextAvailable, pickNext, scheduler } from './schedule';
 
 // Fisher-Yates: a random order, with every order equally likely.
 function shuffle<T>(items: T[]): T[] {
@@ -24,9 +24,10 @@ function shuffle<T>(items: T[]): T[] {
   return a;
 }
 
-// E.g. "in 8 minutes", or "on Thu, Oct 2, 2:05 PM".
+// E.g. "now", "in 8 minutes", or "on Thu, Oct 2, 2:05 PM".
 function describeTime(t: Date, now = new Date()): string {
   const minutes = Math.ceil((t.getTime() - now.getTime()) / 60_000);
+  if (minutes <= 0) return 'now';
   if (minutes < 60) return `in ${minutes} minute${minutes === 1 ? '' : 's'}`;
   return `on ${t.toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`;
 }
@@ -108,12 +109,12 @@ export class DeckCtrl {
 
   // For the end of the session.
   private summary = (): string => {
-    const due = nextDue(this.cards, this.history);
-    const waiting = this.cards.filter(c => !this.history.cards[c.id]).length;
+    const next = nextAvailable(this.cards, this.history, new Date());
+    const unstarted = this.cards.filter(c => !this.history.cards[c.id]).length;
     return [
       `Nothing more to review right now (${this.reviewed} reviewed this session).`,
-      due && `The next card is due ${describeTime(due)}.`,
-      waiting && `${waiting} new cards are waiting for tomorrow.`, // today's new cards are used up
+      next && `The next card comes up ${describeTime(next)}.`,
+      unstarted && `${unstarted} new cards haven't been started yet (up to ${NEW_CARDS_PER_DAY} in any 24 hours).`,
     ]
       .filter(Boolean)
       .join(' ');
