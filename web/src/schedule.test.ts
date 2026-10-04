@@ -4,7 +4,7 @@ import { expect, test } from 'vitest';
 
 import type { Card } from './deck';
 import type { ReviewHistory } from './reviews';
-import { cardsLeft, gradeOf, NEW_CARDS_PER_DAY, newCardsToday, nextDue, pickNext } from './schedule';
+import { cardsLeft, gradeOf, NEW_CARDS_PER_DAY, newCardsToday, nextDue, pickNext, scheduler } from './schedule';
 
 const now = new Date('2026-09-30T12:00:00');
 const minutes = (n: number) => new Date(now.getTime() + n * 60_000);
@@ -37,15 +37,44 @@ test("cards that aren't due yet wait", () => {
   expect(cardsLeft(deck, h, now)).toBe(3);
 });
 
-test('when nothing else is left, (re)learning cards due within 20 minutes come early', () => {
+test('cards left in Learning or Relearning by the old steps wait until they are due, like any other', () => {
   const soon = history({
     'a/1': scheduled(State.Learning, minutes(5)),
     'b/3': scheduled(State.Relearning, minutes(15)),
-    'c/5': scheduled(State.Learning, minutes(30)),
-    'd/7': scheduled(State.Review, minutes(10)), // a Review card isn't learning, so it waits
+    'c/5': scheduled(State.Review, minutes(10)),
   });
-  expect(pickNext(deck, soon, now)?.id).toBe('a/1');
-  expect(cardsLeft(deck, soon, now)).toBe(2);
+  expect(pickNext(deck, soon, now)?.id).toBe('d/7'); // the only new card; nothing comes early
+  expect(cardsLeft(deck, soon, now)).toBe(1);
+  expect(pickNext(deck, soon, minutes(6))?.id).toBe('a/1'); // once it's due
+});
+
+// The scheduler: every answer puts the card at least a day out, in the Review state.
+const atLeastADay = (due: Date, from: Date) => due.getTime() - from.getTime() >= 24 * 60 * 60_000;
+const grades = [Rating.Again, Rating.Hard, Rating.Good, Rating.Easy] as const;
+
+test('a new card comes back at least a day later, whatever the answer', () => {
+  for (const grade of grades) {
+    const { card } = scheduler.next(createEmptyCard(now), now, grade);
+    expect(card.state).toBe(State.Review);
+    expect(atLeastADay(card.due, now)).toBe(true);
+  }
+});
+
+test('a forgotten card comes back a day later, not in minutes', () => {
+  const learnt = scheduler.next(scheduler.next(createEmptyCard(now), now, Rating.Good).card, minutes(60 * 48), Rating.Good).card;
+  const reviewedAt = new Date(learnt.due);
+  const { card } = scheduler.next(learnt, reviewedAt, Rating.Again);
+  expect(card.state).toBe(State.Review);
+  expect(atLeastADay(card.due, reviewedAt)).toBe(true);
+});
+
+test('a card left in Learning or Relearning by the old steps moves to Review, at least a day out', () => {
+  for (const state of [State.Learning, State.Relearning])
+    for (const grade of grades) {
+      const { card } = scheduler.next({ ...scheduled(state, minutes(-1)), stability: 0.5, difficulty: 5, reps: 1 }, now, grade);
+      expect(card.state).toBe(State.Review);
+      expect(atLeastADay(card.due, now)).toBe(true);
+    }
 });
 
 test('the card just shown only comes again when there is no other', () => {

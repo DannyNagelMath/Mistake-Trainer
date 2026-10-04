@@ -6,13 +6,13 @@
 // mode at the card's mistake. retroCtrl reports what you do (onResult), and when the card is done,
 // the panel's "Next" calls `next` below.
 
-import { createEmptyCard, fsrs } from 'ts-fsrs';
+import { createEmptyCard } from 'ts-fsrs';
 
 import { AnalysisCtrl } from './analysisCtrl';
 import type { Card, Deck } from './deck';
 import type { CardResult, RetroCardOpts } from './retroCtrl';
 import { saveReview, type ReviewEntry, type ReviewHistory } from './reviews';
-import { cardsLeft, gradeOf, nextDue, pickNext } from './schedule';
+import { cardsLeft, gradeOf, nextDue, pickNext, scheduler } from './schedule';
 
 // Fisher-Yates: a random order, with every order equally likely.
 function shuffle<T>(items: T[]): T[] {
@@ -34,7 +34,6 @@ function describeTime(t: Date, now = new Date()): string {
 export class DeckCtrl {
   readonly analysis: AnalysisCtrl;
   private readonly cards: Card[]; // the deck in a random order, the order new cards are introduced in
-  private readonly scheduler = fsrs(); // FSRS with its defaults: aim for a 90% chance you remember
   private card: Card; // the card being shown
   private graded = false; // whether the card's review has been recorded; only the first attempt counts
   private reviewed = 0; // reviews recorded this session
@@ -66,7 +65,6 @@ export class DeckCtrl {
       ply,
       next: this.next,
       // [reviews before this card, reviews in the session]: the title shows "4 / 20" for the 4th.
-      // A card you've just answered may be counted again, if it comes back later this session.
       progress: () => {
         const total = this.reviewed + cardsLeft(this.cards, this.history, new Date());
         return [this.reviewed - (this.graded ? 1 : 0), total];
@@ -84,7 +82,7 @@ export class DeckCtrl {
     this.reviewed++;
     const now = new Date();
     const schedule = this.history.cards[this.card.id] ?? createEmptyCard(now); // a new card's is empty
-    const { card, log } = this.scheduler.next(schedule, now, gradeOf(result));
+    const { card, log } = scheduler.next(schedule, now, gradeOf(result));
     const entry: ReviewEntry = { cardId: this.card.id, result, log };
     this.history.cards[this.card.id] = card;
     this.history.log.push(entry);
