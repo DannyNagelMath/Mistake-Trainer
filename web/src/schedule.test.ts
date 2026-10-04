@@ -4,10 +4,12 @@ import { expect, test } from 'vitest';
 
 import type { Card } from './deck';
 import type { ReviewEntry, ReviewHistory } from './reviews';
-import { cardsLeft, gradeOf, NEW_CARDS_PER_DAY, newCardsInLastDay, nextAvailable, pickNext, scheduler, winRatings } from './schedule';
+import { cardsLeft, gradeOf, newCardsInLastDay, nextAvailable, pickNext, scheduler, winRatings } from './schedule';
 
 const now = new Date('2026-09-30T12:00:00');
 const minutes = (n: number) => new Date(now.getTime() + n * 60_000);
+
+const LIMIT = 5; // a new-card limit for the tests that check one; the page has none for now
 
 const card = (id: string): Card => ({ id, gameId: id.split('/')[0], ply: Number(id.split('/')[1]), color: 'white' });
 const deck = ['a/1', 'b/3', 'c/5', 'd/7'].map(card);
@@ -88,15 +90,21 @@ test('the card just shown only comes again when there is no other', () => {
   expect(pickNext(deck, onlyA, now, 'a/1')?.id).toBe('a/1');
 });
 
-test('at most NEW_CARDS_PER_DAY new cards in any 24 hours, not per calendar day', () => {
-  // NEW_CARDS_PER_DAY new cards started an hour ago, from games not in the deck
-  const log = Array.from({ length: NEW_CARDS_PER_DAY }, (_, i) => reviewed(`x${i}/1`, minutes(-60), State.New));
+test('a new-card limit counts any 24 hours, not a calendar day', () => {
+  // LIMIT new cards started an hour ago, from games not in the deck
+  const log = Array.from({ length: LIMIT }, (_, i) => reviewed(`x${i}/1`, minutes(-60), State.New));
   const h = history({}, log);
-  expect(newCardsInLastDay(h, now)).toBe(NEW_CARDS_PER_DAY);
-  expect(pickNext(deck, h, now)).toBeUndefined();
-  expect(pickNext(deck, h, minutes(60 * 23 - 1))).toBeUndefined(); // past midnight, but within 24 hours
+  expect(newCardsInLastDay(h, now)).toBe(LIMIT);
+  expect(pickNext(deck, h, now, undefined, LIMIT)).toBeUndefined();
+  expect(pickNext(deck, h, minutes(60 * 23 - 1), undefined, LIMIT)).toBeUndefined(); // past midnight, within 24 hours
   expect(newCardsInLastDay(h, minutes(60 * 23))).toBe(0); // 24 hours after they were started
-  expect(pickNext(deck, h, minutes(60 * 23))?.id).toBe('a/1');
+  expect(pickNext(deck, h, minutes(60 * 23), undefined, LIMIT)?.id).toBe('a/1');
+});
+
+test('with no new-card limit, as now, every new card can come up', () => {
+  const log = Array.from({ length: 50 }, (_, i) => reviewed(`x${i}/1`, minutes(-60), State.New));
+  expect(pickNext(deck, history({}, log), now)?.id).toBe('a/1');
+  expect(cardsLeft(deck, history({}, log), now)).toBe(4);
 });
 
 // Two more cards from game g, and one from game h.
@@ -141,9 +149,10 @@ test('nextAvailable is when the next card can come up', () => {
   const onlyG = ['g/1', 'g/3'].map(card);
   const waiting = history({ 'g/1': due(60 * 47), 'g/3': due(-10) }, [reviewed('g/1', minutes(-60))]);
   expect(nextAvailable(onlyG, waiting, now)).toEqual(minutes(60 * 23));
-  // new cards with the limit reached: when the oldest of the last 24 hours' new cards is 24 hours old
-  const log = Array.from({ length: NEW_CARDS_PER_DAY }, (_, i) => reviewed(`x${i}/1`, minutes(-60 + i), State.New));
-  expect(nextAvailable(deck, history({}, log), now)).toEqual(minutes(60 * 23));
+  // new cards with a limit reached: when the oldest of the last 24 hours' new cards is 24 hours old
+  const log = Array.from({ length: LIMIT }, (_, i) => reviewed(`x${i}/1`, minutes(-60 + i), State.New));
+  expect(nextAvailable(deck, history({}, log), now, LIMIT)).toEqual(minutes(60 * 23));
+  expect(nextAvailable(deck, history({}, log), now)).toEqual(now); // with no limit, at once
 });
 
 test('after the right first move, the buttons give Hard, Good, and Easy', () => {

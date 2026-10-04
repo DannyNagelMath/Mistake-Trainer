@@ -139,7 +139,9 @@ export class DeckCtrl {
     return [
       `Nothing more to review right now (${this.reviewed} reviewed this session).`,
       next && `The next card comes up ${describeTime(next)}.`,
-      unstarted && `${unstarted} new cards haven't been started yet (up to ${NEW_CARDS_PER_DAY} in any 24 hours).`,
+      unstarted &&
+        `${unstarted} new cards haven't been started yet` +
+          (Number.isFinite(NEW_CARDS_PER_DAY) ? ` (up to ${NEW_CARDS_PER_DAY} in any 24 hours).` : '.'),
     ]
       .filter(Boolean)
       .join(' ');

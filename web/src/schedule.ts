@@ -20,7 +20,8 @@ import type { ReviewEntry, ReviewHistory } from './reviews';
 
 // export const NEW_CARDS_PER_DAY = 20; // Anki's default
 
-export const NEW_CARDS_PER_DAY = 5; 
+// No limit for now, while testing: every new card can come up. A number brings a limit back.
+export const NEW_CARDS_PER_DAY = Infinity;
 
 // The FSRS scheduler (ts-fsrs). With no learning or relearning steps, FSRS schedules every review
 // at least a day out, Again included, and a card goes straight to the Review state. (ts-fsrs's
@@ -70,8 +71,8 @@ function gameRestEnds(history: ReviewHistory): Map<string, number> {
 }
 
 // The cards for each of the two rules, each in the order they'd be shown, leaving out cards
-// whose game is waiting.
-function queues(deck: Card[], history: ReviewHistory, now: Date) {
+// whose game is waiting. `newCardsPerDay` is there for the tests; the page uses NEW_CARDS_PER_DAY.
+function queues(deck: Card[], history: ReviewHistory, now: Date, newCardsPerDay: number) {
   const restEnds = gameRestEnds(history);
   const gameWaiting = (c: Card) => (restEnds.get(c.gameId) ?? 0) > now.getTime();
   const reviewed = deck.filter(c => history.cards[c.id]).sort((a, b) => dueTime(history, a) - dueTime(history, b));
@@ -79,21 +80,27 @@ function queues(deck: Card[], history: ReviewHistory, now: Date) {
     due: reviewed.filter(c => dueTime(history, c) <= now.getTime() && !gameWaiting(c)),
     fresh: deck
       .filter(c => !history.cards[c.id] && !gameWaiting(c))
-      .slice(0, Math.max(0, NEW_CARDS_PER_DAY - newCardsInLastDay(history, now))),
+      .slice(0, Math.max(0, newCardsPerDay - newCardsInLastDay(history, now))),
   };
 }
 
 // The next card to show, or undefined when nothing is due. `avoid` is the card just shown: it's
 // only picked again when there's no other choice.
-export function pickNext(deck: Card[], history: ReviewHistory, now: Date, avoid?: string): Card | undefined {
-  const { due, fresh } = queues(deck, history, now);
+export function pickNext(
+  deck: Card[],
+  history: ReviewHistory,
+  now: Date,
+  avoid?: string,
+  newCardsPerDay = NEW_CARDS_PER_DAY,
+): Card | undefined {
+  const { due, fresh } = queues(deck, history, now, newCardsPerDay);
   const order = [...due, ...fresh];
   return order.find(c => c.id !== avoid) ?? order[0];
 }
 
 // How many more cards can come up now: the due ones, and the new ones the limit still allows.
-export function cardsLeft(deck: Card[], history: ReviewHistory, now: Date): number {
-  const { due, fresh } = queues(deck, history, now);
+export function cardsLeft(deck: Card[], history: ReviewHistory, now: Date, newCardsPerDay = NEW_CARDS_PER_DAY): number {
+  const { due, fresh } = queues(deck, history, now, newCardsPerDay);
   return due.length + fresh.length;
 }
 
@@ -101,11 +108,16 @@ export function cardsLeft(deck: Card[], history: ReviewHistory, now: Date): numb
 // A reviewed card comes up when it's due and its game has stopped waiting, whichever is later.
 // A new card comes up when its game has stopped waiting and the new-card limit allows another:
 // at the limit, that's when enough of the last 24 hours' new cards are 24 hours old.
-export function nextAvailable(deck: Card[], history: ReviewHistory, now: Date): Date | undefined {
+export function nextAvailable(
+  deck: Card[],
+  history: ReviewHistory,
+  now: Date,
+  newCardsPerDay = NEW_CARDS_PER_DAY,
+): Date | undefined {
   const restEnds = gameRestEnds(history);
   const starts = newCardStarts(history, now);
   const newCardAllowed =
-    starts.length < NEW_CARDS_PER_DAY ? now.getTime() : starts[starts.length - NEW_CARDS_PER_DAY] + DAY;
+    starts.length < newCardsPerDay ? now.getTime() : starts[starts.length - newCardsPerDay] + DAY;
   const times = deck.map(c =>
     Math.max(history.cards[c.id] ? dueTime(history, c) : newCardAllowed, restEnds.get(c.gameId) ?? 0),
   );
