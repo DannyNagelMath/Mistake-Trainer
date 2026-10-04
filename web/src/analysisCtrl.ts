@@ -93,6 +93,9 @@ export class AnalysisCtrl implements RetroRoot {
   readonly settings = {
     inline: false, // two-column move list, rather than a paragraph
     showStaticAnalysis: true, // show the server analysis: evals, glyphs, comments, engine lines
+    // Not a lila setting: lila always draws the move you played in the game as a pale red arrow
+    // while you look for a better one. Off here; set it to true to bring the arrow back.
+    showBadMoveArrow: false,
   };
 
   // Step 7: navigation and the menu.
@@ -263,14 +266,10 @@ export class AnalysisCtrl implements RetroRoot {
     this.playUci(orig + dest + (promotes ? 'q' : ''));
   };
 
-  // Step 3c: draw the move you played as a pale red arrow.
-  // keep this line if you don't want the pale red arrow showing your in-game move
-  // setAutoShapes = (): void => {};
-
-    // Step 3c: draws the game's bad move as a pale red arrow while you're solving,
-  // like lila's setAutoShapes and autoShape.ts.
+  // Step 3c: draws the game's bad move as a pale red arrow while you're solving,
+  // like lila's setAutoShapes and autoShape.ts, when settings.showBadMoveArrow is on.
   setAutoShapes = (): void => {
-    const bad = this.retro?.showBadNode();
+    const bad = this.settings.showBadMoveArrow ? this.retro?.showBadNode() : undefined;
     this.cg?.setAutoShapes(
       bad?.uci
         ? [
