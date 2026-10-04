@@ -9,8 +9,8 @@
 //   - after you review a card, the other cards from its game wait until 24 hours after that
 //     review, so you don't see two positions from one game on the same day. They only wait in
 //     the queue: their FSRS schedules don't change.
-// This file also has the scheduler and grades a card from what you did first (gradeOf). They're
-// plain functions and values, so schedule.test.ts can check them without a page.
+// This file also has the scheduler, and the grades for what you do on a card (gradeOf and
+// winRatings). They're plain functions and values, so schedule.test.ts can check them without a page.
 
 import { fsrs, Rating, State, type Grade } from 'ts-fsrs';
 
@@ -28,8 +28,17 @@ export const NEW_CARDS_PER_DAY = 5;
 // ts-fsrs's default: 90% desired retention, no fuzz, and FSRS-6's default weights.
 export const scheduler = fsrs({ learning_steps: [], relearning_steps: [] });
 
-// Like a Lichess puzzle, only your first attempt counts: the right move is Good, anything else Again.
+// Only your first attempt counts. A wrong first move, "View the solution", or "Skip" is Again at
+// once. After the right first move, you say how it went, with one of winRatings. If you move on
+// without choosing, it counts as Good, which gradeOf gives for 'win'.
 export const gradeOf = (result: CardResult): Grade => (result === 'win' ? Rating.Good : Rating.Again);
+
+// The buttons after the right first move.
+export const winRatings: { label: string; grade: Grade }[] = [
+  { label: 'Worked it out', grade: Rating.Hard },
+  { label: 'Found it quickly', grade: Rating.Good },
+  { label: 'Obvious', grade: Rating.Easy },
+];
 
 const DAY = 24 * 60 * 60_000; // in milliseconds
 

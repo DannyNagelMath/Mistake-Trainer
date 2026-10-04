@@ -1,7 +1,9 @@
 // Step 4b: the board's CSS comes from lila's stylesheets, loaded in index.html.
+// Our own few styles are in mistakeTrainer.css, which Vite adds after lila's.
 // Step 9: the page reviews the cards in public/data/deck.json (built by scripts/buildDeck.ts),
 // rather than one fixture game, and keeps your review history in data/reviews.json.
 
+import './mistakeTrainer.css';
 import { init, attributesModule, classModule, eventListenersModule, propsModule } from 'snabbdom';
 
 import { loadDeck } from './deck';

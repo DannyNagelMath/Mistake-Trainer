@@ -4,7 +4,7 @@ import { expect, test } from 'vitest';
 
 import type { Card } from './deck';
 import type { ReviewEntry, ReviewHistory } from './reviews';
-import { cardsLeft, gradeOf, NEW_CARDS_PER_DAY, newCardsInLastDay, nextAvailable, pickNext, scheduler } from './schedule';
+import { cardsLeft, gradeOf, NEW_CARDS_PER_DAY, newCardsInLastDay, nextAvailable, pickNext, scheduler, winRatings } from './schedule';
 
 const now = new Date('2026-09-30T12:00:00');
 const minutes = (n: number) => new Date(now.getTime() + n * 60_000);
@@ -146,7 +146,15 @@ test('nextAvailable is when the next card can come up', () => {
   expect(nextAvailable(deck, history({}, log), now)).toEqual(minutes(60 * 23));
 });
 
-test('only the right move is Good; anything else is Again', () => {
+test('after the right first move, the buttons give Hard, Good, and Easy', () => {
+  expect(winRatings.map(r => [r.label, r.grade])).toEqual([
+    ['Worked it out', Rating.Hard],
+    ['Found it quickly', Rating.Good],
+    ['Obvious', Rating.Easy],
+  ]);
+});
+
+test('anything but the right first move is Again; the right one is Good if you move on without choosing', () => {
   expect(gradeOf('win')).toBe(Rating.Good);
   expect(gradeOf('fail')).toBe(Rating.Again);
   expect(gradeOf('view')).toBe(Rating.Again);

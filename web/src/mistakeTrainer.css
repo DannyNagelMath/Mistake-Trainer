@@ -1,0 +1,17 @@
+/* mistakeTrainer.css: Mistake Trainer's own styles, for the few things lila's stylesheets don't
+   cover. main.ts imports it, and Vite adds it to the page after lila's. */
+
+/* The buttons for how a correct answer went (renderRatingChoices in retroView.ts). They take the
+   place of lila's big Next button, in the bottom half of the panel: lila's button style, in an
+   evenly spaced row, which wraps on narrow screens. */
+.retro-box .rating {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  gap: 0.5em;
+  padding: 0.5em 1em;
+}
+.retro-box .rating .button {
+  flex: 1 1 7em;
+  padding: 0.8em 0.4em;
+}

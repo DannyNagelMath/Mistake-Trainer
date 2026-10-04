@@ -6,13 +6,13 @@
 // mode at the card's mistake. retroCtrl reports what you do (onResult), and when the card is done,
 // the panel's "Next" calls `next` below.
 
-import { createEmptyCard } from 'ts-fsrs';
+import { createEmptyCard, type Grade } from 'ts-fsrs';
 
 import { AnalysisCtrl } from './analysisCtrl';
 import type { Card, Deck } from './deck';
 import type { CardResult, RetroCardOpts } from './retroCtrl';
 import { saveReview, type ReviewEntry, type ReviewHistory } from './reviews';
-import { cardsLeft, gradeOf, NEW_CARDS_PER_DAY, nextAvailable, pickNext, scheduler } from './schedule';
+import { cardsLeft, gradeOf, NEW_CARDS_PER_DAY, nextAvailable, pickNext, scheduler, winRatings } from './schedule';
 
 // Fisher-Yates: a random order, with every order equally likely.
 function shuffle<T>(items: T[]): T[] {
@@ -37,6 +37,7 @@ export class DeckCtrl {
   private readonly cards: Card[]; // the deck in a random order, the order new cards are introduced in
   private card: Card; // the card being shown
   private graded = false; // whether the card's review has been recorded; only the first attempt counts
+  private awaitingRating = false; // right first time, and the panel is asking how it went
   private reviewed = 0; // reviews recorded this session
 
   // The deck must have at least one card. This sets up the first card; main.ts opens the panel
@@ -73,25 +74,49 @@ export class DeckCtrl {
       restart: this.restart,
       summary: this.summary,
       onResult: this.onResult,
+      ratingChoices: this.ratingChoices,
     };
   }
 
-  // Records the review on your first attempt at the card, and ignores later ones.
+  // Grades the card on your first attempt at it, and ignores later ones. A wrong first move,
+  // "View the solution", or "Skip" is recorded as Again at once. The right first move waits for
+  // you to choose how it went (ratingChoices).
   private onResult = (result: CardResult): void => {
-    if (this.graded) return;
+    if (this.graded || this.awaitingRating) return;
+    if (result === 'win') this.awaitingRating = true;
+    else this.record(result, gradeOf(result));
+  };
+
+  private ratingChoices = (): { label: string; rate: () => void }[] | undefined =>
+    this.awaitingRating
+      ? winRatings.map(({ label, grade }) => ({
+          label,
+          rate: () => {
+            this.record('win', grade);
+            this.redraw();
+          },
+        }))
+      : undefined;
+
+  // Records the review: FSRS schedules the card from the grade, and the review goes in the log.
+  private record(result: CardResult, grade: Grade): void {
     this.graded = true;
+    this.awaitingRating = false;
     this.reviewed++;
     const now = new Date();
     const schedule = this.history.cards[this.card.id] ?? createEmptyCard(now); // a new card's is empty
-    const { card, log } = scheduler.next(schedule, now, gradeOf(result));
+    const { card, log } = scheduler.next(schedule, now, grade);
     const entry: ReviewEntry = { cardId: this.card.id, result, log };
     this.history.cards[this.card.id] = card;
     this.history.log.push(entry);
     saveReview(card, entry).catch(e => alert(e.message)); // tell you, rather than lose reviews quietly
-  };
+  }
 
   // Deals the next card. False when nothing more is due.
   next = (): boolean => {
+    // Leaving a card you got right without saying how it went (e.g. by closing the panel and
+    // opening it again): record it as Good, the grade before there was a choice.
+    if (this.awaitingRating) this.record('win', gradeOf('win'));
     const card = pickNext(this.cards, this.history, new Date(), this.card.id);
     if (!card) return false;
     this.card = card;

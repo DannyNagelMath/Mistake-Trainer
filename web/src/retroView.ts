@@ -33,6 +33,14 @@ const skipOrViewSolution = (ctrl: RetroCtrl): VNode =>
 const jumpToNext = (ctrl: RetroCtrl): VNode =>
   hl('a.half.continue', { hook: bind('click', ctrl.jumpToNext) }, [icon(licon.PlayTriangle), i18n.site.next]);
 
+// Step 9: in card mode, after the right first move, the buttons for how it went, in place of Next
+// until you choose. The labels aren't lila's.
+const renderRatingChoices = (choices: { label: string; rate: () => void }[]): VNode =>
+  hl(
+    'div.half.rating',
+    choices.map(c => hl('button.button', { hook: bind('click', c.rate) }, c.label)),
+  );
+
 // Trim: lila fills this bar as the local engine searches deeper (from node.ceval.depth) while it
 // checks a move that is neither the game move nor the engine's. There's no engine yet, so
 // retroCtrl never asks, and this stays empty.
@@ -79,9 +87,16 @@ const feedback = {
     ];
   },
   win(ctrl: RetroCtrl): VNode[] {
+    const choices = ctrl.card?.ratingChoices(); // Step 9
     return [
-      hl('div.half.top', hl('div.player', [hl('div.icon', '✓'), hl('div.instruction', hl('strong', i18n.study.goodMove))])),
-      jumpToNext(ctrl),
+      hl(
+        'div.half.top',
+        hl('div.player', [
+          hl('div.icon', '✓'),
+          hl('div.instruction', [hl('strong', i18n.study.goodMove), choices && hl('em', 'How did you find it?')]),
+        ]),
+      ),
+      choices ? renderRatingChoices(choices) : jumpToNext(ctrl),
     ];
   },
   view(ctrl: RetroCtrl): VNode[] {

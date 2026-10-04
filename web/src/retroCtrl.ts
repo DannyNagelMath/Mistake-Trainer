@@ -65,6 +65,9 @@ export interface RetroCardOpts {
   // Called with each outcome: the right move ('win'), a wrong one ('fail'), "View the solution"
   // ('view'), or "Skip this move" ('skip'). The deck grades the card on the first one.
   onResult(result: CardResult): void;
+  // After the right first move, the buttons for saying how it went: a label, and what clicking
+  // it does. Undefined once the card is graded, and in every other case.
+  ratingChoices(): { label: string; rate: () => void }[] | undefined;
 }
 
 export type CardResult = 'win' | 'fail' | 'view' | 'skip'; // Step 9
