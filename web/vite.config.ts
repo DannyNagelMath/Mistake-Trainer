@@ -1,7 +1,8 @@
 // vite.config.ts: Vite's settings. Step 9: adds two addresses to the dev server, so the page can
 // keep your review history in a file, data/reviews.json (gitignored), instead of in the browser:
 //   GET  /api/reviews  returns the history (an empty one if the file doesn't exist yet)
-//   POST /api/reviews  with { card, entry } saves one review: the card's new schedule and its log entry
+//   POST /api/reviews  with { card, entry } saves one review: the card's new schedule and its log entry,
+//                      and with { suspend, at } suspends the card with that id (see reviews.ts)
 // They only exist in the dev server (npm run dev), which is how this app runs.
 // To start your review history again, delete data/reviews.json. To use another file, e.g. for
 // testing, set the REVIEWS_FILE environment variable to its path.
@@ -52,11 +53,18 @@ function reviewsApi(): Plugin {
         req.on('data', chunk => (body += chunk));
         req.on('end', () => {
           try {
-            const { card, entry } = JSON.parse(body) as { card: ReviewHistory['cards'][string]; entry: ReviewEntry };
-            if (!card || typeof entry?.cardId !== 'string') return reply(400, 'Expected { card, entry }');
+            const { card, entry, suspend, at } = JSON.parse(body) as {
+              card?: ReviewHistory['cards'][string];
+              entry?: ReviewEntry;
+              suspend?: string;
+              at?: string;
+            };
             const history = readHistory();
-            history.cards[entry.cardId] = card;
-            history.log.push(entry);
+            if (typeof suspend === 'string') (history.suspended ??= {})[suspend] = at ?? new Date().toISOString();
+            else if (card && typeof entry?.cardId === 'string') {
+              history.cards[entry.cardId] = card;
+              history.log.push(entry);
+            } else return reply(400, 'Expected { card, entry } or { suspend, at }');
             writeHistory(history);
             reply(204, '');
           } catch (e) {

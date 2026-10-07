@@ -70,15 +70,21 @@ function gameRestEnds(history: ReviewHistory): Map<string, number> {
   return ends;
 }
 
-// The cards for each of the two rules, each in the order they'd be shown, leaving out cards
-// whose game is waiting. `newCardsPerDay` is there for the tests; the page uses NEW_CARDS_PER_DAY.
+// The cards you haven't suspended.
+export const activeCards = (deck: Card[], history: ReviewHistory): Card[] =>
+  history.suspended ? deck.filter(c => !history.suspended![c.id]) : deck;
+
+// The cards for each of the two rules, each in the order they'd be shown, leaving out suspended
+// cards and cards whose game is waiting. `newCardsPerDay` is there for the tests; the page uses
+// NEW_CARDS_PER_DAY.
 function queues(deck: Card[], history: ReviewHistory, now: Date, newCardsPerDay: number) {
   const restEnds = gameRestEnds(history);
   const gameWaiting = (c: Card) => (restEnds.get(c.gameId) ?? 0) > now.getTime();
-  const reviewed = deck.filter(c => history.cards[c.id]).sort((a, b) => dueTime(history, a) - dueTime(history, b));
+  const active = activeCards(deck, history);
+  const reviewed = active.filter(c => history.cards[c.id]).sort((a, b) => dueTime(history, a) - dueTime(history, b));
   return {
     due: reviewed.filter(c => dueTime(history, c) <= now.getTime() && !gameWaiting(c)),
-    fresh: deck
+    fresh: active
       .filter(c => !history.cards[c.id] && !gameWaiting(c))
       .slice(0, Math.max(0, newCardsPerDay - newCardsInLastDay(history, now))),
   };
@@ -118,7 +124,7 @@ export function nextAvailable(
   const starts = newCardStarts(history, now);
   const newCardAllowed =
     starts.length < newCardsPerDay ? now.getTime() : starts[starts.length - newCardsPerDay] + DAY;
-  const times = deck.map(c =>
+  const times = activeCards(deck, history).map(c =>
     Math.max(history.cards[c.id] ? dueTime(history, c) : newCardAllowed, restEnds.get(c.gameId) ?? 0),
   );
   return times.length ? new Date(Math.min(...times)) : undefined;

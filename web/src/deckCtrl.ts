@@ -11,8 +11,8 @@ import { createEmptyCard, type Grade } from 'ts-fsrs';
 import { AnalysisCtrl } from './analysisCtrl';
 import type { Card, Deck } from './deck';
 import type { CardResult, RetroCardOpts } from './retroCtrl';
-import { saveReview, type ReviewEntry, type ReviewHistory } from './reviews';
-import { cardsLeft, gradeOf, NEW_CARDS_PER_DAY, nextAvailable, pickNext, scheduler, winRatings } from './schedule';
+import { saveReview, saveSuspension, type ReviewEntry, type ReviewHistory } from './reviews';
+import { activeCards, cardsLeft, gradeOf, NEW_CARDS_PER_DAY, nextAvailable, pickNext, scheduler, winRatings } from './schedule';
 
 // Fisher-Yates: a random order, with every order equally likely.
 function shuffle<T>(items: T[]): T[] {
@@ -75,8 +75,24 @@ export class DeckCtrl {
       summary: this.summary,
       onResult: this.onResult,
       ratingChoices: this.ratingChoices,
+      suspend: this.suspend,
     };
   }
+
+  // "Suspend card": the card never comes up again. No review is recorded, not even a pending
+  // rating. Then the next card, or, with none left, the end screen.
+  private suspend = (): void => {
+    const at = new Date().toISOString();
+    (this.history.suspended ??= {})[this.card.id] = at;
+    saveSuspension(this.card.id, at).catch(e => alert(e.message));
+    this.awaitingRating = false;
+    if (this.next()) return;
+    // Nothing left: like the constructor with nothing due, show this game with the end screen
+    // (ply -1 matches no mistake).
+    this.analysis.loadGame(this.deck.games[this.card.gameId], this.card.color, this.cardOpts(-1));
+    this.analysis.toggleRetro();
+    this.redraw();
+  };
 
   // Grades the card on your first attempt at it, and ignores later ones. A wrong first move,
   // "View the solution", or "Skip" is recorded as Again at once. The right first move waits for
@@ -135,7 +151,7 @@ export class DeckCtrl {
   // For the end of the session.
   private summary = (): string => {
     const next = nextAvailable(this.cards, this.history, new Date());
-    const unstarted = this.cards.filter(c => !this.history.cards[c.id]).length;
+    const unstarted = activeCards(this.cards, this.history).filter(c => !this.history.cards[c.id]).length;
     return [
       `Nothing more to review right now (${this.reviewed} reviewed this session).`,
       next && `The next card comes up ${describeTime(next)}.`,

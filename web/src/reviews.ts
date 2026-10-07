@@ -22,6 +22,9 @@ export interface ReviewEntry {
 export interface ReviewHistory {
   cards: Record<string, CardInput>; // FSRS schedule by card id, for every card reviewed at least once
   log: ReviewEntry[]; // oldest first
+  // Cards you've suspended ("Suspend card"): when, by card id. They never come up again. To bring
+  // one back, delete its line from data/reviews.json. Older files don't have this.
+  suspended?: Record<string, string>;
 }
 
 export async function loadHistory(): Promise<ReviewHistory> {
@@ -31,6 +34,16 @@ export async function loadHistory(): Promise<ReviewHistory> {
   if (!response.headers.get('content-type')?.includes('json'))
     throw new Error("The dev server can't load your review history. Restart it (npm run dev) so it reads vite.config.ts.");
   return response.json();
+}
+
+// Saves a suspension: the card won't come up again.
+export async function saveSuspension(cardId: string, at: string): Promise<void> {
+  const response = await fetch('/api/reviews', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ suspend: cardId, at }),
+  });
+  if (!response.ok) throw new Error(`Couldn't save the suspension: ${response.status} ${await response.text()}`);
 }
 
 // Saves one review: the card's new schedule, and the log entry.

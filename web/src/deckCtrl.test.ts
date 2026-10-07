@@ -116,3 +116,14 @@ test('while solving, nothing after the position, and no evals, marks, or engine 
   expect(shown.eval).toBeTruthy();
   expect(shown.marks).toBe(true);
 });
+
+test('suspending a card records no review, saves the suspension, and deals another card', () => {
+  const { history, ctrl, retro } = start();
+  const suspended = `${ctrl.game.id}/${retro().card!.ply}`;
+  playSolution(ctrl); // right first time, and the rating is pending...
+  retro().card!.suspend(); // ...but suspended instead
+  expect(history.log).toHaveLength(0);
+  expect(Object.keys(history.suspended ?? {})).toEqual([suspended]);
+  expect(saved).toEqual([{ suspend: suspended, at: history.suspended![suspended] }]);
+  expect(`${ctrl.game.id}/${ctrl.retro!.card!.ply}`).not.toBe(suspended); // another card
+});

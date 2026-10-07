@@ -217,6 +217,19 @@ export default function (root: AnalysisCtrl): VNode | undefined {
           hook: bind('click', root.toggleRetro, root.redraw),
           attrs: { 'data-icon': licon.X, 'aria-label': 'Close learn window' },
         }),
+      // Step 9: in card mode, while a card is shown, suspend it. It asks first: there's no undo yet.
+      ctrl.card &&
+        ctrl.current() &&
+        hl(
+          'a.suspend',
+          {
+            attrs: { title: "Never show this card again (to undo, delete it from data/reviews.json's suspended list)" },
+            hook: bind('click', () => {
+              if (confirm("Suspend this card? It won't come up again.")) ctrl.card!.suspend();
+            }),
+          },
+          'Suspend card',
+        ),
     ]),
     hl('div.feedback.' + fb, renderFeedback(root, fb)),
   ]);

@@ -68,6 +68,7 @@ export interface RetroCardOpts {
   // After the right first move, the buttons for saying how it went: a label, and what clicking
   // it does. Undefined once the card is graded, and in every other case.
   ratingChoices(): { label: string; rate: () => void }[] | undefined;
+  suspend(): void; // "Suspend card": it never comes up again; the next card is dealt
 }
 
 export type CardResult = 'win' | 'fail' | 'view' | 'skip'; // Step 9

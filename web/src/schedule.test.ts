@@ -169,3 +169,13 @@ test('anything but the right first move is Again; the right one is Good if you m
   expect(gradeOf('view')).toBe(Rating.Again);
   expect(gradeOf('skip')).toBe(Rating.Again);
 });
+
+test('suspended cards never come up, and are not counted', () => {
+  const h = history({ 'b/3': scheduled(State.Review, minutes(-60)) });
+  h.suspended = { 'b/3': now.toISOString(), 'a/1': now.toISOString() };
+  expect(pickNext(deck, h, now)?.id).toBe('c/5'); // not the due b/3, nor the new a/1
+  expect(cardsLeft(deck, h, now)).toBe(2); // c/5 and d/7
+  const onlySuspended = history({ 'a/1': scheduled(State.Review, minutes(30)) });
+  onlySuspended.suspended = { 'a/1': now.toISOString() };
+  expect(nextAvailable([card('a/1')], onlySuspended, now)).toBeUndefined();
+});
