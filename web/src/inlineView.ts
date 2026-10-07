@@ -89,7 +89,8 @@ export class InlineView {
   }
 
   commentNodes(node: TreeNode, classes: Classes = {}): LooseVNodes[] {
-    if (!this.ctrl.showComments || !node.comments) return [];
+    // Not in lila: no comments while hiding hints (AnalysisCtrl.hidingHints).
+    if (!this.ctrl.showComments || this.ctrl.hidingHints() || !node.comments) return [];
     return node.comments
       .map(comment =>
         this.ctrl.retro?.hideComputerLine(node) && this.isLichessComment(comment)

@@ -59,6 +59,7 @@ export function renderMoveNodes(
 // "White resigned • Black is victorious".
 // Trim: lila also shows a study chapter's result, and its Termination tag.
 export function renderResult(ctrl: AnalysisCtrl): VNode[] {
+  if (ctrl.hidingHints()) return []; // not in lila: it would say who won
   const render = (result: string, statusText: string) => [hl('div.result', result), hl('div.status', statusText)];
   const game = ctrl.game;
   if (game.status && status[game.status] >= status.mate) {

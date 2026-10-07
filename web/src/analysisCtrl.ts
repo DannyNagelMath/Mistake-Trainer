@@ -157,21 +157,37 @@ export class AnalysisCtrl implements RetroRoot {
   // Step 6: the moves after `node` that the move list shows, from lila's visibleChildren.
   // An engine line is hidden while its mistake is unsolved, unless the board is on it.
   // Trim: lila also shows it if the engine is checking your move (retro.forceCeval), which needs the engine.
-  visibleChildren = (node: TreeNode = this.node): TreeNode[] =>
-    node.children.filter(
+  visibleChildren = (node: TreeNode = this.node): TreeNode[] => {
+    // Not in lila: while you solve a card, the move list stops at the card's position, and shows
+    // no engine lines.
+    if (this.hidingHints()) return node === this.retro!.current()!.prev.node ? [] : node.children.filter(kid => !kid.comp);
+    return node.children.filter(
       kid =>
         !kid.comp ||
         (this.settings.showStaticAnalysis && !this.retro?.hideComputerLine(kid)) ||
         treeOps.contains(kid, this.node),
     );
+  };
+
+  // Not in lila: while you're solving a card, hide everything that comes from later in the game
+  // or judges its moves: the moves after the position, the evals, the ?/?? marks and comments,
+  // the engine lines, the eval chart, the result, and the rating changes, which say who won.
+  // (In 45% of the cards, the opponent's last move is marked, which says "punish this".)
+  // lila's "Learn from your mistakes" reviews a game you've just played, so it shows them; a card
+  // is a puzzle. They all come back once the card is done: right first time or not, or the
+  // solution viewed.
+  hidingHints = (): boolean =>
+    !!this.card && !!this.retro?.current() && !['win', 'view'].includes(this.retro.feedback());
 
   // Step 6: the eval to show beside a move, from lila's allowedEval.
   // Trim: lila prefers the local engine's eval (node.ceval) when the engine is on.
+  // Not in lila: none while hiding hints.
   allowedEval = (node: TreeNode = this.node): TreeNode['eval'] | false =>
-    this.settings.showStaticAnalysis && node.eval;
+    this.settings.showStaticAnalysis && !this.hidingHints() && node.eval;
 
   // Step 6: from lila's showMoveGlyphs. Trim: lila also shows them in studies.
-  showMoveGlyphs = (): boolean => this.settings.showStaticAnalysis;
+  // Not in lila: none while hiding hints.
+  showMoveGlyphs = (): boolean => this.settings.showStaticAnalysis && !this.hidingHints();
 
   // Step 3a: the board settings for the current node, like lila's makeCgOpts.
   // Step 3a/3b: the board settings for the current node, like lila's makeCgOpts.

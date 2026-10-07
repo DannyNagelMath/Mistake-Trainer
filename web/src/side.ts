@@ -64,7 +64,8 @@ export const ratingDiff = (diff: number): VNode =>
 // Like lila's playerLink with its defaults: the name, the rating ("?" when provisional), and
 // the rating change. The name links to the player's page on lichess.org.
 // Trim: no titles (GM, ...) or flairs; the export's `user` doesn't have them.
-function playerLink(player: LichessPlayer): VNode {
+// Not in lila: `withDiff` false leaves out the rating change, which says who won.
+function playerLink(player: LichessPlayer, withDiff: boolean): VNode {
   if (!player.user)
     return hl('span.user-link', [
       player.aiLevel ? i18n.site.aiNameLevelAiLevel('Stockfish', player.aiLevel) : i18n.site.anonymous,
@@ -73,7 +74,7 @@ function playerLink(player: LichessPlayer): VNode {
   return hl('a.user-link', { attrs: { href: `https://lichess.org/@/${player.user.name}`, target: '_blank' } }, [
     player.user.name,
     hl('span.rating', [' (', player.rating ?? '?', player.provisional ? '?' : '', ')']),
-    player.ratingDiff !== undefined && [' ', ratingDiff(player.ratingDiff)],
+    withDiff && player.ratingDiff !== undefined && [' ', ratingDiff(player.ratingDiff)],
   ]);
 }
 
@@ -102,13 +103,18 @@ export function renderSide(ctrl: AnalysisCtrl): VNode {
         hl(
           'div.game__meta__players',
           (['white', 'black'] as Color[]).map(color =>
-            hl(`div.player.color-icon.is.${color}.text`, game.players ? playerLink(game.players[color]) : '?'),
+            hl(`div.player.color-icon.is.${color}.text`, game.players ? playerLink(game.players[color], !ctrl.hidingHints()) : '?'),
           ),
         ),
       ]),
-      finished && hl('section.status', statusOf({ winner: game.winner, status: game.status!, ply: lastPly })),
+      // Not in lila: the result, and the link to the game's analysis on lichess.org, wait until the
+      // card is done (AnalysisCtrl.hidingHints).
+      finished &&
+        !ctrl.hidingHints() &&
+        hl('section.status', statusOf({ winner: game.winner, status: game.status!, ply: lastPly })),
       // Step 8: not in lila, which is lichess.org itself. The game there, at the move on the board.
-      hl(
+      !ctrl.hidingHints() &&
+        hl(
         'section',
         hl(
           'a',

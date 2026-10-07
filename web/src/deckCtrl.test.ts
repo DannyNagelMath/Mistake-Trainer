@@ -89,3 +89,30 @@ test('moving on from a card you got right, without choosing, records Good', () =
   retro().jumpToNext(); // e.g. after closing and reopening the panel, which hides the buttons
   expect(history.log.slice(first).map(e => [e.result, e.log.rating])).toEqual([['win', Rating.Good]]);
 });
+
+test('while solving, nothing after the position, and no evals, marks, or engine lines; all back once done', () => {
+  const { ctrl, retro } = start();
+  const position = retro().current()!.prev;
+  const hidden = () => ({
+    afterPosition: ctrl.visibleChildren(position.node).length,
+    engineLines: ctrl.mainline.filter(n => ctrl.visibleChildren(n).some(c => c.comp)).length,
+    eval: ctrl.allowedEval(ctrl.mainline[1]),
+    marks: ctrl.showMoveGlyphs(),
+  });
+  expect(ctrl.hidingHints()).toBe(true);
+  expect(hidden()).toEqual({ afterPosition: 0, engineLines: 0, eval: false, marks: false });
+
+  ctrl.navigate.last(); // the End key
+  expect(ctrl.path).toBe(position.path); // no further than the card's position
+
+  playGameMove(ctrl); // wrong: still solving, still hidden
+  expect(ctrl.hidingHints()).toBe(true);
+
+  playSolution(ctrl); // right: the card is done
+  expect(ctrl.hidingHints()).toBe(false);
+  const shown = hidden();
+  expect(shown.afterPosition).toBeGreaterThanOrEqual(2); // the game move and the engine's line
+  expect(shown.engineLines).toBeGreaterThan(0);
+  expect(shown.eval).toBeTruthy();
+  expect(shown.marks).toBe(true);
+});

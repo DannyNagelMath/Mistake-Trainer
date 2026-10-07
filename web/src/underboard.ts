@@ -24,8 +24,10 @@ function selectPly(ctrl: AnalysisCtrl): void {
 // Trim: only the "Computer analysis" tab. lila also has "Move times" (a chart of the time spent
 // on each move), "Crosstable" (results between the two players), and "Share & export" (FEN,
 // PGN, images, and links). And it offers to request an analysis for games without one.
+// Not in lila: no chart while hiding hints (AnalysisCtrl.hidingHints); its drop shows where the
+// mistake is. It comes back, as a new chart, once the card is done.
 export function renderUnderboard(ctrl: AnalysisCtrl): VNode | undefined {
-  if (!ctrl.hasFullComputerAnalysis()) return undefined;
+  if (!ctrl.hasFullComputerAnalysis() || ctrl.hidingHints()) return undefined;
   return hl('div.analyse__underboard', [
     hl('div.analyse__underboard__menu', { attrs: { role: 'tablist' } }, [
       hl(

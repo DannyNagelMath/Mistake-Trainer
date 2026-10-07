@@ -22,7 +22,11 @@ export default class Navigate {
 
   prev = (): void => this.ctrl.userJumpIfCan(init(this.ctrl.path));
 
-  last = (): void => this.ctrl.userJumpIfCan(this.ctrl.mainline.map(n => n.id).join(''));
+  // Not in lila: while hiding hints, the card's position is as far as you can go.
+  last = (): void =>
+    this.ctrl.userJumpIfCan(
+      this.ctrl.hidingHints() ? this.ctrl.retro!.current()!.prev.path : this.ctrl.mainline.map(n => n.id).join(''),
+    );
 
   first = (): void => this.ctrl.userJump('');
 

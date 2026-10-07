@@ -100,7 +100,8 @@ const doRender = (ctrl: AnalysisCtrl): VNode => {
 // Trim: lila also links a recommended puzzle theme here, and shows this in studies' analysis tab.
 export function render(ctrl: AnalysisCtrl): VNode | undefined {
   const players = ctrl.game.players;
-  if (!players?.white.analysis || !players.black.analysis || !ctrl.settings.showStaticAnalysis)
+  // Not in lila: none for cards. It's a post-game summary, and its button could close a card's panel.
+  if (ctrl.card || !players?.white.analysis || !players.black.analysis || !ctrl.settings.showStaticAnalysis)
     return h('div.analyse__round-training');
 
   // thunk only renders the summary again when the key changes. Step 9: the key includes

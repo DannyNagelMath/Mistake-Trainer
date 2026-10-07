@@ -13,7 +13,8 @@ import { bind, hl } from './snabbdom';
 // (against the computer or a friend), study, clear local data, the settings dialog, and replay
 // mode (autoplay). They need a Lichess server, the engine, or settings we don't keep.
 export function view(ctrl: AnalysisCtrl): VNode {
-  const canRetro = ctrl.hasFullComputerAnalysis() && !ctrl.retro; // Trim: lila also checks it isn't an embedded board.
+  // Trim: lila also checks it isn't an embedded board. Not in lila: never for cards, whose panel stays open.
+  const canRetro = ctrl.hasFullComputerAnalysis() && !ctrl.retro && !ctrl.card;
 
   const tools = [
     hl('div.action-menu__tools', [

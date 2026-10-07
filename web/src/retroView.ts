@@ -48,17 +48,24 @@ const renderEvalProgress = (): VNode => hl('div.progress', hl('div', { attrs: { 
 
 const feedback = {
   find(ctrl: RetroCtrl): VNode[] {
+    const findBetter = i18n.site[`findBetterMoveFor${capitalize(ctrl.color)}`];
     return [
       hl('div.player', [
         hl('div.no-square', hl('piece.king.' + ctrl.color)),
-        hl('div.instruction', [
-          hl(
-            'strong',
-            i18n.site.xWasPlayed.asArray(hl('move', renderIndexAndMove(ctrl.current()!.fault.node, false, true))),
-          ),
-          hl('em', i18n.site[`findBetterMoveFor${capitalize(ctrl.color)}`]),
-          skipOrViewSolution(ctrl),
-        ]),
+        hl(
+          'div.instruction',
+          // Not in lila: a card doesn't name the move you played ("20.Qh4?? was played").
+          ctrl.card
+            ? [hl('strong', findBetter), skipOrViewSolution(ctrl)]
+            : [
+                hl(
+                  'strong',
+                  i18n.site.xWasPlayed.asArray(hl('move', renderIndexAndMove(ctrl.current()!.fault.node, false, true))),
+                ),
+                hl('em', findBetter),
+                skipOrViewSolution(ctrl),
+              ],
+        ),
       ]),
     ];
   },
@@ -204,10 +211,12 @@ export default function (root: AnalysisCtrl): VNode | undefined {
     hl('div.title', [
       hl('span', i18n.site.learnFromYourMistakes),
       hl('span', `${Math.min(completion[0] + 1, completion[1])} / ${completion[1]}`),
-      hl('button.fbt', {
-        hook: bind('click', root.toggleRetro, root.redraw),
-        attrs: { 'data-icon': licon.X, 'aria-label': 'Close learn window' },
-      }),
+      // Not in lila: a card's panel has no close button; closing it would leave the card half done.
+      !ctrl.card &&
+        hl('button.fbt', {
+          hook: bind('click', root.toggleRetro, root.redraw),
+          attrs: { 'data-icon': licon.X, 'aria-label': 'Close learn window' },
+        }),
     ]),
     hl('div.feedback.' + fb, renderFeedback(root, fb)),
   ]);
