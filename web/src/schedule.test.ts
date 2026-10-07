@@ -4,7 +4,18 @@ import { expect, test } from 'vitest';
 
 import type { Card } from './deck';
 import type { ReviewEntry, ReviewHistory } from './reviews';
-import { cardsLeft, gradeOf, newCardsInLastDay, nextAvailable, pickNext, scheduler, winRatings } from './schedule';
+import {
+  cardsLeft,
+  gradeOf,
+  isMastered,
+  newCardsInLastDay,
+  nextAvailable,
+  pickMastered,
+  pickNext,
+  progress,
+  scheduler,
+  winRatings,
+} from './schedule';
 
 const now = new Date('2026-09-30T12:00:00');
 const minutes = (n: number) => new Date(now.getTime() + n * 60_000);
@@ -178,4 +189,43 @@ test('suspended cards never come up, and are not counted', () => {
   const onlySuspended = history({ 'a/1': scheduled(State.Review, minutes(30)) });
   onlySuspended.suspended = { 'a/1': now.toISOString() };
   expect(nextAvailable([card('a/1')], onlySuspended, now)).toBeUndefined();
+});
+
+// A schedule FSRS would give after a few right answers: next review 40 days out.
+const masteredSchedule = (due: Date): CardInput => ({
+  ...scheduled(State.Review, due),
+  scheduled_days: 40,
+  stability: 60,
+  difficulty: 5,
+  reps: 3,
+});
+
+test('mastered cards leave the regular queue, and come up when you practise them', () => {
+  const h = history({ 'a/1': masteredSchedule(minutes(-10)), 'b/3': scheduled(State.Review, minutes(-10)) });
+  expect(pickNext(deck, h, now)?.id).toBe('b/3'); // due and in rotation; a/1 is due but mastered
+  expect(pickMastered(deck, h, now)?.id).toBe('a/1');
+  expect(progress(deck, h, now)).toEqual({
+    notStarted: 2,
+    inRotation: 1,
+    mastered: 1,
+    suspended: 0,
+    dueNow: 1,
+    masteredNow: 1,
+    reviewedLastDay: 0,
+  });
+  expect(nextAvailable([card('a/1')], h, now)).toBeUndefined(); // mastered cards wait for practice
+});
+
+test('a card becomes mastered after a few right answers, and a miss puts it back in rotation', () => {
+  const only = (s: CardInput) => history({ 'a/1': s });
+  let s = scheduler.next(createEmptyCard(now), now, Rating.Good).card;
+  let reviews = 1;
+  while (!isMastered(only(s), card('a/1'))) {
+    s = scheduler.next(s, new Date(s.due), Rating.Good).card;
+    reviews++;
+  }
+  expect(reviews).toBeGreaterThan(1); // "Found it quickly" a few times, on time
+  expect(reviews).toBeLessThan(6);
+  const missed = scheduler.next(s, new Date(s.due), Rating.Again).card;
+  expect(isMastered(only(missed), card('a/1'))).toBe(false);
 });

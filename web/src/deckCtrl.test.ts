@@ -2,7 +2,7 @@
 // or "Skip" is Again at once; the right first move waits for you to choose Hard, Good, or Easy.
 // Moves are played through the controller, the way the board plays them. Saving is stubbed out,
 // so nothing is written anywhere.
-import { Rating } from 'ts-fsrs';
+import { createEmptyCard, Rating, State } from 'ts-fsrs';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 import real1 from '../fixtures/real1.json';
@@ -126,4 +126,29 @@ test('suspending a card records no review, saves the suspension, and deals anoth
   expect(Object.keys(history.suspended ?? {})).toEqual([suspended]);
   expect(saved).toEqual([{ suspend: suspended, at: history.suspended![suspended] }]);
   expect(`${ctrl.game.id}/${ctrl.retro!.card!.ply}`).not.toBe(suspended); // another card
+});
+
+test('practising deals mastered cards; a miss puts the card back in rotation', () => {
+  const target = deck.cards[0];
+  const history: ReviewHistory = { cards: {}, log: [] };
+  history.cards[target.id] = {
+    ...createEmptyCard(new Date()),
+    state: State.Review,
+    due: new Date(Date.now() + 10 * 864e5),
+    scheduled_days: 40,
+    stability: 60,
+    difficulty: 5,
+    reps: 3,
+  };
+  const deckCtrl = new DeckCtrl(deck, history, () => {});
+  const ctrl = deckCtrl.analysis;
+  ctrl.toggleRetro();
+  expect(`${ctrl.game.id}/${ctrl.retro!.card!.ply}`).not.toBe(target.id); // the regular queue skips it
+  expect(deckCtrl.progress()).toMatchObject({ mastered: 1, masteredNow: 1, notStarted: 2 });
+
+  deckCtrl.practise(true);
+  expect(`${ctrl.game.id}/${ctrl.retro!.card!.ply}`).toBe(target.id);
+  expect(ctrl.retro!.card!.heading()).toBe('Practising mastered cards');
+  playGameMove(ctrl); // a miss
+  expect(deckCtrl.progress()).toMatchObject({ mastered: 0, inRotation: 1 });
 });

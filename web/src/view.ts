@@ -7,12 +7,14 @@ import { h, type VNode } from 'snabbdom';
 
 import { view as actionMenu } from './actionMenu';
 import type { AnalysisCtrl } from './analysisCtrl';
+import type { DeckCtrl } from './deckCtrl';
 import renderClocks from './clocks';
 import { stepwiseScroll } from './common';
 import { renderResult } from './components';
 import { renderControls } from './controls';
 import { view as forkView } from './fork';
 import { renderMaterialDiffs } from './material';
+import { renderProgress } from './progressView';
 import retroView from './retroView';
 import { render as trainingView } from './roundTraining';
 import { renderSide } from './side';
@@ -115,7 +117,8 @@ const renderMoveList = (ctrl: AnalysisCtrl): VNode =>
 // Step 7: the data-active-tool and data-active-mode attributes, which the phone layout's CSS
 // uses. snabbdom leaves an attribute out when its value is false.
 // Trim: no state classes (comp-off, gauge-on, ...) yet.
-export function view(ctrl: AnalysisCtrl): VNode {
+// Not in lila: with a deck, the progress box takes the advice summary's place (trainingView).
+export function view(ctrl: AnalysisCtrl, deck?: DeckCtrl): VNode {
   return hl(
     'main.analyse.variant-standard',
     {
@@ -129,7 +132,7 @@ export function view(ctrl: AnalysisCtrl): VNode {
       renderTools(ctrl),
       renderControls(ctrl),
       renderUnderboard(ctrl),
-      trainingView(ctrl),
+      deck ? renderProgress(deck) : trainingView(ctrl),
       renderSide(ctrl),
     ],
   );

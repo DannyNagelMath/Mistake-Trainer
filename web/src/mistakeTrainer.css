@@ -15,3 +15,26 @@
   flex: 1 1 7em;
   padding: 0.8em 0.4em;
 }
+
+/* The progress box (progressView.ts), where lila has its advice summary. */
+.mt-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6em;
+  padding: 0.8em 0;
+}
+.mt-progress__counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em 1.2em;
+}
+.mt-progress__count strong {
+  font-size: 1.4em;
+  margin-inline-end: 0.3em;
+}
+.mt-progress__now {
+  color: var(--c-font-dim);
+}
+.mt-progress .button {
+  align-self: flex-start;
+}

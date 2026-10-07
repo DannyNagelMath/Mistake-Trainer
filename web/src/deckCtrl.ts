@@ -12,7 +12,18 @@ import { AnalysisCtrl } from './analysisCtrl';
 import type { Card, Deck } from './deck';
 import type { CardResult, RetroCardOpts } from './retroCtrl';
 import { saveReview, saveSuspension, type ReviewEntry, type ReviewHistory } from './reviews';
-import { activeCards, cardsLeft, gradeOf, NEW_CARDS_PER_DAY, nextAvailable, pickNext, scheduler, winRatings } from './schedule';
+import {
+  activeCards,
+  gradeOf,
+  NEW_CARDS_PER_DAY,
+  nextAvailable,
+  pickMastered,
+  pickNext,
+  progress,
+  scheduler,
+  winRatings,
+  type Progress,
+} from './schedule';
 
 // Fisher-Yates: a random order, with every order equally likely.
 function shuffle<T>(items: T[]): T[] {
@@ -39,6 +50,7 @@ export class DeckCtrl {
   private graded = false; // whether the card's review has been recorded; only the first attempt counts
   private awaitingRating = false; // right first time, and the panel is asking how it went
   private reviewed = 0; // reviews recorded this session
+  practising = false; // dealing mastered cards ("Practise mastered cards"), rather than the regular queue
 
   // The deck must have at least one card. This sets up the first card; main.ts opens the panel
   // on it after the first render (opening it redraws, and the page needs this object for that).
@@ -66,11 +78,7 @@ export class DeckCtrl {
     return {
       ply,
       next: this.next,
-      // [reviews before this card, reviews in the session]: the title shows "4 / 20" for the 4th.
-      progress: () => {
-        const total = this.reviewed + cardsLeft(this.cards, this.history, new Date());
-        return [this.reviewed - (this.graded ? 1 : 0), total];
-      },
+      heading: () => (this.practising ? 'Practising mastered cards' : 'Learn from your mistakes'),
       restart: this.restart,
       summary: this.summary,
       onResult: this.onResult,
@@ -86,13 +94,26 @@ export class DeckCtrl {
     (this.history.suspended ??= {})[this.card.id] = at;
     saveSuspension(this.card.id, at).catch(e => alert(e.message));
     this.awaitingRating = false;
-    if (this.next()) return;
-    // Nothing left: like the constructor with nothing due, show this game with the end screen
-    // (ply -1 matches no mistake).
+    if (!this.next()) this.showEnd();
+  };
+
+  // With nothing to deal: like the constructor with nothing due, show this card's game with the
+  // end screen (ply -1 matches no mistake).
+  private showEnd(): void {
     this.analysis.loadGame(this.deck.games[this.card.gameId], this.card.color, this.cardOpts(-1));
     this.analysis.toggleRetro();
     this.redraw();
+  }
+
+  // The progress box's buttons: start or stop practising mastered cards. The card on the board,
+  // if unanswered, stays as it was and comes up again later.
+  practise = (on: boolean): void => {
+    this.practising = on;
+    if (!this.next()) this.showEnd();
   };
+
+  // The counts for the progress box.
+  progress = (): Progress => progress(this.cards, this.history, new Date());
 
   // Grades the card on your first attempt at it, and ignores later ones. A wrong first move,
   // "View the solution", or "Skip" is recorded as Again at once. The right first move waits for
@@ -133,7 +154,8 @@ export class DeckCtrl {
     // Leaving a card you got right without saying how it went (e.g. by closing the panel and
     // opening it again): record it as Good, the grade before there was a choice.
     if (this.awaitingRating) this.record('win', gradeOf('win'));
-    const card = pickNext(this.cards, this.history, new Date(), this.card.id);
+    const pick = this.practising ? pickMastered : pickNext;
+    const card = pick(this.cards, this.history, new Date(), this.card.id);
     if (!card) return false;
     this.card = card;
     this.graded = false;
@@ -143,13 +165,16 @@ export class DeckCtrl {
     return true;
   };
 
-  // For the button at the end: deals a card if one has come due since.
+  // For the button at the end: back to the regular queue, and deals a card if one has come due since.
   restart = (): void => {
-    if (!this.next()) this.redraw();
+    this.practising = false;
+    if (!this.next()) this.showEnd();
   };
 
   // For the end of the session.
   private summary = (): string => {
+    if (this.practising)
+      return `No more mastered cards to practise right now (${this.reviewed} reviewed this session).`;
     const next = nextAvailable(this.cards, this.history, new Date());
     const unstarted = activeCards(this.cards, this.history).filter(c => !this.history.cards[c.id]).length;
     return [

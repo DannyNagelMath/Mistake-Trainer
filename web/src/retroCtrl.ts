@@ -59,7 +59,7 @@ export interface RetroRoot {
 export interface RetroCardOpts {
   ply: Ply; // the mistake to show: the ply of the move that was played
   next(): boolean; // deal the next card; false when nothing more is due
-  progress(): [number, number]; // for the title: [cards done, cards in the session]
+  heading(): string; // the panel's title, in place of lila's "Learn from your mistakes" and count
   restart(): void; // look for more cards, for the button at the end
   summary(): string; // for the end of the session
   // Called with each outcome: the right move ('win'), a wrong one ('fail'), "View the solution"
@@ -267,7 +267,7 @@ export function make(root: RetroRoot, color: Color): RetroCtrl {
     onMergeAnalysisData,
     feedback,
     isSolving,
-    completion: () => card?.progress() ?? [solvedPlies.length, candidateNodes.length], // Step 9: the session's progress, in card mode
+    completion: () => [solvedPlies.length, candidateNodes.length],
     reset() {
       solvedPlies = [];
       jumpToNext();

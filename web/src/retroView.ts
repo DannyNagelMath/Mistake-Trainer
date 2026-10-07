@@ -209,8 +209,13 @@ export default function (root: AnalysisCtrl): VNode | undefined {
     completion = ctrl.completion();
   return hl('div.retro-box.training-box.sub-box', [
     hl('div.title', [
-      hl('span', i18n.site.learnFromYourMistakes),
-      hl('span', `${Math.min(completion[0] + 1, completion[1])} / ${completion[1]}`),
+      // Step 9: for cards, a heading, and no count: the progress box under the controls has the numbers.
+      ctrl.card
+        ? hl('span', ctrl.card.heading())
+        : [
+            hl('span', i18n.site.learnFromYourMistakes),
+            hl('span', `${Math.min(completion[0] + 1, completion[1])} / ${completion[1]}`),
+          ],
       // Not in lila: a card's panel has no close button; closing it would leave the card half done.
       !ctrl.card &&
         hl('button.fbt', {

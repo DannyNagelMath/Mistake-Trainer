@@ -34,12 +34,12 @@ const history = await loadHistory().catch((e: Error) => {
 // the whole view on every redraw. snabbdom compares the new view with the old one and only
 // touches the parts of the page that changed.
 const deckCtrl = new DeckCtrl(deck, history, redraw);
-let vnode = patch(element, view(deckCtrl.analysis)); // the board is created here, by renderGround's insert hook
+let vnode = patch(element, view(deckCtrl.analysis, deckCtrl)); // the board is created here, by renderGround's insert hook
 
 // A function declaration rather than an arrow function, so it already exists when the
 // constructor above receives it.
 function redraw(): void {
-  vnode = patch(vnode, view(deckCtrl.analysis));
+  vnode = patch(vnode, view(deckCtrl.analysis, deckCtrl));
 }
 
 // Step 5: redraw to show the panel, as lila's "Learn from your mistakes" button does
