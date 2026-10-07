@@ -6,7 +6,6 @@
 import type { VNode } from 'snabbdom';
 
 import type { DeckCtrl } from './deckCtrl';
-import { MASTERED_DAYS } from './schedule';
 import { bind, hl } from './snabbdom';
 
 const count = (n: number, label: string, title: string): VNode =>
@@ -17,7 +16,11 @@ export function renderProgress(deck: DeckCtrl): VNode {
   return hl('div.analyse__round-training', [
     hl('div.mt-progress', [
       hl('div.mt-progress__counts', [
-        count(p.mastered, 'mastered', `FSRS will next show them ${MASTERED_DAYS} or more days after your last review`),
+        count(
+          p.mastered,
+          'mastered',
+          `FSRS will next show them ${deck.settings.masteredDays} or more days after your last review`,
+        ),
         count(p.inRotation, 'in rotation', 'Started, and not yet mastered'),
         count(p.notStarted, 'not started', 'New cards'),
         p.suspended > 0 && count(p.suspended, 'suspended', 'Never shown again'),

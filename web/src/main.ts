@@ -1,7 +1,8 @@
 // Step 4b: the board's CSS comes from lila's stylesheets, loaded in index.html.
 // Our own few styles are in mistakeTrainer.css, which Vite adds after lila's.
 // Step 9: the page reviews the cards in public/data/deck.json (built by scripts/buildDeck.ts),
-// rather than one fixture game, and keeps your review history in data/reviews.json.
+// rather than one fixture game, and keeps your review history in data/reviews.json. Your
+// settings, from the dashboard (dashboard.html), are in data/settings.json.
 
 import './mistakeTrainer.css';
 import { init, attributesModule, classModule, eventListenersModule, propsModule } from 'snabbdom';
@@ -10,6 +11,7 @@ import { loadDeck } from './deck';
 import { DeckCtrl } from './deckCtrl';
 import * as keyboard from './keyboard';
 import { loadHistory } from './reviews';
+import { loadSettings } from './settings';
 import { view } from './view';
 
 // Step 4a: the same snabbdom setup as lila's (ui/analyse/src/view/util.ts).
@@ -25,7 +27,7 @@ if (!deck?.cards.length) {
     : 'No deck yet. Build one from web with: npx tsx scripts/buildDeck.ts <your Lichess username>';
   throw new Error('No cards to review');
 }
-const history = await loadHistory().catch((e: Error) => {
+const [history, settings] = await Promise.all([loadHistory(), loadSettings()]).catch((e: Error) => {
   element.textContent = e.message;
   throw e;
 });
@@ -33,7 +35,7 @@ const history = await loadHistory().catch((e: Error) => {
 // Step 4a: like lila's start.ts. Render into the page's <main class="analyse">, then re-render
 // the whole view on every redraw. snabbdom compares the new view with the old one and only
 // touches the parts of the page that changed.
-const deckCtrl = new DeckCtrl(deck, history, redraw);
+const deckCtrl = new DeckCtrl(deck, history, settings, redraw);
 let vnode = patch(element, view(deckCtrl.analysis, deckCtrl)); // the board is created here, by renderGround's insert hook
 
 // A function declaration rather than an arrow function, so it already exists when the

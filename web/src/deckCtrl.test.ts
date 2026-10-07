@@ -10,6 +10,7 @@ import type { AnalysisCtrl } from './analysisCtrl';
 import { cardsOfGame, type Deck } from './deck';
 import { DeckCtrl } from './deckCtrl';
 import type { ReviewHistory } from './reviews';
+import { defaultSettings, type Settings } from './settings';
 import type { LichessGameJson } from './tree';
 
 const game = real1 as unknown as LichessGameJson;
@@ -30,9 +31,9 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 // A session on an empty history, with the panel open on the first card, as main.ts does it.
-function start() {
+function start(settings: Settings = defaultSettings) {
   const history: ReviewHistory = { cards: {}, log: [] };
-  const deckCtrl = new DeckCtrl(deck, history, () => {});
+  const deckCtrl = new DeckCtrl(deck, history, settings, () => {});
   const ctrl = deckCtrl.analysis;
   ctrl.toggleRetro();
   return { history, ctrl, retro: () => ctrl.retro! };
@@ -140,7 +141,7 @@ test('practising deals mastered cards; a miss puts the card back in rotation', (
     difficulty: 5,
     reps: 3,
   };
-  const deckCtrl = new DeckCtrl(deck, history, () => {});
+  const deckCtrl = new DeckCtrl(deck, history, defaultSettings, () => {});
   const ctrl = deckCtrl.analysis;
   ctrl.toggleRetro();
   expect(`${ctrl.game.id}/${ctrl.retro!.card!.ply}`).not.toBe(target.id); // the regular queue skips it
@@ -159,4 +160,12 @@ test('a wrong answer comes back after 7 days, not the next day', () => {
   const [entry] = history.log;
   const gap = new Date(history.cards[entry.cardId].due).getTime() - new Date(entry.log.review).getTime();
   expect(gap).toBe(7 * 24 * 60 * 60_000);
+});
+
+test('the trainer uses your settings: here, a 3-day minimum gap', () => {
+  const { history, ctrl } = start({ ...defaultSettings, minGapDays: 3 });
+  playGameMove(ctrl);
+  const [entry] = history.log;
+  const gap = new Date(history.cards[entry.cardId].due).getTime() - new Date(entry.log.review).getTime();
+  expect(gap).toBe(3 * 24 * 60 * 60_000);
 });

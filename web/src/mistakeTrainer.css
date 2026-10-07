@@ -1,5 +1,5 @@
 /* mistakeTrainer.css: Mistake Trainer's own styles, for the few things lila's stylesheets don't
-   cover. main.ts imports it, and Vite adds it to the page after lila's. */
+   cover. main.ts and dashboard.ts import it, and Vite adds it to the page after lila's. */
 
 /* The buttons for how a correct answer went (renderRatingChoices in retroView.ts). They take the
    place of lila's big Next button, in the bottom half of the panel: lila's button style, in an
@@ -37,4 +37,92 @@
 }
 .mt-progress .button {
   align-self: flex-start;
+}
+
+/* The dashboard (dashboard.html, dashboardView.ts). lila's own settings pages use its form
+   styles, which aren't in the stylesheets we build, so these lay the form out; the inputs and
+   buttons themselves are lila's. */
+.mt-dashboard h2 {
+  font-size: 1.5em;
+  margin: 2em 0 1em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--c-border);
+}
+.mt-dashboard__counts,
+.mt-settings__counts {
+  color: var(--c-font-dim);
+}
+.mt-settings__counts {
+  margin: -0.4em 0 1.4em 13em;
+}
+/* One setting: its label on the left; its inputs, and below them what it does, on the right. */
+.mt-setting {
+  display: grid;
+  grid-template-columns: 12em 1fr;
+  gap: 0.4em 1em;
+  align-items: baseline;
+  margin-bottom: 1.4em;
+}
+.mt-setting__label {
+  font-weight: bold;
+}
+.mt-setting__control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4em;
+}
+.mt-setting input[type='number'] {
+  width: 7em;
+  padding: 0.4em 0.6em;
+}
+.mt-setting__problem {
+  color: var(--c-bad);
+  margin-inline-start: 0.6em;
+}
+.mt-setting__help {
+  grid-column: 2;
+  margin: 0;
+  color: var(--c-font-dim);
+  font-size: 0.9em;
+}
+.mt-settings__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1em;
+  margin-top: 2em;
+}
+.mt-settings__message {
+  color: var(--c-font-dim);
+}
+/* The suspended cards: a grid of small boards, each with what it is and an Unsuspend button. */
+.mt-suspended__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 2em 1.5em;
+}
+.mt-suspended__card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3em;
+}
+.mt-suspended__card .mini-board {
+  margin-bottom: 0.4em;
+}
+.mt-suspended__card .button {
+  align-self: flex-start;
+  margin-top: 0.4em;
+}
+/* On narrow screens, each setting's label goes above it. */
+@media (max-width: 650px) {
+  .mt-setting {
+    grid-template-columns: 1fr;
+  }
+  .mt-setting__help {
+    grid-column: 1;
+  }
+  .mt-settings__counts {
+    margin-inline-start: 0;
+  }
 }

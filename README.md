@@ -21,6 +21,8 @@ on Lichess's open-source code, with gratitude: if you find it useful, please con
 - `web/` is the review page: Lichess's analysis board and "Learn from your mistakes" panel, ported
   from [lila](https://github.com/lichess-org/lila) (the software behind lichess.org), dealing the
   cards in spaced-repetition order. Your review history is saved to `web/data/reviews.json`.
+  Its dashboard (the link at the top right) has your settings, such as which new cards come first
+  and how far apart reviews are, saved to `web/data/settings.json`, and the cards you've suspended.
 
 ## Running it
 
@@ -30,8 +32,9 @@ You need Node.js, Python 3, git, and a [Lichess API token](https://lichess.org/a
 2. Build lila's stylesheets and copy the fonts and images they use. `web/scripts/buildLilaCss.ts`
    explains how to fetch the parts of lila it needs; then run
    `npx tsx scripts/buildLilaCss.ts <path to lila>` from `web`.
-3. Save your games: put `LICHESS_TOKEN=...` in `pipeline/.env` (it's gitignored), set the game ids
-   in `pipeline/save_ten_games.py`, and run it. The games go to `pipeline/data/games.ndjson`.
+3. Save your games: put `LICHESS_TOKEN=...` in `pipeline/.env` (it's gitignored), set `USERNAME`
+   in `pipeline/save_my_games.py`, and run it from `pipeline` (`python save_my_games.py`; later,
+   `--update` adds only new games). The games go to `pipeline/data/games.ndjson`.
 4. Build the deck, from `web`: `npx tsx scripts/buildDeck.ts <your Lichess username>`.
 5. Start the page with `npm run dev`, and open the address it prints.
 

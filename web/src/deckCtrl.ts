@@ -1,5 +1,6 @@
 // deckCtrl.ts: Step 9. Deals the deck's cards into the analysis page in spaced-repetition order
-// (schedule.ts), and records how you did on each one (reviews.ts).
+// (schedule.ts), and records how you did on each one (reviews.ts). Your settings (settings.ts)
+// are read once, when the page loads: change them on the dashboard, then come back.
 //
 // There's one AnalysisCtrl for the whole session. Each card loads its game into it
 // (loadGame, like lila changing a study chapter), then opens "Learn from your mistakes" in card
@@ -15,8 +16,6 @@ import { saveReview, saveSuspension, type ReviewEntry, type ReviewHistory } from
 import {
   activeCards,
   gradeOf,
-  NEW_CARD_ORDER,
-  NEW_CARDS_PER_DAY,
   nextAvailable,
   orderNewCards,
   pickMastered,
@@ -26,6 +25,7 @@ import {
   winRatings,
   type Progress,
 } from './schedule';
+import type { Settings } from './settings';
 
 // Fisher-Yates: a random order, with every order equally likely.
 function shuffle<T>(items: T[]): T[] {
@@ -47,7 +47,7 @@ function describeTime(t: Date, now = new Date()): string {
 
 export class DeckCtrl {
   readonly analysis: AnalysisCtrl;
-  private readonly cards: Card[]; // the deck in the order new cards are introduced in (NEW_CARD_ORDER)
+  private readonly cards: Card[]; // the deck in the order new cards are introduced in (settings.newCardOrder)
   private card: Card; // the card being shown
   private graded = false; // whether the card's review has been recorded; only the first attempt counts
   private awaitingRating = false; // right first time, and the panel is asking how it went
@@ -59,10 +59,11 @@ export class DeckCtrl {
   constructor(
     readonly deck: Deck,
     private readonly history: ReviewHistory,
+    readonly settings: Settings,
     private readonly redraw: () => void,
   ) {
-    this.cards = orderNewCards(shuffle(deck.cards), NEW_CARD_ORDER); // random among cards the order ties
-    const first = pickNext(this.cards, history, new Date());
+    this.cards = orderNewCards(shuffle(deck.cards), settings); // random among cards the order ties
+    const first = pickNext(this.cards, history, new Date(), settings);
     // With nothing due, show the last card you reviewed, with the panel saying when the next is due.
     // Its ply is -1, which matches no mistake, so the panel opens on that message.
     this.card = first ?? this.lastReviewed() ?? this.cards[0];
@@ -115,7 +116,7 @@ export class DeckCtrl {
   };
 
   // The counts for the progress box.
-  progress = (): Progress => progress(this.cards, this.history, new Date());
+  progress = (): Progress => progress(this.cards, this.history, new Date(), this.settings);
 
   // Grades the card on your first attempt at it, and ignores later ones. A wrong first move,
   // "View the solution", or "Skip" is recorded as Again at once. The right first move waits for
@@ -144,7 +145,7 @@ export class DeckCtrl {
     this.reviewed++;
     const now = new Date();
     const schedule = this.history.cards[this.card.id] ?? createEmptyCard(now); // a new card's is empty
-    const { card, log } = reviewCard(schedule, now, grade); // FSRS, with the minimum gap
+    const { card, log } = reviewCard(schedule, now, grade, this.settings); // FSRS, with the minimum gap
     const entry: ReviewEntry = { cardId: this.card.id, result, log };
     this.history.cards[this.card.id] = card;
     this.history.log.push(entry);
@@ -157,7 +158,7 @@ export class DeckCtrl {
     // opening it again): record it as Good, the grade before there was a choice.
     if (this.awaitingRating) this.record('win', gradeOf('win'));
     const pick = this.practising ? pickMastered : pickNext;
-    const card = pick(this.cards, this.history, new Date(), this.card.id);
+    const card = pick(this.cards, this.history, new Date(), this.settings, this.card.id);
     if (!card) return false;
     this.card = card;
     this.graded = false;
@@ -177,14 +178,15 @@ export class DeckCtrl {
   private summary = (): string => {
     if (this.practising)
       return `No more mastered cards to practise right now (${this.reviewed} reviewed this session).`;
-    const next = nextAvailable(this.cards, this.history, new Date());
+    const next = nextAvailable(this.cards, this.history, new Date(), this.settings);
+    const limit = this.settings.newCardsPerDay;
     const unstarted = activeCards(this.cards, this.history).filter(c => !this.history.cards[c.id]).length;
     return [
       `Nothing more to review right now (${this.reviewed} reviewed this session).`,
       next && `The next card comes up ${describeTime(next)}.`,
       unstarted &&
         `${unstarted} new cards haven't been started yet` +
-          (Number.isFinite(NEW_CARDS_PER_DAY) ? ` (up to ${NEW_CARDS_PER_DAY} in any 24 hours).` : '.'),
+          (limit === null ? '.' : ` (up to ${limit} in any 24 hours).`),
     ]
       .filter(Boolean)
       .join(' ');

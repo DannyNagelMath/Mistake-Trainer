@@ -1,21 +1,15 @@
 <!doctype html>
 <!--
-  Step 4b: the page around the app, like lila's app/views/base/page.scala (master, commit 27ffc8b)
-  as rendered with lila's default preferences. The files in /lila come from scripts/buildLilaCss.ts.
-  Trim: no site header, CSP, favicons, preloads, or scripts other than ours.
-  Trim: lila's default background is "system", which adds the class "light" in a script when the
-  system prefers light. This is fixed to dark; for light, change "dark" to "light" in both places.
+  The dashboard: your settings and your suspended cards. Not in lila. The page around it is the
+  same as index.html's, without the analysis page's stylesheet; see there for where it comes from.
 -->
 <html lang="en" class="dark" style="---ui-roundness:7px;---bg-opacity:100;">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, viewport-fit=cover" />
-    <title>Mistake Trainer</title>
-    <!-- The stylesheets of lila's analysis page, in the same order. -->
+    <title>Dashboard · Mistake Trainer</title>
     <link rel="stylesheet" href="/lila/css/lib.theme.all.css" />
     <link rel="stylesheet" href="/lila/css/site.css" />
-    <link rel="stylesheet" href="/lila/css/analyse.round.css" />
-    <!-- The icon font, from layout.scala (lichessFontFaceCss). -->
     <style>
       @font-face {
         font-family: 'lichess';
@@ -23,7 +17,6 @@
         src: url('/lila/font/lichess.woff2') format('woff2');
       }
     </style>
-    <!-- The piece images, from PieceSetImages.scala. The CSS draws each piece with these variables. -->
     <style>
       :root {
         ---white-pawn: url(/lila/piece/cburnett/wP.svg);
@@ -41,32 +34,25 @@
       }
     </style>
   </head>
-  <!-- ---zoom is lila's page zoom setting (0-100, default 80); it scales the board. -->
   <body
-    class="coords-in"
     data-theme="dark"
     data-board="brown"
     data-piece-set="cburnett"
     style="---board-opacity:100;---board-brightness:100;---board-contrast:100;---board-hue:0;---zoom:80;"
   >
-    <!-- Step 8: the top of lila's site header (layout.scala siteHeader), with our own name. It also
-         makes room above the board, where the CSS puts the top player strip.
-         Trim: no menu, search, notifications, or account buttons, and not the Lichess logo, which
-         lila's COPYING.md reserves for referring to lichess.org. -->
     <header id="top">
       <div class="site-title-nav">
         <a class="site-title" href="/">
           <div class="site-name">Mistake Trainer</div>
         </a>
       </div>
-      <!-- Not in lila: the link to the dashboard (dashboard.html), styled like lila's header links. -->
       <div class="site-buttons">
-        <a class="link" href="/dashboard.html">Dashboard</a>
+        <a class="link" href="/">Back to training</a>
       </div>
     </header>
-    <div id="main-wrap" class="is2d">
-      <main class="analyse"></main>
+    <div id="main-wrap">
+      <main class="page-small box box-pad mt-dashboard"></main>
     </div>
-    <script type="module" src="/src/main.ts"></script>
+    <script type="module" src="/src/dashboard.ts"></script>
   </body>
 </html>
