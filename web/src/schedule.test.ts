@@ -15,6 +15,7 @@ import {
   progress,
   reviewCard,
   scheduler,
+  orderNewCards,
   winRatings,
   withMinimumGap,
 } from './schedule';
@@ -24,8 +25,19 @@ const minutes = (n: number) => new Date(now.getTime() + n * 60_000);
 
 const LIMIT = 5; // a new-card limit for the tests that check one; the page has none for now
 
-const card = (id: string): Card => ({ id, gameId: id.split('/')[0], ply: Number(id.split('/')[1]), color: 'white' });
-const deck = ['a/1', 'b/3', 'c/5', 'd/7'].map(card);
+// A card; by default not a collapse, not already won, and not from the opening.
+const card = (id: string, more: Partial<Card> = {}): Card => ({
+  id,
+  gameId: id.split('/')[0],
+  ply: Number(id.split('/')[1]),
+  color: 'white',
+  chancesBefore: 0,
+  chancesAfter: -0.3,
+  moveNumber: 20,
+  playedAt: 0,
+  ...more,
+});
+const deck = ['a/1', 'b/3', 'c/5', 'd/7'].map(id => card(id));
 
 // A schedule in the given state, due at the given time.
 const scheduled = (state: State, due: Date): CardInput => ({ ...createEmptyCard(now), state, due });
@@ -121,7 +133,7 @@ test('with no new-card limit, as now, every new card can come up', () => {
 });
 
 // Two more cards from game g, and one from game h.
-const gameDeck = ['g/1', 'g/3', 'g/5', 'h/7'].map(card);
+const gameDeck = ['g/1', 'g/3', 'g/5', 'h/7'].map(id => card(id));
 
 test("after a card from a game is reviewed, the game's other cards wait 24 hours", () => {
   const h = history(
@@ -159,7 +171,7 @@ test('nextAvailable is when the next card can come up', () => {
     minutes(9),
   );
   // a due card from a waiting game: when the game stops waiting
-  const onlyG = ['g/1', 'g/3'].map(card);
+  const onlyG = ['g/1', 'g/3'].map(id => card(id));
   const waiting = history({ 'g/1': due(60 * 47), 'g/3': due(-10) }, [reviewed('g/1', minutes(-60))]);
   expect(nextAvailable(onlyG, waiting, now)).toEqual(minutes(60 * 23));
   // new cards with a limit reached: when the oldest of the last 24 hours' new cards is 24 hours old
@@ -238,4 +250,20 @@ test('no card comes back within 7 days of a review, whatever the answer; FSRS ke
   expect(results.map(c => days(c.due))).toEqual([7, 7, 7, 8]); // Again, Hard, Good: 7; Easy: FSRS's 8
   expect(results.map(c => c.scheduled_days)).toEqual([1, 1, 2, 8]); // FSRS's intervals, unchanged
   expect(withMinimumGap(minutes(60 * 24 * 40), now)).toEqual(minutes(60 * 24 * 40)); // later dates stay
+});
+
+test('new cards: collapses first by default, already-won positions always last, ties in deck order', () => {
+  const cards = [
+    card('a/1'), // an ordinary mistake
+    card('b/3', { chancesBefore: 0.9, chancesAfter: 0.6, playedAt: 3 }), // already won
+    card('c/5', { chancesBefore: 0.1, chancesAfter: -0.7, playedAt: 1 }), // a collapse
+    card('d/7', { moveNumber: 9, playedAt: 2 }), // an opening mistake
+    card('e/9', { chancesBefore: -0.1, chancesAfter: -0.9 }), // another collapse
+  ];
+  const ids = (order: Parameters<typeof orderNewCards>[1]) => orderNewCards(cards, order).map(c => c.id);
+  expect(ids('collapses')).toEqual(['c/5', 'e/9', 'a/1', 'd/7', 'b/3']);
+  expect(ids('openings')).toEqual(['d/7', 'a/1', 'c/5', 'e/9', 'b/3']);
+  expect(ids('recent')).toEqual(['d/7', 'c/5', 'a/1', 'e/9', 'b/3']);
+  expect(ids('random')).toEqual(['a/1', 'c/5', 'd/7', 'e/9', 'b/3']);
+  expect(pickNext(orderNewCards(cards, 'collapses'), history(), now)?.id).toBe('c/5');
 });

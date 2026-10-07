@@ -28,5 +28,13 @@ test('cardsOfGame finds the same mistakes as retroCtrl', () => {
 
 test('a card id is the game id and the ply', () => {
   const [card] = cardsOfGame(fixture('real1'), 'white');
-  expect(card).toEqual({ id: 'oLSivxSu/39', gameId: 'oLSivxSu', ply: 39, color: 'white' });
+  expect(card).toMatchObject({ id: 'oLSivxSu/39', gameId: 'oLSivxSu', ply: 39, color: 'white' });
+});
+
+test('a card knows your winning chances before and after the mistake, its move, and when it was played', () => {
+  const [qh4] = cardsOfGame(fixture('real1'), 'white'); // 20.Qh4?? gave up a forced mate...
+  expect(qh4).toMatchObject({ moveNumber: 20, playedAt: fixture('real1').createdAt });
+  expect([qh4.chancesBefore, qh4.chancesAfter]).toEqual([0.997, -0.364]); // ...for -2.1
+  const [bg7] = cardsOfGame(fixture('real1'), 'black'); // 19...Bg7?? from +1.3 allowed mate
+  expect([bg7.moveNumber, bg7.chancesBefore, bg7.chancesAfter]).toEqual([19, 0.242, -0.997]);
 });

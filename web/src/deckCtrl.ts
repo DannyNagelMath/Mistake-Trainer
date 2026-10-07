@@ -15,8 +15,10 @@ import { saveReview, saveSuspension, type ReviewEntry, type ReviewHistory } from
 import {
   activeCards,
   gradeOf,
+  NEW_CARD_ORDER,
   NEW_CARDS_PER_DAY,
   nextAvailable,
+  orderNewCards,
   pickMastered,
   pickNext,
   progress,
@@ -45,7 +47,7 @@ function describeTime(t: Date, now = new Date()): string {
 
 export class DeckCtrl {
   readonly analysis: AnalysisCtrl;
-  private readonly cards: Card[]; // the deck in a random order, the order new cards are introduced in
+  private readonly cards: Card[]; // the deck in the order new cards are introduced in (NEW_CARD_ORDER)
   private card: Card; // the card being shown
   private graded = false; // whether the card's review has been recorded; only the first attempt counts
   private awaitingRating = false; // right first time, and the panel is asking how it went
@@ -59,7 +61,7 @@ export class DeckCtrl {
     private readonly history: ReviewHistory,
     private readonly redraw: () => void,
   ) {
-    this.cards = shuffle(deck.cards);
+    this.cards = orderNewCards(shuffle(deck.cards), NEW_CARD_ORDER); // random among cards the order ties
     const first = pickNext(this.cards, history, new Date());
     // With nothing due, show the last card you reviewed, with the panel saying when the next is due.
     // Its ply is -1, which matches no mistake, so the panel opens on that message.

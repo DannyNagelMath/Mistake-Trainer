@@ -31,6 +31,39 @@ export const NEW_CARDS_PER_DAY = Infinity;
 // answer, FSRS expects you to remember it for a month or more.
 export const MASTERED_DAYS = 30;
 
+// Which new cards come first, among those not yet started. To be chosen in the dashboard.
+//   'collapses': positions where your move turned a win or a level game into a loss;
+//   'recent': from your latest games first;
+//   'openings': from the opening (move OPENING_MOVES or earlier) first;
+//   'random': no preference.
+// Whatever the order, positions that were already won come last (isAlreadyWon).
+export type NewCardOrder = 'collapses' | 'recent' | 'openings' | 'random';
+export const NEW_CARD_ORDER: NewCardOrder = 'collapses';
+export const OPENING_MOVES = 12;
+
+// The thresholds are winning chances, from -1 to 1 (Card.chancesBefore and chancesAfter); the
+// evals they correspond to are given in pawns.
+// A collapse: before your move you were winning or about level (chances above -0.2, better than
+// about -1.1), and after it you were losing (below -0.35, about -2 or worse, the usual "-+").
+// E.g. 20.Qh4?? in fixtures/real1.json, from a forced mate (0.997) to -2.1 (-0.364).
+export const isCollapse = (c: Card): boolean => c.chancesBefore > -0.2 && c.chancesAfter < -0.35;
+// Already won: winning big before (0.8, about +6) and still clearly winning after (0.5, about
+// +3), so the mistake didn't change the result.
+export const isAlreadyWon = (c: Card): boolean => c.chancesBefore >= 0.8 && c.chancesAfter >= 0.5;
+export const isOpening = (c: Card): boolean => c.moveNumber <= OPENING_MOVES;
+
+// The deck in the order new cards are introduced. The deck arrives shuffled and the sort is
+// stable, so cards the order doesn't separate stay in random order.
+export function orderNewCards(cards: Card[], order: NewCardOrder): Card[] {
+  const first = (c: Card): boolean => (order === 'collapses' ? isCollapse(c) : order === 'openings' ? isOpening(c) : false);
+  return [...cards].sort(
+    (a, b) =>
+      Number(isAlreadyWon(a)) - Number(isAlreadyWon(b)) ||
+      Number(first(b)) - Number(first(a)) ||
+      (order === 'recent' ? b.playedAt - a.playedAt : 0),
+  );
+}
+
 // The FSRS scheduler (ts-fsrs). With no learning or relearning steps, FSRS schedules every review
 // at least a day out, Again included, and a card goes straight to the Review state. (ts-fsrs's
 // defaults would bring a new or forgotten card back after 1 and 10 minutes.) Everything else is

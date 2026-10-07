@@ -7,12 +7,19 @@ import type { Color } from 'chessops';
 
 import { evalSwings } from './nodeFinder';
 import { buildTree, mainline, type LichessGameJson } from './tree';
+import { povChances } from './winningChances';
 
 export interface Card {
   id: string; // `${gameId}/${ply}`, the same every time the deck is rebuilt, so review history can refer to it
   gameId: string;
   ply: number; // the mistake: the ply of the move you played
   color: Color; // your color in that game
+  // For choosing which new cards come first (orderNewCards in schedule.ts). Your winning chances
+  // before and after your move, from -1 (lost) to 1 (won), worked out from the evals as lila does.
+  chancesBefore: number;
+  chancesAfter: number;
+  moveNumber: number;
+  playedAt: number; // when the game started, in milliseconds since 1970
 }
 
 export interface Deck {
@@ -35,12 +42,21 @@ export function colorOf(game: LichessGameJson, username: string): Color | undefi
 // The game needs analysis and must be standard chess (buildTree only knows standard chess).
 export function cardsOfGame(game: LichessGameJson, color: Color): Card[] {
   const colorModulo = color === 'white' ? 1 : 0;
-  return evalSwings(mainline(buildTree(game)), n => n.ply % 2 === colorModulo).map(n => ({
-    id: `${game.id}/${n.ply}`,
-    gameId: game.id,
-    ply: n.ply,
-    color,
-  }));
+  const line = mainline(buildTree(game));
+  const rounded = (x: number) => Math.round(x * 1000) / 1000; // keeps deck.json small
+  return evalSwings(line, n => n.ply % 2 === colorModulo).map(n => {
+    const before = line[line.indexOf(n) - 1]; // evalSwings only picks moves with evals before and after
+    return {
+      id: `${game.id}/${n.ply}`,
+      gameId: game.id,
+      ply: n.ply,
+      color,
+      chancesBefore: rounded(povChances(color, before.eval!)),
+      chancesAfter: rounded(povChances(color, n.eval!)),
+      moveNumber: Math.ceil(n.ply / 2),
+      playedAt: game.createdAt ?? 0,
+    };
+  });
 }
 
 // Loads the deck the page uses. Undefined if it hasn't been built yet.
