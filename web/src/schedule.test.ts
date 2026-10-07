@@ -13,8 +13,10 @@ import {
   pickMastered,
   pickNext,
   progress,
+  reviewCard,
   scheduler,
   winRatings,
+  withMinimumGap,
 } from './schedule';
 
 const now = new Date('2026-09-30T12:00:00');
@@ -228,4 +230,12 @@ test('a card becomes mastered after a few right answers, and a miss puts it back
   expect(reviews).toBeLessThan(6);
   const missed = scheduler.next(s, new Date(s.due), Rating.Again).card;
   expect(isMastered(only(missed), card('a/1'))).toBe(false);
+});
+
+test('no card comes back within 7 days of a review, whatever the answer; FSRS keeps its own interval', () => {
+  const days = (d: Date) => (d.getTime() - now.getTime()) / (24 * 60 * 60_000);
+  const results = grades.map(grade => reviewCard(createEmptyCard(now), now, grade).card);
+  expect(results.map(c => days(c.due))).toEqual([7, 7, 7, 8]); // Again, Hard, Good: 7; Easy: FSRS's 8
+  expect(results.map(c => c.scheduled_days)).toEqual([1, 1, 2, 8]); // FSRS's intervals, unchanged
+  expect(withMinimumGap(minutes(60 * 24 * 40), now)).toEqual(minutes(60 * 24 * 40)); // later dates stay
 });

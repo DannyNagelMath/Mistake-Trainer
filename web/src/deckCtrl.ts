@@ -20,7 +20,7 @@ import {
   pickMastered,
   pickNext,
   progress,
-  scheduler,
+  reviewCard,
   winRatings,
   type Progress,
 } from './schedule';
@@ -142,7 +142,7 @@ export class DeckCtrl {
     this.reviewed++;
     const now = new Date();
     const schedule = this.history.cards[this.card.id] ?? createEmptyCard(now); // a new card's is empty
-    const { card, log } = scheduler.next(schedule, now, grade);
+    const { card, log } = reviewCard(schedule, now, grade); // FSRS, with the minimum gap
     const entry: ReviewEntry = { cardId: this.card.id, result, log };
     this.history.cards[this.card.id] = card;
     this.history.log.push(entry);

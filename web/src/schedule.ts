@@ -2,8 +2,8 @@
 // The rules follow Anki's:
 //   1. cards that are due now, the most overdue first;
 //   2. then new cards (never reviewed), up to NEW_CARDS_PER_DAY a day, in the deck's random order.
-// A card is due once FSRS's due time for it has passed, to the millisecond. The scheduler below
-// puts every review at least a day out, so a card never comes back within 24 hours.
+// A card is due once FSRS's due time for it has passed, to the millisecond. Every review goes
+// through reviewCard below: FSRS schedules it, and a card never comes back within MIN_GAP_DAYS.
 // "A day" always means 24 hours counted from a review, never a calendar day:
 //   - at most NEW_CARDS_PER_DAY new cards in any 24 hours;
 //   - after you review a card, the other cards from its game wait until 24 hours after that
@@ -14,11 +14,13 @@
 // This file also has the scheduler, and the grades for what you do on a card (gradeOf and
 // winRatings). They're plain functions and values, so schedule.test.ts can check them without a page.
 
-import { fsrs, Rating, State, type Grade } from 'ts-fsrs';
+import { fsrs, Rating, State, type Card as FsrsCard, type CardInput, type Grade, type RecordLogItem } from 'ts-fsrs';
 
 import type { Card } from './deck';
 import type { CardResult } from './retroCtrl';
 import type { ReviewEntry, ReviewHistory } from './reviews';
+
+const DAY = 24 * 60 * 60_000; // in milliseconds
 
 // export const NEW_CARDS_PER_DAY = 20; // Anki's default
 
@@ -35,6 +37,24 @@ export const MASTERED_DAYS = 30;
 // ts-fsrs's default: 90% desired retention, no fuzz, and FSRS-6's default weights.
 export const scheduler = fsrs({ learning_steps: [], relearning_steps: [] });
 
+// No card comes back sooner than this many days after you review it, whatever FSRS says: a
+// position seen a few days ago is still visually familiar, so you'd recognise it rather than
+// work it out. To be adjustable in the dashboard.
+export const MIN_GAP_DAYS = 7;
+
+// Reviews a card: FSRS schedules it from the grade, then, if FSRS's due date is less than
+// MIN_GAP_DAYS away, it's moved out to that. Everything else stays as FSRS made it, including its
+// interval (scheduled_days), which "mastered" uses. At the next review FSRS works from the real
+// time since this one, and the log keeps the real review times, so the FSRS optimizer still works.
+export function reviewCard(schedule: CardInput | FsrsCard, now: Date, grade: Grade): RecordLogItem {
+  const { card, log } = scheduler.next(schedule, now, grade);
+  return { card: { ...card, due: withMinimumGap(card.due, now) }, log };
+}
+
+// `due`, or MIN_GAP_DAYS after `reviewedAt` if that's later.
+export const withMinimumGap = (due: Date | string, reviewedAt: Date | string): Date =>
+  new Date(Math.max(new Date(due).getTime(), new Date(reviewedAt).getTime() + MIN_GAP_DAYS * DAY));
+
 // Only your first attempt counts. A wrong first move, "View the solution", or "Skip" is Again at
 // once. After the right first move, you say how it went, with one of winRatings. If you move on
 // without choosing, it counts as Good, which gradeOf gives for 'win'.
@@ -46,8 +66,6 @@ export const winRatings: { label: string; grade: Grade }[] = [
   { label: 'Found it quickly', grade: Rating.Good },
   { label: 'Obvious', grade: Rating.Easy },
 ];
-
-const DAY = 24 * 60 * 60_000; // in milliseconds
 
 const dueTime = (history: ReviewHistory, card: Card): number => new Date(history.cards[card.id].due).getTime();
 const reviewTime = (entry: ReviewEntry): number => new Date(entry.log.review).getTime();

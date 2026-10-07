@@ -152,3 +152,11 @@ test('practising deals mastered cards; a miss puts the card back in rotation', (
   playGameMove(ctrl); // a miss
   expect(deckCtrl.progress()).toMatchObject({ mastered: 0, inRotation: 1 });
 });
+
+test('a wrong answer comes back after 7 days, not the next day', () => {
+  const { history, ctrl } = start();
+  playGameMove(ctrl);
+  const [entry] = history.log;
+  const gap = new Date(history.cards[entry.cardId].due).getTime() - new Date(entry.log.review).getTime();
+  expect(gap).toBe(7 * 24 * 60 * 60_000);
+});
