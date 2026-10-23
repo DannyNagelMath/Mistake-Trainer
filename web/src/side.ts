@@ -64,8 +64,7 @@ export const ratingDiff = (diff: number): VNode =>
 // Like lila's playerLink with its defaults: the name, the rating ("?" when provisional), and
 // the rating change. The name links to the player's page on lichess.org.
 // Trim: no titles (GM, ...) or flairs; the export's `user` doesn't have them.
-// Not in lila: `withDiff` false leaves out the rating change, which says who won.
-function playerLink(player: LichessPlayer, withDiff: boolean): VNode {
+function playerLink(player: LichessPlayer): VNode {
   if (!player.user)
     return hl('span.user-link', [
       player.aiLevel ? i18n.site.aiNameLevelAiLevel('Stockfish', player.aiLevel) : i18n.site.anonymous,
@@ -74,7 +73,7 @@ function playerLink(player: LichessPlayer, withDiff: boolean): VNode {
   return hl('a.user-link', { attrs: { href: `https://lichess.org/@/${player.user.name}`, target: '_blank' } }, [
     player.user.name,
     hl('span.rating', [' (', player.rating ?? '?', player.provisional ? '?' : '', ')']),
-    withDiff && player.ratingDiff !== undefined && [' ', ratingDiff(player.ratingDiff)],
+    player.ratingDiff !== undefined && [' ', ratingDiff(player.ratingDiff)],
   ]);
 }
 
@@ -97,16 +96,21 @@ export function renderSide(ctrl: AnalysisCtrl, extra?: VNode): VNode {
               separator,
               hl('span', speed?.name ?? game.speed ?? ''),
             ]),
+            // Not in lila: while you solve a card (AnalysisCtrl.hidingHints), neither the date nor the
+            // players: "2 years ago", or the opponent's name, could bring the game back to mind, and
+            // with it the answer. (The rating changes would also say who won.)
             game.createdAt &&
+              !ctrl.hidingHints() &&
               hl('time.timeago', { attrs: { title: new Date(game.createdAt).toLocaleString() } }, timeAgo(new Date(game.createdAt))),
           ]),
         ]),
-        hl(
-          'div.game__meta__players',
-          (['white', 'black'] as Color[]).map(color =>
-            hl(`div.player.color-icon.is.${color}.text`, game.players ? playerLink(game.players[color], !ctrl.hidingHints()) : '?'),
+        !ctrl.hidingHints() &&
+          hl(
+            'div.game__meta__players',
+            (['white', 'black'] as Color[]).map(color =>
+              hl(`div.player.color-icon.is.${color}.text`, game.players ? playerLink(game.players[color]) : '?'),
+            ),
           ),
-        ),
       ]),
       // Not in lila: the result, and the link to the game's analysis on lichess.org, wait until the
       // card is done (AnalysisCtrl.hidingHints).

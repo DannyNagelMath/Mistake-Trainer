@@ -13,14 +13,15 @@ test('with no file, or nothing useful in it, everything is at its default', () =
 });
 
 test('saved settings are kept, missing ones are the defaults, and unknown ones are dropped', () => {
-  const s = parseSettings({ minGapDays: 3, newCardOrder: 'recent', newCardsPerDay: 20, colour: 'blue' });
+  // masteredDays was a setting until mastered cards went
+  const s = parseSettings({ minGapDays: 3, newCardOrder: 'recent', newCardsPerDay: 20, colour: 'blue', masteredDays: 30 });
   expect(s).toEqual(with_({ minGapDays: 3, newCardOrder: 'recent', newCardsPerDay: 20 }));
   expect(parseSettings({ newCardsPerDay: null }).newCardsPerDay).toBeNull(); // no limit
 });
 
 test('a wrong setting goes back to its default, and only that one', () => {
-  const s = parseSettings({ minGapDays: -1, masteredDays: 45, newCardOrder: 'alphabetical', desiredRetention: 1 });
-  expect(s).toEqual(with_({ masteredDays: 45 }));
+  const s = parseSettings({ minGapDays: -1, openingMoves: 15, newCardOrder: 'alphabetical', desiredRetention: 1 });
+  expect(s).toEqual(with_({ openingMoves: 15 }));
 });
 
 test('if either eval of a collapse is wrong, both go back to their defaults', () => {
@@ -33,7 +34,7 @@ test('problems: numbers out of range, not whole, or not numbers', () => {
   expect(problems(defaultSettings)).toEqual({});
   expect(problems(with_({ minGapDays: 91 }))).toEqual({ minGapDays: 'A whole number from 1 to 90' });
   expect(problems(with_({ minGapDays: 0 }))).toEqual({ minGapDays: 'A whole number from 1 to 90' });
-  expect(problems(with_({ masteredDays: 30.5 }))).toEqual({ masteredDays: 'A whole number from 1 to 3650' });
+  expect(problems(with_({ openingMoves: 12.5 }))).toEqual({ openingMoves: 'A whole number from 1 to 60' });
   expect(problems(with_({ desiredRetention: NaN }))).toEqual({ desiredRetention: 'A number from 0.7 to 0.97' });
   expect(problems(with_({ newCardsPerDay: 0 }))).toEqual({ newCardsPerDay: 'A whole number from 1 to 1000' });
   expect(problems(with_({ newCardsPerDay: null }))).toEqual({});

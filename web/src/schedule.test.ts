@@ -8,11 +8,9 @@ import {
   cardsLeft,
   gradeOf,
   isCollapse,
-  isMastered,
   isOpening,
   newCardsInLastDay,
   nextAvailable,
-  pickMastered,
   pickNext,
   progress,
   reviewCard,
@@ -210,46 +208,13 @@ test('suspended cards never come up, and are not counted', () => {
   expect(nextAvailable([card('a/1')], onlySuspended, now, s)).toBeUndefined();
 });
 
-// A schedule FSRS would give after a few right answers: next review 40 days out.
-const masteredSchedule = (due: Date): CardInput => ({
-  ...scheduled(State.Review, due),
-  scheduled_days: 40,
-  stability: 60,
-  difficulty: 5,
-  reps: 3,
-});
-
-test('mastered cards come up in the regular queue when due, and early when you practise them', () => {
-  const inTenDays = minutes(60 * 24 * 10);
-  const h = history({ 'a/1': masteredSchedule(inTenDays), 'b/3': scheduled(State.Review, minutes(-10)) });
-  const onlyA = [card('a/1')];
-  expect(pickNext(onlyA, h, now, s)).toBeUndefined(); // not due yet
-  expect(pickMastered(onlyA, h, now, s)?.id).toBe('a/1'); // but you can practise it
-  expect(nextAvailable(onlyA, h, now, s)).toEqual(inTenDays);
-  expect(pickNext(onlyA, h, inTenDays, s)?.id).toBe('a/1'); // due: back in the regular queue
-  expect(progress(deck, h, now, s)).toEqual({
-    notStarted: 2,
-    inRotation: 1,
-    mastered: 1,
-    suspended: 0,
-    dueNow: 1, // b/3
-    masteredNow: 1,
+test('the progress box counts started, not started, and suspended cards, and those due now', () => {
+  const h = history({
+    'a/1': scheduled(State.Review, minutes(60 * 24 * 10)), // started, and due in 10 days
+    'b/3': scheduled(State.Review, minutes(-10)), // started, and due
   });
-  expect(progress(deck, h, inTenDays, s)).toMatchObject({ mastered: 1, dueNow: 2 }); // a/1 counts as due too
-});
-
-test('a card becomes mastered after a few right answers, and a miss puts it back in rotation', () => {
-  const only = (schedule: CardInput) => history({ 'a/1': schedule });
-  let schedule = scheduler(s).next(createEmptyCard(now), now, Rating.Good).card;
-  let reviews = 1;
-  while (!isMastered(only(schedule), card('a/1'), s)) {
-    schedule = scheduler(s).next(schedule, new Date(schedule.due), Rating.Good).card;
-    reviews++;
-  }
-  expect(reviews).toBeGreaterThan(1); // "Looked familiar" a few times, on time
-  expect(reviews).toBeLessThan(6);
-  const missed = scheduler(s).next(schedule, new Date(schedule.due), Rating.Again).card;
-  expect(isMastered(only(missed), card('a/1'), s)).toBe(false);
+  h.suspended = { 'd/7': now.toISOString() };
+  expect(progress(deck, h, now, s)).toEqual({ started: 2, notStarted: 1, suspended: 1, dueNow: 1 });
 });
 
 test('no card comes back within 7 days of a review, whatever the answer; FSRS keeps its own interval', () => {
@@ -310,11 +275,4 @@ test('a higher desired retention brings a card back sooner', () => {
   };
   expect(gapAfterTwoGoods(0.95)).toBeLessThan(gapAfterTwoGoods(0.9));
   expect(gapAfterTwoGoods(0.9)).toBeLessThan(gapAfterTwoGoods(0.8));
-});
-
-test('the mastered threshold follows the settings, and applies to cards already reviewed', () => {
-  const h = history({ 'a/1': masteredSchedule(minutes(-10)) }); // a 40-day gap
-  expect(isMastered(h, card('a/1'), s)).toBe(true);
-  expect(isMastered(h, card('a/1'), { ...s, masteredDays: 60 })).toBe(false);
-  expect(progress(deck, h, now, { ...s, masteredDays: 60 })).toMatchObject({ mastered: 0, inRotation: 1 });
 });

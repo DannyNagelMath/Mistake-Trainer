@@ -33,9 +33,7 @@ function renderCounts(ctrl: SettingsPageCtrl): VNode {
   const p = progress(ctrl.deck.cards, ctrl.history, new Date(), preview(ctrl));
   return hl('p.mt-settings-page__counts', [
     `Your ${ctrl.deck.cards.length} cards: `,
-    [`${p.mastered} mastered`, `${p.inRotation} in rotation`, `${p.notStarted} not started`, `${p.suspended} suspended`].join(
-      ' · ',
-    ),
+    [`${p.started} started`, `${p.notStarted} not started`, `${p.suspended} suspended`].join(' · '),
   ]);
 }
 
@@ -63,7 +61,6 @@ function readForm(form: HTMLFormElement): Settings {
     openingMoves: num('openingMoves'),
     desiredRetention: num('desiredRetention'),
     minGapDays: num('minGapDays'),
-    masteredDays: num('masteredDays'),
   };
 }
 
@@ -174,14 +171,6 @@ function renderSettings(ctrl: SettingsPageCtrl): VNode {
         [numberInput('minGapDays', 1), ' days'],
         'No card comes back sooner than this after you review it, so you work it out rather than ' +
           'recognise it. It applies to your reviews from now on: cards already scheduled keep their dates.',
-      ),
-      row(
-        'Mastered',
-        ['masteredDays'],
-        ['once FSRS’s gap for a card is ', numberInput('masteredDays', 1), ' days or more'],
-        'Mastered cards still come back when they’re due, which is at least that long after your ' +
-          'last review; “Practise mastered cards”, under the board, goes through them early. A miss ' +
-          'usually puts a card back in rotation.',
       ),
 
       hl('div.mt-settings__actions', [

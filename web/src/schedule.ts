@@ -10,9 +10,7 @@
 //   - after you review a card, the other cards from its game wait until 24 hours after that
 //     review, so you don't see two positions from one game on the same day. They only wait in
 //     the queue: their FSRS schedules don't change.
-// Mastered cards (see isMastered) come up when they're due, like any other, which is rarely;
-// "Practise mastered cards" also deals them early, on request (pickMastered). Suspended cards
-// never come up.
+// Suspended cards never come up.
 // The numbers come from your settings (settings.ts, changed on the settings page), which most
 // functions here take as `s`.
 // This file also has the grades for what you do on a card (gradeOf and winRatings). They're
@@ -68,7 +66,7 @@ export const scheduler = (s: Settings) =>
 // Reviews a card: FSRS schedules it from the grade, then, if FSRS's due date is less than
 // s.minGapDays away, it's moved out to that. A position seen a few days ago is still visually
 // familiar, so you'd recognise it rather than work it out. Everything else stays as FSRS made it,
-// including its interval (scheduled_days), which "mastered" uses. At the next review FSRS works
+// including its interval (scheduled_days). At the next review FSRS works
 // from the real time since this one, and the log keeps the real review times, so the FSRS
 // optimizer still works.
 export function reviewCard(schedule: CardInput | FsrsCard, now: Date, grade: Grade, s: Settings): RecordLogItem {
@@ -124,14 +122,6 @@ function gameRestEnds(history: ReviewHistory): Map<string, number> {
 export const activeCards = (deck: Card[], history: ReviewHistory): Card[] =>
   history.suspended ? deck.filter(c => !history.suspended![c.id]) : deck;
 
-// Mastered: the card's current FSRS interval is at least s.masteredDays (after a right answer,
-// FSRS expects you to remember it that long). Nothing extra is stored, so changing the setting
-// applies at once. A miss makes FSRS cut the interval sharply: to 1 day for a card you'd only just
-// learnt, and to about 2 or 3 weeks even for one you'd known for years. With the default 30 days,
-// that always puts the card back in rotation.
-export const isMastered = (history: ReviewHistory, card: Card, s: Settings): boolean =>
-  !!history.cards[card.id] && Number(history.cards[card.id].scheduled_days) >= s.masteredDays;
-
 // The cards for each of the two rules, each in the order they'd be shown, leaving out suspended
 // cards, and cards whose game is waiting.
 function queues(deck: Card[], history: ReviewHistory, now: Date, s: Settings) {
@@ -155,50 +145,23 @@ export function pickNext(deck: Card[], history: ReviewHistory, now: Date, s: Set
   return order.find(c => c.id !== avoid) ?? order[0];
 }
 
-// For "Practise mastered cards": the mastered cards, the most overdue first and then the soonest
-// due, leaving out suspended cards and cards whose game is waiting. Due ones come up in the
-// regular queue too; practising lets you go through the others before they're due. Practising a
-// card counts as a review, so its game waits too, and each comes up at most once in 24 hours.
-function masteredQueue(deck: Card[], history: ReviewHistory, now: Date, s: Settings): Card[] {
-  const restEnds = gameRestEnds(history);
-  return activeCards(deck, history)
-    .filter(c => isMastered(history, c, s) && (restEnds.get(c.gameId) ?? 0) <= now.getTime())
-    .sort((a, b) => dueTime(history, a) - dueTime(history, b));
-}
-
-export function pickMastered(
-  deck: Card[],
-  history: ReviewHistory,
-  now: Date,
-  s: Settings,
-  avoid?: string,
-): Card | undefined {
-  const order = masteredQueue(deck, history, now, s);
-  return order.find(c => c.id !== avoid) ?? order[0];
-}
-
-// The counts in the progress box. Every card you haven't suspended is either not started, in
-// rotation, or mastered.
+// The counts in the progress box. Every card you haven't suspended is either started (reviewed
+// at least once) or not.
 export interface Progress {
+  started: number;
   notStarted: number;
-  inRotation: number;
-  mastered: number;
   suspended: number;
-  dueNow: number; // due, mastered or not, and its game not waiting
-  masteredNow: number; // mastered, and its game not waiting: what "Practise mastered cards" can deal
+  dueNow: number; // due, and its game not waiting
 }
 
 export function progress(deck: Card[], history: ReviewHistory, now: Date, s: Settings): Progress {
   const active = activeCards(deck, history);
-  const started = active.filter(c => history.cards[c.id]);
-  const mastered = started.filter(c => isMastered(history, c, s)).length;
+  const started = active.filter(c => history.cards[c.id]).length;
   return {
-    notStarted: active.length - started.length,
-    inRotation: started.length - mastered,
-    mastered,
+    started,
+    notStarted: active.length - started,
     suspended: deck.length - active.length,
     dueNow: queues(deck, history, now, s).due.length,
-    masteredNow: masteredQueue(deck, history, now, s).length,
   };
 }
 

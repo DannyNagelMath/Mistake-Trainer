@@ -1,12 +1,11 @@
 // progressView.ts: the progress box, in the side panel under the game's details (side.ts): on
 // wide screens, that's the space left of the board, which lila leaves to the chat. It shows how
-// your cards are spread (mastered, in rotation, not started, suspended) and how many are due now,
-// with the button for practising mastered cards. Not in lila.
+// your cards are spread (started, not started, suspended) and how many are due now. Not in lila.
 
 import type { VNode } from 'snabbdom';
 
 import type { DeckCtrl } from './deckCtrl';
-import { bind, hl } from './snabbdom';
+import { hl } from './snabbdom';
 
 const count = (n: number, label: string, title: string): VNode =>
   hl('div.mt-progress__count', { attrs: { title } }, [hl('strong', String(n)), hl('span', label)]);
@@ -14,33 +13,11 @@ const count = (n: number, label: string, title: string): VNode =>
 export function renderProgress(deck: DeckCtrl): VNode {
   const p = deck.progress();
   return hl('div.mt-progress', [
-      hl('div.mt-progress__counts', [
-        count(
-          p.mastered,
-          'mastered',
-          `FSRS will next show them ${deck.settings.masteredDays} or more days after your last review`,
-        ),
-        count(p.inRotation, 'in rotation', 'Started, and not yet mastered'),
-        count(p.notStarted, 'not started', 'New cards'),
-        p.suspended > 0 && count(p.suspended, 'suspended', 'Never shown again'),
-      ]),
-      hl('div.mt-progress__now', `Due now: ${p.dueNow}`),
-      // Each button has its own key, so switching makes a new element: bind's click listener is
-      // only added when an element is created.
-      deck.practising
-        ? hl(
-            'button.button.button-empty',
-            { key: 'back', hook: bind('click', () => deck.practise(false)) },
-            'Back to regular reviews',
-          )
-        : hl(
-            'button.button.button-empty',
-            {
-              key: 'practise',
-              attrs: { disabled: p.masteredNow === 0, title: 'Mastered cards whose game is not waiting' },
-              hook: bind('click', () => deck.practise(true)),
-            },
-            `Practise mastered cards (${p.masteredNow})`,
-          ),
+    hl('div.mt-progress__counts', [
+      count(p.started, 'started', 'Reviewed at least once'),
+      count(p.notStarted, 'not started', 'New cards'),
+      p.suspended > 0 && count(p.suspended, 'suspended', 'Not shown until you bring them back on the Settings page'),
+    ]),
+    hl('div.mt-progress__now', `Due now: ${p.dueNow}`),
   ]);
 }

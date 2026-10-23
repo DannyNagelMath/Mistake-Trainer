@@ -18,7 +18,6 @@ import {
   gradeOf,
   nextAvailable,
   orderNewCards,
-  pickMastered,
   pickNext,
   progress,
   reviewCard,
@@ -52,7 +51,6 @@ export class DeckCtrl {
   private graded = false; // whether the card's review has been recorded; only the first attempt counts
   private awaitingRating = false; // right first time, and the panel is asking how it went
   private reviewed = 0; // reviews recorded this session
-  practising = false; // dealing mastered cards ("Practise mastered cards"), rather than the regular queue
 
   // The deck must have at least one card. This sets up the first card; main.ts opens the panel
   // on it after the first render (opening it redraws, and the page needs this object for that).
@@ -81,14 +79,12 @@ export class DeckCtrl {
     return {
       ply,
       next: this.next,
-      heading: () => (this.practising ? 'Practising mastered cards' : 'Learn from your mistakes'),
       restart: this.restart,
       summary: this.summary,
       onResult: this.onResult,
       ratingChoices: this.ratingChoices,
       suspend: this.suspend,
       openingUcis: this.card.masterMoves ?? [],
-      practiceChoice: this.practiceChoice,
     };
   }
 
@@ -109,21 +105,6 @@ export class DeckCtrl {
     this.analysis.toggleRetro();
     this.redraw();
   }
-
-  // The progress box's buttons: start or stop practising mastered cards. The card on the board,
-  // if unanswered, stays as it was and comes up again later.
-  practise = (on: boolean): void => {
-    this.practising = on;
-    if (!this.next()) this.showEnd();
-  };
-
-  // The end screen's link to the same, when there's something to practise.
-  private practiceChoice = (): { label: string; start: () => void } | undefined => {
-    const n = this.progress().masteredNow;
-    return this.practising || n === 0
-      ? undefined
-      : { label: `Practise mastered cards (${n})`, start: () => this.practise(true) };
-  };
 
   // The counts for the progress box.
   progress = (): Progress => progress(this.cards, this.history, new Date(), this.settings);
@@ -167,8 +148,7 @@ export class DeckCtrl {
     // Leaving a card you got right without saying how it went (e.g. by closing the panel and
     // opening it again): record it as Good, the grade before there was a choice.
     if (this.awaitingRating) this.record('win', gradeOf('win'));
-    const pick = this.practising ? pickMastered : pickNext;
-    const card = pick(this.cards, this.history, new Date(), this.settings, this.card.id);
+    const card = pickNext(this.cards, this.history, new Date(), this.settings, this.card.id);
     if (!card) return false;
     this.card = card;
     this.graded = false;
@@ -178,16 +158,13 @@ export class DeckCtrl {
     return true;
   };
 
-  // For the button at the end: back to the regular queue, and deals a card if one has come due since.
+  // For the button at the end: deals a card if one has come due since.
   restart = (): void => {
-    this.practising = false;
     if (!this.next()) this.showEnd();
   };
 
   // For the end of the session.
   private summary = (): string => {
-    if (this.practising)
-      return `No more mastered cards to practise right now (${this.reviewed} reviewed this session).`;
     const next = nextAvailable(this.cards, this.history, new Date(), this.settings);
     const limit = this.settings.newCardsPerDay;
     const unstarted = activeCards(this.cards, this.history).filter(c => !this.history.cards[c.id]).length;

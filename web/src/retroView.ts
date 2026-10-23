@@ -159,7 +159,6 @@ const feedback = {
         ),
       ];
     // Step 9: in card mode, nothing more is due. The text isn't one of lila's translations.
-    const practice = ctrl.card?.practiceChoice();
     if (ctrl.card)
       return [
         hl('div.player', [
@@ -168,7 +167,6 @@ const feedback = {
             hl('em', ctrl.card.summary()),
             hl('div.choices.end', [
               hl('a', { key: 'restart', hook: bind('click', ctrl.card.restart) }, 'Check for due cards'),
-              practice && hl('a', { key: 'practise', hook: bind('click', practice.start) }, practice.label),
             ]),
           ]),
         ]),
@@ -224,26 +222,26 @@ export default function (root: AnalysisCtrl): VNode | undefined {
     completion = ctrl.completion();
   return hl('div.retro-box.training-box.sub-box', [
     hl('div.title', [
-      // Step 9: for cards, a heading, and no count: the progress box under the controls has the numbers.
-      ctrl.card
-        ? hl('span', ctrl.card.heading())
-        : [
-            hl('span', i18n.site.learnFromYourMistakes),
-            hl('span', `${Math.min(completion[0] + 1, completion[1])} / ${completion[1]}`),
-          ],
+      // Step 9: for cards, neither the title nor the count (the progress box has the numbers): the
+      // bar only holds "Suspend card".
+      !ctrl.card && [
+        hl('span', i18n.site.learnFromYourMistakes),
+        hl('span', `${Math.min(completion[0] + 1, completion[1])} / ${completion[1]}`),
+      ],
       // Not in lila: a card's panel has no close button; closing it would leave the card half done.
       !ctrl.card &&
         hl('button.fbt', {
           hook: bind('click', root.toggleRetro, root.redraw),
           attrs: { 'data-icon': licon.X, 'aria-label': 'Close learn window' },
         }),
-      // Step 9: in card mode, while a card is shown, suspend it. It asks first: there's no undo yet.
+      // Step 9: in card mode, while a card is shown, suspend it. It asks first, as undoing it means
+      // going to the Settings page.
       ctrl.card &&
         ctrl.current() &&
         hl(
           'a.suspend',
           {
-            attrs: { title: "Never show this card again (to undo, delete it from data/reviews.json's suspended list)" },
+            attrs: { title: 'Never show this card again (you can bring it back on the Settings page)' },
             hook: bind('click', () => {
               if (confirm("Suspend this card? It won't come up again.")) ctrl.card!.suspend();
             }),

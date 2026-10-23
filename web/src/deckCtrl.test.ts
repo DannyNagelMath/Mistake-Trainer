@@ -5,7 +5,8 @@
 import { makeUci } from 'chessops';
 import { Chess } from 'chessops/chess';
 import { parseFen } from 'chessops/fen';
-import { createEmptyCard, Rating, State } from 'ts-fsrs';
+import type { VNode } from 'snabbdom';
+import { Rating } from 'ts-fsrs';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 import real1 from '../fixtures/real1.json';
@@ -15,6 +16,7 @@ import { DeckCtrl } from './deckCtrl';
 import type { ReviewHistory } from './reviews';
 import type { EngineEval } from './engine';
 import { defaultSettings, type Settings } from './settings';
+import { renderSide } from './side';
 import type { LichessGameJson } from './tree';
 
 // The stand-in for Stockfish (engine.ts): it reports each of `updates` as the search goes deeper,
@@ -135,6 +137,21 @@ test('while solving, nothing after the position, and no evals, marks, or engine 
   expect(shown.marks).toBe(true);
 });
 
+// All the text in a rendered view, and whether it has an element with the given selector.
+const textOf = (v: VNode | string | undefined): string =>
+  typeof v === 'string' ? v : !v ? '' : (v.text ?? '') + (v.children ?? []).map(c => textOf(c as VNode)).join(' ');
+const has = (v: VNode | string | undefined, sel: string): boolean =>
+  typeof v === 'object' && !!v && (v.sel === sel || (v.children ?? []).some(c => has(c as VNode, sel)));
+
+test("while solving, the side panel doesn't show the players or the date; once done, it does", () => {
+  const { ctrl } = start();
+  expect(textOf(renderSide(ctrl))).not.toContain('RealAgentCooper'); // the opponent
+  expect(has(renderSide(ctrl), 'time.timeago')).toBe(false); // e.g. "2 years ago"
+  playSolution(ctrl);
+  expect(textOf(renderSide(ctrl))).toContain('RealAgentCooper');
+  expect(has(renderSide(ctrl), 'time.timeago')).toBe(true);
+});
+
 test('suspending a card records no review, saves the suspension, and deals another card', () => {
   const { history, ctrl, retro } = start();
   const suspended = `${ctrl.game.id}/${retro().card!.ply}`;
@@ -144,33 +161,6 @@ test('suspending a card records no review, saves the suspension, and deals anoth
   expect(Object.keys(history.suspended ?? {})).toEqual([suspended]);
   expect(saved).toEqual([{ suspend: suspended, at: history.suspended![suspended] }]);
   expect(`${ctrl.game.id}/${ctrl.retro!.card!.ply}`).not.toBe(suspended); // another card
-});
-
-test('practising deals mastered cards; a miss puts the card back in rotation', () => {
-  const target = deck.cards[0];
-  const history: ReviewHistory = { cards: {}, log: [] };
-  history.cards[target.id] = {
-    ...createEmptyCard(new Date()),
-    state: State.Review,
-    due: new Date(Date.now() + 10 * 864e5),
-    scheduled_days: 40,
-    stability: 60,
-    difficulty: 5,
-    reps: 3,
-  };
-  const deckCtrl = new DeckCtrl(deck, history, defaultSettings, () => {});
-  const ctrl = deckCtrl.analysis;
-  ctrl.toggleRetro();
-  expect(`${ctrl.game.id}/${ctrl.retro!.card!.ply}`).not.toBe(target.id); // not due for 10 days
-  expect(deckCtrl.progress()).toMatchObject({ mastered: 1, masteredNow: 1, notStarted: 2 });
-  expect(ctrl.retro!.card!.practiceChoice()?.label).toBe('Practise mastered cards (1)'); // for the end screen
-
-  ctrl.retro!.card!.practiceChoice()!.start();
-  expect(`${ctrl.game.id}/${ctrl.retro!.card!.ply}`).toBe(target.id);
-  expect(ctrl.retro!.card!.heading()).toBe('Practising mastered cards');
-  expect(ctrl.retro!.card!.practiceChoice()).toBeUndefined(); // practising already
-  playGameMove(ctrl); // a miss
-  expect(deckCtrl.progress()).toMatchObject({ mastered: 0, inRotation: 1 });
 });
 
 test('a wrong answer comes back after 7 days, not the next day', () => {

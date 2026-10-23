@@ -27,7 +27,6 @@ export interface Settings {
   // Reviews
   desiredRetention: number; // FSRS's aim: your chance of still getting a card right when it's due
   minGapDays: number; // no card comes back sooner than this after a review
-  masteredDays: number; // a card is mastered once FSRS's interval for it is at least this
 }
 
 export const defaultSettings: Settings = {
@@ -38,7 +37,6 @@ export const defaultSettings: Settings = {
   openingMoves: 12,
   desiredRetention: 0.9, // ts-fsrs's default
   minGapDays: 7,
-  masteredDays: 30,
 };
 
 type NumberKey = Exclude<keyof Settings, 'newCardOrder'>;
@@ -53,7 +51,6 @@ export const ranges: Record<NumberKey, { min: number; max: number; whole?: boole
   openingMoves: { min: 1, max: 60, whole: true },
   desiredRetention: { min: 0.7, max: 0.97 },
   minGapDays: { min: 1, max: 90, whole: true },
-  masteredDays: { min: 1, max: 3650, whole: true },
 };
 
 export type Problems = Partial<Record<keyof Settings, string>>;
