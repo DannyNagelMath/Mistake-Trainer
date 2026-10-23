@@ -44,14 +44,15 @@ export const defaultSettings: Settings = {
 type NumberKey = Exclude<keyof Settings, 'newCardOrder'>;
 
 // What each number can be. Retention near 1 makes the reviews pile up, as FSRS then schedules
-// every card very soon; much below 0.7 you'd forget most cards before seeing them again.
+// every card very soon; much below 0.7 you'd forget most cards before seeing them again. The
+// minimum gap starts at 1 day because FSRS never schedules a card sooner than that anyway.
 export const ranges: Record<NumberKey, { min: number; max: number; whole?: boolean }> = {
   newCardsPerDay: { min: 1, max: 1000, whole: true },
   collapseBefore: { min: -10, max: 10 },
   collapseAfter: { min: -10, max: 10 },
   openingMoves: { min: 1, max: 60, whole: true },
   desiredRetention: { min: 0.7, max: 0.97 },
-  minGapDays: { min: 0, max: 90, whole: true },
+  minGapDays: { min: 1, max: 90, whole: true },
   masteredDays: { min: 1, max: 3650, whole: true },
 };
 

@@ -179,8 +179,9 @@ function renderSettings(ctrl: DashboardCtrl): VNode {
         'Mastered',
         ['masteredDays'],
         ['once FSRS’s gap for a card is ', numberInput('masteredDays', 1), ' days or more'],
-        'Mastered cards leave the regular reviews; “Practise mastered cards”, under the board, ' +
-          'goes through them. A miss puts a card back in rotation.',
+        'Mastered cards still come back when they’re due, which is at least that long after your ' +
+          'last review; “Practise mastered cards”, under the board, goes through them early. A miss ' +
+          'usually puts a card back in rotation.',
       ),
 
       hl('div.mt-settings__actions', [

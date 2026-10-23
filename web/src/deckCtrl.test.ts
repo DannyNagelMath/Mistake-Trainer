@@ -144,7 +144,7 @@ test('practising deals mastered cards; a miss puts the card back in rotation', (
   const deckCtrl = new DeckCtrl(deck, history, defaultSettings, () => {});
   const ctrl = deckCtrl.analysis;
   ctrl.toggleRetro();
-  expect(`${ctrl.game.id}/${ctrl.retro!.card!.ply}`).not.toBe(target.id); // the regular queue skips it
+  expect(`${ctrl.game.id}/${ctrl.retro!.card!.ply}`).not.toBe(target.id); // not due for 10 days
   expect(deckCtrl.progress()).toMatchObject({ mastered: 1, masteredNow: 1, notStarted: 2 });
 
   deckCtrl.practise(true);

@@ -1,5 +1,5 @@
 // schedule.test.ts: Step 9. Checks which card schedule.ts picks next.
-import { createEmptyCard, Rating, State, type CardInput } from 'ts-fsrs';
+import { createEmptyCard, Rating, State, type CardInput, type Grade } from 'ts-fsrs';
 import { expect, test } from 'vitest';
 
 import type { Card } from './deck';
@@ -219,20 +219,24 @@ const masteredSchedule = (due: Date): CardInput => ({
   reps: 3,
 });
 
-test('mastered cards leave the regular queue, and come up when you practise them', () => {
-  const h = history({ 'a/1': masteredSchedule(minutes(-10)), 'b/3': scheduled(State.Review, minutes(-10)) });
-  expect(pickNext(deck, h, now, s)?.id).toBe('b/3'); // due and in rotation; a/1 is due but mastered
-  expect(pickMastered(deck, h, now, s)?.id).toBe('a/1');
+test('mastered cards come up in the regular queue when due, and early when you practise them', () => {
+  const inTenDays = minutes(60 * 24 * 10);
+  const h = history({ 'a/1': masteredSchedule(inTenDays), 'b/3': scheduled(State.Review, minutes(-10)) });
+  const onlyA = [card('a/1')];
+  expect(pickNext(onlyA, h, now, s)).toBeUndefined(); // not due yet
+  expect(pickMastered(onlyA, h, now, s)?.id).toBe('a/1'); // but you can practise it
+  expect(nextAvailable(onlyA, h, now, s)).toEqual(inTenDays);
+  expect(pickNext(onlyA, h, inTenDays, s)?.id).toBe('a/1'); // due: back in the regular queue
   expect(progress(deck, h, now, s)).toEqual({
     notStarted: 2,
     inRotation: 1,
     mastered: 1,
     suspended: 0,
-    dueNow: 1,
+    dueNow: 1, // b/3
     masteredNow: 1,
     reviewedLastDay: 0,
   });
-  expect(nextAvailable([card('a/1')], h, now, s)).toBeUndefined(); // mastered cards wait for practice
+  expect(progress(deck, h, inTenDays, s)).toMatchObject({ mastered: 1, dueNow: 2 }); // a/1 counts as due too
 });
 
 test('a card becomes mastered after a few right answers, and a miss puts it back in rotation', () => {
@@ -291,15 +295,17 @@ test('what counts as a collapse or an opening mistake follows the settings', () 
   expect(isOpening(move15, { ...s, openingMoves: 15 })).toBe(true);
 });
 
-test("the minimum gap follows the settings; 0 leaves FSRS's own dates", () => {
+test("the minimum gap follows the settings; at its lowest, 1 day, FSRS's own dates stand", () => {
   const days = (d: Date) => (d.getTime() - now.getTime()) / (24 * 60 * 60_000);
-  expect(days(reviewCard(createEmptyCard(now), now, Rating.Again, { ...s, minGapDays: 3 }).card.due)).toBe(3);
-  expect(days(reviewCard(createEmptyCard(now), now, Rating.Again, { ...s, minGapDays: 0 }).card.due)).toBe(1);
+  const dueIn = (grade: Grade, minGapDays: number) =>
+    days(reviewCard(createEmptyCard(now), now, grade, { ...s, minGapDays }).card.due);
+  expect(dueIn(Rating.Again, 3)).toBe(3);
+  expect(grades.map(grade => dueIn(grade, 1))).toEqual([1, 1, 2, 8]); // Again to Easy: FSRS's own
 });
 
 test('a higher desired retention brings a card back sooner', () => {
   const gapAfterTwoGoods = (desiredRetention: number) => {
-    const settings = { ...s, desiredRetention, minGapDays: 0 };
+    const settings = { ...s, desiredRetention, minGapDays: 1 };
     const first = reviewCard(createEmptyCard(now), now, Rating.Good, settings).card;
     return reviewCard(first, new Date(first.due), Rating.Good, settings).card.scheduled_days;
   };
@@ -311,5 +317,5 @@ test('the mastered threshold follows the settings, and applies to cards already 
   const h = history({ 'a/1': masteredSchedule(minutes(-10)) }); // a 40-day gap
   expect(isMastered(h, card('a/1'), s)).toBe(true);
   expect(isMastered(h, card('a/1'), { ...s, masteredDays: 60 })).toBe(false);
-  expect(pickNext(deck, h, now, { ...s, masteredDays: 60 })?.id).toBe('a/1'); // due, and back in rotation
+  expect(progress(deck, h, now, { ...s, masteredDays: 60 })).toMatchObject({ mastered: 0, inRotation: 1 });
 });

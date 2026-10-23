@@ -31,7 +31,8 @@ test('if either eval of a collapse is wrong, both go back to their defaults', ()
 
 test('problems: numbers out of range, not whole, or not numbers', () => {
   expect(problems(defaultSettings)).toEqual({});
-  expect(problems(with_({ minGapDays: 91 }))).toEqual({ minGapDays: 'A whole number from 0 to 90' });
+  expect(problems(with_({ minGapDays: 91 }))).toEqual({ minGapDays: 'A whole number from 1 to 90' });
+  expect(problems(with_({ minGapDays: 0 }))).toEqual({ minGapDays: 'A whole number from 1 to 90' });
   expect(problems(with_({ masteredDays: 30.5 }))).toEqual({ masteredDays: 'A whole number from 1 to 3650' });
   expect(problems(with_({ desiredRetention: NaN }))).toEqual({ desiredRetention: 'A number from 0.7 to 0.97' });
   expect(problems(with_({ newCardsPerDay: 0 }))).toEqual({ newCardsPerDay: 'A whole number from 1 to 1000' });
