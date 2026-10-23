@@ -1,6 +1,7 @@
 // deck.ts: Step 9. The cards to review: one for each mistake you made in your saved games.
 // A card is a mistake that lila's "Learn from your mistakes" would show you in that game,
-// found the same way (retroCtrl's findNextNode). scripts/buildDeck.ts builds the deck from
+// found the same way (retroCtrl's findNextNode), including lila's check against the masters
+// database for opening mistakes (see inOpening). scripts/buildDeck.ts builds the deck from
 // games.ndjson and saves it as public/data/deck.json, which the page loads.
 
 import type { Color } from 'chessops';
@@ -20,6 +21,17 @@ export interface Card {
   chancesAfter: number;
   moveNumber: number;
   playedAt: number; // when the game started, in milliseconds since 1970
+  // For a mistake in the opening (inOpening): the moves masters have played from the position,
+  // in UCI, which count as right answers too, as in lila. Missing if there are none.
+  masterMoves?: string[];
+}
+
+// A move from the masters database, and how many master games it was played in.
+export interface MasterMove {
+  uci: string;
+  white: number; // games White won
+  draws: number;
+  black: number; // games Black won
 }
 
 export interface Deck {
@@ -57,6 +69,30 @@ export function cardsOfGame(game: LichessGameJson, color: Color): Card[] {
       playedAt: game.createdAt ?? 0,
     };
   });
+}
+
+// Whether lila checks the mistake against the masters database (retroCtrl's jumpToNext): a
+// standard game whose analysis says where the middlegame starts, and a mistake before that, or
+// anywhere if the game never reached a middlegame.
+export const inOpening = (game: LichessGameJson, card: Card): boolean =>
+  (game.variant ?? 'standard') === 'standard' &&
+  !!game.division &&
+  (!game.division.middle || card.ply < game.division.middle);
+
+// The position before your mistake, as a FEN, and the move you played there, in UCI.
+export function mistakeOf(game: LichessGameJson, card: Card): { fen: string; uci: string } {
+  const line = mainline(buildTree(game));
+  const played = line.find(n => n.ply === card.ply)!;
+  return { fen: line[line.indexOf(played) - 1].fen, uci: played.uci! };
+}
+
+// lila's rule (retroCtrl's jumpToNext), with the moves masters have played from the position:
+// a move played in more than one master game is a book move, not a mistake. So if your move is
+// one, the card goes (undefined); otherwise it keeps the book moves, which count as right answers.
+export function withMasterMoves(card: Card, played: string, moves: MasterMove[]): Card | undefined {
+  const book = moves.filter(m => m.white + m.draws + m.black > 1).map(m => m.uci);
+  if (book.includes(played)) return undefined;
+  return book.length ? { ...card, masterMoves: book } : card;
 }
 
 // Loads the deck the page uses. Undefined if it hasn't been built yet.

@@ -2,12 +2,15 @@
 // or "Skip" is Again at once; the right first move waits for you to choose Hard, Good, or Easy.
 // Moves are played through the controller, the way the board plays them. Saving is stubbed out,
 // so nothing is written anywhere.
+import { makeUci } from 'chessops';
+import { Chess } from 'chessops/chess';
+import { parseFen } from 'chessops/fen';
 import { createEmptyCard, Rating, State } from 'ts-fsrs';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 import real1 from '../fixtures/real1.json';
 import type { AnalysisCtrl } from './analysisCtrl';
-import { cardsOfGame, type Deck } from './deck';
+import { cardsOfGame, mistakeOf, type Card, type Deck } from './deck';
 import { DeckCtrl } from './deckCtrl';
 import type { ReviewHistory } from './reviews';
 import { defaultSettings, type Settings } from './settings';
@@ -170,4 +173,24 @@ test('the trainer uses your settings: here, a 3-day minimum gap', () => {
   const [entry] = history.log;
   const gap = new Date(history.cards[entry.cardId].due).getTime() - new Date(entry.log.review).getTime();
   expect(gap).toBe(3 * 24 * 60 * 60_000);
+});
+
+// Every legal move in the position, in UCI.
+const legalMoves = (fen: string): string[] => {
+  const pos = Chess.fromSetup(parseFen(fen).unwrap()).unwrap();
+  return [...pos.allDests()].flatMap(([from, tos]) => [...tos].map(to => makeUci({ from, to })));
+};
+
+test("a move masters have played counts as a right answer, like the engine's, as in lila", () => {
+  const [card] = deck.cards;
+  const { fen, uci: played } = mistakeOf(game, card);
+  const other = legalMoves(fen).find(m => m !== played && m !== game.analysis![card.ply - 1].best)!;
+  const feedbackAfter = (shown: Card) => {
+    const deckCtrl = new DeckCtrl({ ...deck, cards: [shown] }, { cards: {}, log: [] }, defaultSettings, () => {});
+    deckCtrl.analysis.toggleRetro();
+    deckCtrl.analysis.playUci(other);
+    return deckCtrl.analysis.retro!.feedback();
+  };
+  expect(feedbackAfter(card)).toBe('fail');
+  expect(feedbackAfter({ ...card, masterMoves: [other] })).toBe('win');
 });

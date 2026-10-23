@@ -69,6 +69,7 @@ export interface RetroCardOpts {
   // it does. Undefined once the card is graded, and in every other case.
   ratingChoices(): { label: string; rate: () => void }[] | undefined;
   suspend(): void; // "Suspend card": it never comes up again; the next card is dealt
+  openingUcis: Uci[]; // moves masters have played from the position, accepted as right answers
   // For the end of a regular session: the link for practising mastered cards, or undefined when
   // there are none to practise, or you're practising already.
   practiceChoice(): { label: string; start: () => void } | undefined;
@@ -168,11 +169,12 @@ export function make(root: RetroRoot, color: Color): RetroCtrl {
         node: solutionNode,
         path: prevPath + solutionNode.id,
       },
-      openingUcis: [],
+      openingUcis: card?.openingUcis ?? [], // Step 9: a card brings them (deck.ts masterMoves)
     });
     // Trim: removed the opening explorer lookup. Lichess fetches master games for
     // opening positions, skips the mistake if the played move appears there, and
     // otherwise stores those moves in openingUcis to accept as correct answers.
+    // Step 9: for cards, scripts/buildDeck.ts does that lookup when it builds the deck.
     root.userJump(prev.path);
     safeRedraw();
   }

@@ -17,7 +17,10 @@ on Lichess's open-source code, with gratitude: if you find it useful, please con
 - `pipeline/` (Python) downloads your games, with their computer analysis, from the
   [Lichess API](https://lichess.org/api) into an NDJSON file.
 - `web/scripts/buildDeck.ts` finds your mistakes in those games, the same way Lichess's "Learn from
-  your mistakes" does, and saves them as a deck of cards.
+  your mistakes" does, and saves them as a deck of cards. Like Lichess, it looks opening mistakes up
+  in the [masters database](https://lichess.org/analysis#explorer): a move masters have played isn't
+  a mistake, and their other moves count as right answers. It asks about each position only once,
+  and saves the answers in `pipeline/data/masters.json`.
 - `web/` is the review page: Lichess's analysis board and "Learn from your mistakes" panel, ported
   from [lila](https://github.com/lichess-org/lila) (the software behind lichess.org), dealing the
   cards in spaced-repetition order. Your review history is saved to `web/data/reviews.json`.
@@ -36,7 +39,8 @@ You need Node.js, Python 3, git, and a [Lichess API token](https://lichess.org/a
 3. Save your games: put `LICHESS_TOKEN=...` in `pipeline/.env` (it's gitignored), set `USERNAME`
    in `pipeline/save_my_games.py`, and run it from `pipeline` (`python save_my_games.py`; later,
    `--update` adds only new games). The games go to `pipeline/data/games.ndjson`.
-4. Build the deck, from `web`: `npx tsx scripts/buildDeck.ts <your Lichess username>`.
+4. Build the deck, from `web`: `npx tsx scripts/buildDeck.ts <your Lichess username>`. It uses the
+   token from step 3 for the masters database.
 5. Start the page with `npm run dev`, and open the address it prints.
 
 ## Licence

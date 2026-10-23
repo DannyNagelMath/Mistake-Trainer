@@ -87,6 +87,7 @@ export class DeckCtrl {
       onResult: this.onResult,
       ratingChoices: this.ratingChoices,
       suspend: this.suspend,
+      openingUcis: this.card.masterMoves ?? [],
       practiceChoice: this.practiceChoice,
     };
   }

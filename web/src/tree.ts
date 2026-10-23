@@ -38,6 +38,9 @@ export interface LichessGameJson {
   createdAt?: number; // milliseconds since 1970
   speed?: string; // e.g. 'blitz'
   rated?: boolean;
+  // Step 9: the plies where the middlegame and the endgame start, from lila's analysis. Either is
+  // missing if the game never got there.
+  division?: { middle?: number; end?: number };
 }
 
 // Step 9: `user` is absent for the computer and anonymous players.
