@@ -1,5 +1,5 @@
-// settings.ts: Not in lila. The settings you change on the dashboard (dashboard.html): which new
-// cards come first, and how cards are scheduled. schedule.ts reads them. They live in
+// settings.ts: Not in lila. Your settings, which you change on the settings page (settings.html):
+// which new cards come first, and how cards are scheduled. schedule.ts reads them. They live in
 // data/settings.json (gitignored), which the dev server reads and writes for the pages (see
 // vite.config.ts), like your review history. With no file, everything is at its default, and
 // anything missing or out of range in the file is too.
@@ -58,7 +58,7 @@ export const ranges: Record<NumberKey, { min: number; max: number; whole?: boole
 
 export type Problems = Partial<Record<keyof Settings, string>>;
 
-// What's wrong with each setting that's wrong, as a message for the dashboard; {} if nothing is.
+// What's wrong with each setting that's wrong, as a message for the settings page; {} if nothing is.
 export function problems(s: Settings): Problems {
   const found: Problems = {};
   if (!newCardOrders.includes(s.newCardOrder)) found.newCardOrder = 'Choose one of the orders';

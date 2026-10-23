@@ -1,5 +1,5 @@
 /* mistakeTrainer.css: Mistake Trainer's own styles, for the few things lila's stylesheets don't
-   cover. main.ts and dashboard.ts import it, and Vite adds it to the page after lila's. */
+   cover. main.ts and settingsPage.ts import it, and Vite adds it to the page after lila's. */
 
 /* The buttons for how a correct answer went (renderRatingChoices in retroView.ts). They take the
    place of lila's big Next button, in the bottom half of the panel: lila's button style, in an
@@ -16,12 +16,16 @@
   padding: 0.8em 0.4em;
 }
 
-/* The progress box (progressView.ts), where lila has its advice summary. */
+/* The progress box (progressView.ts), in the side panel under the game's details, and boxed
+   like them (lila's .game__meta). */
 .mt-progress {
   display: flex;
   flex-direction: column;
   gap: 0.6em;
-  padding: 0.8em 0;
+  margin-top: var(---block-gap);
+  padding: 1.5em;
+  background: var(--c-bg-box);
+  border-radius: var(---ui-roundness, 7px);
 }
 .mt-progress__counts {
   display: flex;
@@ -39,16 +43,16 @@
   align-self: flex-start;
 }
 
-/* The dashboard (dashboard.html, dashboardView.ts). lila's own settings pages use its form
+/* The settings page (settings.html, settingsPageView.ts). lila's own settings pages use its form
    styles, which aren't in the stylesheets we build, so these lay the form out; the inputs and
    buttons themselves are lila's. */
-.mt-dashboard h2 {
+.mt-settings-page h2 {
   font-size: 1.5em;
   margin: 2em 0 1em;
   padding-bottom: 0.3em;
   border-bottom: 1px solid var(--c-border);
 }
-.mt-dashboard__counts,
+.mt-settings-page__counts,
 .mt-settings__counts {
   color: var(--c-font-dim);
 }

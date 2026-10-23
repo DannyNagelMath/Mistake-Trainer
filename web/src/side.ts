@@ -78,7 +78,8 @@ function playerLink(player: LichessPlayer, withDiff: boolean): VNode {
   ]);
 }
 
-export function renderSide(ctrl: AnalysisCtrl): VNode {
+// Not in lila: `extra` goes under the game's details; the trainer puts its progress box there.
+export function renderSide(ctrl: AnalysisCtrl, extra?: VNode): VNode {
   const game = ctrl.game;
   const finished = game.status !== undefined && status[game.status] >= status.mate;
   const lastPly = ctrl.mainline[ctrl.mainline.length - 1].ply;
@@ -123,5 +124,6 @@ export function renderSide(ctrl: AnalysisCtrl): VNode {
         ),
       ),
     ]),
+    extra,
   ]);
 }

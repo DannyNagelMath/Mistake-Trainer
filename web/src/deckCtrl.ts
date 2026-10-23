@@ -1,6 +1,6 @@
 // deckCtrl.ts: Step 9. Deals the deck's cards into the analysis page in spaced-repetition order
 // (schedule.ts), and records how you did on each one (reviews.ts). Your settings (settings.ts)
-// are read once, when the page loads: change them on the dashboard, then come back.
+// are read once, when the page loads: change them on the settings page, then come back.
 //
 // There's one AnalysisCtrl for the whole session. Each card loads its game into it
 // (loadGame, like lila changing a study chapter), then opens "Learn from your mistakes" in card
@@ -87,6 +87,7 @@ export class DeckCtrl {
       onResult: this.onResult,
       ratingChoices: this.ratingChoices,
       suspend: this.suspend,
+      practiceChoice: this.practiceChoice,
     };
   }
 
@@ -113,6 +114,14 @@ export class DeckCtrl {
   practise = (on: boolean): void => {
     this.practising = on;
     if (!this.next()) this.showEnd();
+  };
+
+  // The end screen's link to the same, when there's something to practise.
+  private practiceChoice = (): { label: string; start: () => void } | undefined => {
+    const n = this.progress().masteredNow;
+    return this.practising || n === 0
+      ? undefined
+      : { label: `Practise mastered cards (${n})`, start: () => this.practise(true) };
   };
 
   // The counts for the progress box.

@@ -188,8 +188,8 @@ test('nextAvailable is when the next card can come up', () => {
 test('after the right first move, the buttons give Hard, Good, and Easy', () => {
   expect(winRatings.map(r => [r.label, r.grade])).toEqual([
     ['Worked it out', Rating.Hard],
-    ['Found it quickly', Rating.Good],
-    ['Obvious', Rating.Easy],
+    ['Looked familiar', Rating.Good],
+    ['Knew it instantly', Rating.Easy],
   ]);
 });
 
@@ -234,7 +234,6 @@ test('mastered cards come up in the regular queue when due, and early when you p
     suspended: 0,
     dueNow: 1, // b/3
     masteredNow: 1,
-    reviewedLastDay: 0,
   });
   expect(progress(deck, h, inTenDays, s)).toMatchObject({ mastered: 1, dueNow: 2 }); // a/1 counts as due too
 });
@@ -247,7 +246,7 @@ test('a card becomes mastered after a few right answers, and a miss puts it back
     schedule = scheduler(s).next(schedule, new Date(schedule.due), Rating.Good).card;
     reviews++;
   }
-  expect(reviews).toBeGreaterThan(1); // "Found it quickly" a few times, on time
+  expect(reviews).toBeGreaterThan(1); // "Looked familiar" a few times, on time
   expect(reviews).toBeLessThan(6);
   const missed = scheduler(s).next(schedule, new Date(schedule.due), Rating.Again).card;
   expect(isMastered(only(missed), card('a/1'), s)).toBe(false);
@@ -277,7 +276,7 @@ test('new cards: collapses first by default, already-won positions always last, 
   expect(pickNext(orderNewCards(cards, s), history(), now, s)?.id).toBe('c/5'); // collapses first by default
 });
 
-// ---------- Settings (settings.ts), from the dashboard ----------
+// ---------- Settings (settings.ts), from the settings page ----------
 
 test('the collapse thresholds, in pawns, are about the winning chances they replaced', () => {
   expect(pawnsToChances(-1.1)).toBeCloseTo(-0.2, 2);

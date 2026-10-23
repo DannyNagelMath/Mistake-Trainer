@@ -2,7 +2,7 @@
 // Our own few styles are in mistakeTrainer.css, which Vite adds after lila's.
 // Step 9: the page reviews the cards in public/data/deck.json (built by scripts/buildDeck.ts),
 // rather than one fixture game, and keeps your review history in data/reviews.json. Your
-// settings, from the dashboard (dashboard.html), are in data/settings.json.
+// settings, from the settings page (settings.html), are in data/settings.json.
 
 import './mistakeTrainer.css';
 import { init, attributesModule, classModule, eventListenersModule, propsModule } from 'snabbdom';

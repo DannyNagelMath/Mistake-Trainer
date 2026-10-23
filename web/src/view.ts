@@ -117,7 +117,8 @@ const renderMoveList = (ctrl: AnalysisCtrl): VNode =>
 // Step 7: the data-active-tool and data-active-mode attributes, which the phone layout's CSS
 // uses. snabbdom leaves an attribute out when its value is false.
 // Trim: no state classes (comp-off, gauge-on, ...) yet.
-// Not in lila: with a deck, the progress box takes the advice summary's place (trainingView).
+// Not in lila: with a deck, the progress box goes in the side panel, under the game's details,
+// where it's in view without scrolling on wide screens. (trainingView shows nothing for cards.)
 export function view(ctrl: AnalysisCtrl, deck?: DeckCtrl): VNode {
   return hl(
     'main.analyse.variant-standard',
@@ -132,8 +133,8 @@ export function view(ctrl: AnalysisCtrl, deck?: DeckCtrl): VNode {
       renderTools(ctrl),
       renderControls(ctrl),
       renderUnderboard(ctrl),
-      deck ? renderProgress(deck) : trainingView(ctrl),
-      renderSide(ctrl),
+      trainingView(ctrl),
+      renderSide(ctrl, deck && renderProgress(deck)),
     ],
   );
 }

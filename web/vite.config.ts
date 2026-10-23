@@ -4,7 +4,7 @@
 //   POST /api/reviews   with { card, entry } saves one review: the card's new schedule and its
 //                       log entry; with { suspend, at } suspends the card with that id, and with
 //                       { unsuspend } brings it back (see reviews.ts)
-//   GET  /api/settings  returns the dashboard's settings ({} if you haven't saved any yet)
+//   GET  /api/settings  returns your settings ({} if you haven't saved any yet)
 //   POST /api/settings  replaces them (see settings.ts, which checks them when a page loads them)
 // They only exist in the dev server (npm run dev), which is how this app runs.
 // To start your review history again, delete data/reviews.json; to go back to the default

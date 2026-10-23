@@ -47,7 +47,7 @@ test('the right first move records nothing until you choose how it went', () => 
   expect(retro().feedback()).toBe('win');
   expect(history.log).toHaveLength(0);
   const choices = retro().card!.ratingChoices();
-  expect(choices?.map(c => c.label)).toEqual(['Worked it out', 'Found it quickly', 'Obvious']);
+  expect(choices?.map(c => c.label)).toEqual(['Worked it out', 'Looked familiar', 'Knew it instantly']);
   choices![0].rate();
   expect(history.log.map(e => [e.result, e.log.rating])).toEqual([['win', Rating.Hard]]);
   expect(retro().card!.ratingChoices()).toBeUndefined(); // graded: the panel offers Next again
@@ -146,10 +146,12 @@ test('practising deals mastered cards; a miss puts the card back in rotation', (
   ctrl.toggleRetro();
   expect(`${ctrl.game.id}/${ctrl.retro!.card!.ply}`).not.toBe(target.id); // not due for 10 days
   expect(deckCtrl.progress()).toMatchObject({ mastered: 1, masteredNow: 1, notStarted: 2 });
+  expect(ctrl.retro!.card!.practiceChoice()?.label).toBe('Practise mastered cards (1)'); // for the end screen
 
-  deckCtrl.practise(true);
+  ctrl.retro!.card!.practiceChoice()!.start();
   expect(`${ctrl.game.id}/${ctrl.retro!.card!.ply}`).toBe(target.id);
   expect(ctrl.retro!.card!.heading()).toBe('Practising mastered cards');
+  expect(ctrl.retro!.card!.practiceChoice()).toBeUndefined(); // practising already
   playGameMove(ctrl); // a miss
   expect(deckCtrl.progress()).toMatchObject({ mastered: 0, inRotation: 1 });
 });

@@ -1,21 +1,21 @@
-// dashboardView.ts: Not in lila. Draws the dashboard (see dashboard.ts): how your cards stand, the
-// settings form, and your suspended cards, each on a small board.
+// settingsPageView.ts: Not in lila. Draws the settings page (see settingsPage.ts): how your cards
+// stand, the settings form, and your suspended cards, each on a small board.
 
 import { Chessground } from '@lichess-org/chessground';
 import { uciToMove } from '@lichess-org/chessground/util';
 import { opposite } from 'chessops';
 import type { VNode } from 'snabbdom';
 
-import type { DashboardCtrl } from './dashboard';
+import type { SettingsPageCtrl } from './settingsPage';
 import type { Card } from './deck';
 import { isAlreadyWon, isCollapse, isOpening, progress } from './schedule';
 import { fixProblems, newCardOrders, problems, ranges, type NewCardOrder, type Settings } from './settings';
 import { hl, onInsert, type LooseVNodes } from './snabbdom';
 import { buildTree, mainline, type LichessGameJson } from './tree';
 
-export function view(ctrl: DashboardCtrl): VNode {
-  return hl('main.page-small.box.box-pad.mt-dashboard', [
-    hl('h1.box__top', 'Dashboard'),
+export function view(ctrl: SettingsPageCtrl): VNode {
+  return hl('main.page-small.box.box-pad.mt-settings-page', [
+    hl('h1.box__top', 'Settings'),
     renderCounts(ctrl),
     renderSettings(ctrl),
     renderSuspended(ctrl),
@@ -24,14 +24,14 @@ export function view(ctrl: DashboardCtrl): VNode {
 
 // The settings the counts are worked out with: the form's, so you can see what a change would do
 // before saving it, except that the saved one stands in for any that doesn't make sense yet.
-const preview = (ctrl: DashboardCtrl): Settings => fixProblems(ctrl.draft, ctrl.saved);
+const preview = (ctrl: SettingsPageCtrl): Settings => fixProblems(ctrl.draft, ctrl.saved);
 
 // The same counts as the trainer's progress box.
-function renderCounts(ctrl: DashboardCtrl): VNode {
+function renderCounts(ctrl: SettingsPageCtrl): VNode {
   if (!ctrl.deck)
     return hl('p', 'No deck yet. Build one from web with: npx tsx scripts/buildDeck.ts <your Lichess username>');
   const p = progress(ctrl.deck.cards, ctrl.history, new Date(), preview(ctrl));
-  return hl('p.mt-dashboard__counts', [
+  return hl('p.mt-settings-page__counts', [
     `Your ${ctrl.deck.cards.length} cards: `,
     [`${p.mastered} mastered`, `${p.inRotation} in rotation`, `${p.notStarted} not started`, `${p.suspended} suspended`].join(
       ' · ',
@@ -67,7 +67,7 @@ function readForm(form: HTMLFormElement): Settings {
   };
 }
 
-function renderSettings(ctrl: DashboardCtrl): VNode {
+function renderSettings(ctrl: SettingsPageCtrl): VNode {
   const shown = ctrl.filledIn;
   const wrong = problems(ctrl.draft);
 
@@ -198,7 +198,7 @@ function renderSettings(ctrl: DashboardCtrl): VNode {
 }
 
 // How many cards each kind of new-card order puts first, with the form's settings.
-function renderCategoryCounts(ctrl: DashboardCtrl): VNode | undefined {
+function renderCategoryCounts(ctrl: SettingsPageCtrl): VNode | undefined {
   if (!ctrl.deck) return;
   const s = preview(ctrl);
   const count = (f: (c: Card) => boolean) => ctrl.deck!.cards.filter(f).length;
@@ -209,7 +209,7 @@ function renderCategoryCounts(ctrl: DashboardCtrl): VNode | undefined {
   );
 }
 
-function renderSuspended(ctrl: DashboardCtrl): VNode {
+function renderSuspended(ctrl: SettingsPageCtrl): VNode {
   const suspended = Object.entries(ctrl.history.suspended ?? {}).sort(([, a], [, b]) => b.localeCompare(a)); // latest first
   return hl('section.mt-suspended', [
     hl('h2', `Suspended cards (${suspended.length})`),
@@ -229,7 +229,7 @@ const date = (t: number | string): string =>
 
 // Each card has its own key, so that when one is unsuspended, snabbdom removes its element
 // rather than reusing it, and its board, for the next card.
-function renderSuspendedCard(ctrl: DashboardCtrl, id: string, at: string): VNode {
+function renderSuspendedCard(ctrl: SettingsPageCtrl, id: string, at: string): VNode {
   const card = ctrl.deck?.cards.find(c => c.id === id);
   const game = card && ctrl.deck!.games[card.gameId];
   const opponent = card && game?.players?.[opposite(card.color)].user?.name;

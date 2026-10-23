@@ -1,7 +1,7 @@
-// progressView.ts: the progress box under the controls, in place of lila's advice summary. It
-// shows how your cards are spread (mastered, in rotation, not started, suspended), what's due
-// now, and how many you've reviewed in the last 24 hours, with the button for practising
-// mastered cards. Not in lila.
+// progressView.ts: the progress box, in the side panel under the game's details (side.ts): on
+// wide screens, that's the space left of the board, which lila leaves to the chat. It shows how
+// your cards are spread (mastered, in rotation, not started, suspended) and how many are due now,
+// with the button for practising mastered cards. Not in lila.
 
 import type { VNode } from 'snabbdom';
 
@@ -13,8 +13,7 @@ const count = (n: number, label: string, title: string): VNode =>
 
 export function renderProgress(deck: DeckCtrl): VNode {
   const p = deck.progress();
-  return hl('div.analyse__round-training', [
-    hl('div.mt-progress', [
+  return hl('div.mt-progress', [
       hl('div.mt-progress__counts', [
         count(
           p.mastered,
@@ -25,7 +24,7 @@ export function renderProgress(deck: DeckCtrl): VNode {
         count(p.notStarted, 'not started', 'New cards'),
         p.suspended > 0 && count(p.suspended, 'suspended', 'Never shown again'),
       ]),
-      hl('div.mt-progress__now', `Due now: ${p.dueNow} · Reviewed in the last 24 hours: ${p.reviewedLastDay}`),
+      hl('div.mt-progress__now', `Due now: ${p.dueNow}`),
       // Each button has its own key, so switching makes a new element: bind's click listener is
       // only added when an element is created.
       deck.practising
@@ -43,6 +42,5 @@ export function renderProgress(deck: DeckCtrl): VNode {
             },
             `Practise mastered cards (${p.masteredNow})`,
           ),
-    ]),
   ]);
 }

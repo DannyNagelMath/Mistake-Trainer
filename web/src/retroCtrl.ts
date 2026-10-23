@@ -69,6 +69,9 @@ export interface RetroCardOpts {
   // it does. Undefined once the card is graded, and in every other case.
   ratingChoices(): { label: string; rate: () => void }[] | undefined;
   suspend(): void; // "Suspend card": it never comes up again; the next card is dealt
+  // For the end of a regular session: the link for practising mastered cards, or undefined when
+  // there are none to practise, or you're practising already.
+  practiceChoice(): { label: string; start: () => void } | undefined;
 }
 
 export type CardResult = 'win' | 'fail' | 'view' | 'skip'; // Step 9

@@ -23,7 +23,7 @@ export interface ReviewHistory {
   cards: Record<string, CardInput>; // FSRS schedule by card id, for every card reviewed at least once
   log: ReviewEntry[]; // oldest first
   // Cards you've suspended ("Suspend card"): when, by card id. They never come up again, unless
-  // you unsuspend them on the dashboard. Older files don't have this.
+  // you unsuspend them on the settings page. Older files don't have this.
   suspended?: Record<string, string>;
 }
 
@@ -46,7 +46,7 @@ export async function saveSuspension(cardId: string, at: string): Promise<void> 
   if (!response.ok) throw new Error(`Couldn't save the suspension: ${response.status} ${await response.text()}`);
 }
 
-// Saves an unsuspension, from the dashboard: the card can come up again.
+// Saves an unsuspension, from the settings page: the card can come up again.
 export async function saveUnsuspension(cardId: string): Promise<void> {
   const response = await fetch('/api/reviews', {
     method: 'POST',

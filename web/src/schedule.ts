@@ -13,7 +13,7 @@
 // Mastered cards (see isMastered) come up when they're due, like any other, which is rarely;
 // "Practise mastered cards" also deals them early, on request (pickMastered). Suspended cards
 // never come up.
-// The numbers come from your settings (settings.ts, changed on the dashboard), which most
+// The numbers come from your settings (settings.ts, changed on the settings page), which most
 // functions here take as `s`.
 // This file also has the grades for what you do on a card (gradeOf and winRatings). They're
 // plain functions and values, so schedule.test.ts can check them without a page.
@@ -85,11 +85,12 @@ export const withMinimumGap = (due: Date | string, reviewedAt: Date | string, ga
 // without choosing, it counts as Good, which gradeOf gives for 'win'.
 export const gradeOf = (result: CardResult): Grade => (result === 'win' ? Rating.Good : Rating.Again);
 
-// The buttons after the right first move.
+// The buttons after the right first move, from the least to the most from memory: the more you
+// just remembered a position, the further away FSRS puts it, so that next time you have to think.
 export const winRatings: { label: string; grade: Grade }[] = [
   { label: 'Worked it out', grade: Rating.Hard },
-  { label: 'Found it quickly', grade: Rating.Good },
-  { label: 'Obvious', grade: Rating.Easy },
+  { label: 'Looked familiar', grade: Rating.Good },
+  { label: 'Knew it instantly', grade: Rating.Easy },
 ];
 
 const dueTime = (history: ReviewHistory, card: Card): number => new Date(history.cards[card.id].due).getTime();
@@ -185,7 +186,6 @@ export interface Progress {
   suspended: number;
   dueNow: number; // due, mastered or not, and its game not waiting
   masteredNow: number; // mastered, and its game not waiting: what "Practise mastered cards" can deal
-  reviewedLastDay: number;
 }
 
 export function progress(deck: Card[], history: ReviewHistory, now: Date, s: Settings): Progress {
@@ -199,8 +199,6 @@ export function progress(deck: Card[], history: ReviewHistory, now: Date, s: Set
     suspended: deck.length - active.length,
     dueNow: queues(deck, history, now, s).due.length,
     masteredNow: masteredQueue(deck, history, now, s).length,
-    reviewedLastDay: history.log.filter(e => reviewTime(e) > now.getTime() - DAY && reviewTime(e) <= now.getTime())
-      .length,
   };
 }
 

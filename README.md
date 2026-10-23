@@ -21,8 +21,9 @@ on Lichess's open-source code, with gratitude: if you find it useful, please con
 - `web/` is the review page: Lichess's analysis board and "Learn from your mistakes" panel, ported
   from [lila](https://github.com/lichess-org/lila) (the software behind lichess.org), dealing the
   cards in spaced-repetition order. Your review history is saved to `web/data/reviews.json`.
-  Its dashboard (the link at the top right) has your settings, such as which new cards come first
-  and how far apart reviews are, saved to `web/data/settings.json`, and the cards you've suspended.
+  Its Settings page (the link at the top right) is where you choose, for example, which new cards
+  come first and how far apart reviews are (saved to `web/data/settings.json`), and where you can
+  bring back cards you've suspended.
 
 ## Running it
 

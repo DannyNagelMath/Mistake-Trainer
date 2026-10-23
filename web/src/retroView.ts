@@ -146,6 +146,7 @@ const feedback = {
         ),
       ];
     // Step 9: in card mode, nothing more is due. The text isn't one of lila's translations.
+    const practice = ctrl.card?.practiceChoice();
     if (ctrl.card)
       return [
         hl('div.player', [
@@ -154,6 +155,7 @@ const feedback = {
             hl('em', ctrl.card.summary()),
             hl('div.choices.end', [
               hl('a', { key: 'restart', hook: bind('click', ctrl.card.restart) }, 'Check for due cards'),
+              practice && hl('a', { key: 'practise', hook: bind('click', practice.start) }, practice.label),
             ]),
           ]),
         ]),
