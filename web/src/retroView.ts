@@ -12,6 +12,7 @@ import { i18n } from './i18n';
 import { licon } from './licon';
 import type { RetroCtrl } from './retroCtrl';
 import { bind, hl } from './snabbdom';
+import type { TreeNode } from './tree';
 
 // ---------- Stand-ins for things lila imports from its lib ----------
 
@@ -41,10 +42,22 @@ const renderRatingChoices = (choices: { label: string; rate: () => void }[]): VN
     choices.map(c => hl('button.button', { hook: bind('click', c.rate) }, c.label)),
   );
 
-// Trim: lila fills this bar as the local engine searches deeper (from node.ceval.depth) while it
-// checks a move that is neither the game move nor the engine's. There's no engine yet, so
-// retroCtrl never asks, and this stays empty.
-const renderEvalProgress = (): VNode => hl('div.progress', hl('div', { attrs: { style: 'width: 0' } }));
+// Fills as the engine searches deeper, while it checks a move that is neither the game move nor
+// the engine's.
+const minDepth = 8;
+const maxDepth = 18;
+
+const renderEvalProgress = (node: TreeNode): VNode =>
+  hl(
+    'div.progress',
+    hl('div', {
+      attrs: {
+        style: `width: ${
+          node.ceval ? (100 * Math.max(0, node.ceval.depth - minDepth)) / (maxDepth - minDepth) + '%' : 0
+        }`,
+      },
+    }),
+  );
 
 const feedback = {
   find(ctrl: RetroCtrl): VNode[] {
@@ -124,13 +137,13 @@ const feedback = {
       jumpToNext(ctrl),
     ];
   },
-  eval(_ctrl: RetroCtrl): VNode[] {
+  eval(ctrl: RetroCtrl): VNode[] {
     return [
       hl(
         'div.half.top',
         hl(
           'div.player.center',
-          hl('div.instruction', [hl('strong', i18n.site.evaluatingYourMove), renderEvalProgress()]),
+          hl('div.instruction', [hl('strong', i18n.site.evaluatingYourMove), renderEvalProgress(ctrl.node())]),
         ),
       ),
     ];

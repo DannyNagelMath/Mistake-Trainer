@@ -6,6 +6,7 @@
 //                       { unsuspend } brings it back (see reviews.ts)
 //   GET  /api/settings  returns your settings ({} if you haven't saved any yet)
 //   POST /api/settings  replaces them (see settings.ts, which checks them when a page loads them)
+// It also serves Stockfish to the page at /stockfish/ (see stockfishFiles below).
 // They only exist in the dev server (npm run dev), which is how this app runs.
 // To start your review history again, delete data/reviews.json; to go back to the default
 // settings, delete data/settings.json. To use other files, e.g. for testing, set the
@@ -107,4 +108,22 @@ function dataApi(): Plugin {
   };
 }
 
-export default defineConfig({ plugins: [dataApi()] });
+// Serves the Stockfish engine files (src/engine.ts) at /stockfish/, straight from the npm package
+// `stockfish`, so they're always the installed version. Only files named like its engines, and
+// with the content types the browser needs to run them.
+function stockfishFiles(): Plugin {
+  const dir = fileURLToPath(new URL('./node_modules/stockfish/bin/', import.meta.url));
+  return {
+    name: 'stockfish-files',
+    configureServer(server) {
+      server.middlewares.use('/stockfish/', (req, res, next) => {
+        const name = (req.url ?? '').split('?')[0].replace(/^\//, '');
+        if (!/^stockfish-[\w.-]+\.(js|wasm)$/.test(name) || !existsSync(dir + name)) return next();
+        res.setHeader('Content-Type', name.endsWith('.wasm') ? 'application/wasm' : 'text/javascript');
+        res.end(readFileSync(dir + name));
+      });
+    },
+  };
+}
+
+export default defineConfig({ plugins: [dataApi(), stockfishFiles()] });

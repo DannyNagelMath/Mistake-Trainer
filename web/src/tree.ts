@@ -7,6 +7,8 @@ import { parseSan } from 'chessops/san';
 import { makeUci } from 'chessops/util';
 import { scalachessCharPair } from 'chessops/compat';
 
+import type { EngineEval } from './engine';
+
 // ---------- Input: only the fields of the API's game JSON that we use ----------
 
 const GLYPHS = {
@@ -68,6 +70,9 @@ export interface TreeNode {
   uci?: string;
   san?: string;
   eval?: { cp?: number; mate?: number };
+  // lila's ceval: Stockfish's evaluation of the position, in the browser, while it searches.
+  // Only set on a move you try that retroCtrl has to check (see engine.ts).
+  ceval?: EngineEval;
   comp?: boolean; // only the first node of an engine line is marked comp = true
   glyphs?: { id: number; symbol: string; name: string }[];
   comments?: TreeComment[]; // Step 6: e.g. "Mistake. Nf3 was best." by 'lichess', on the judged move

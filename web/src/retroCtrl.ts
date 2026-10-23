@@ -1,12 +1,14 @@
 // retroCtrl.ts: the "Learn from your mistakes" state machine, trimmed from lila's
 // ui/analyse/src/retrospect/retroCtrl.ts (master, commit 27ffc8b).
 // Every change from lila's version is marked with a comment starting "Trim:", except card
-// mode (reviewing a single mistake from the deck), whose additions are marked "Step 9:".
+// mode (reviewing a single mistake from the deck), whose additions are marked "Step 9:", and
+// other additions, marked "Not in lila:".
 
 import type { Color } from 'chessops';
 
 import { evalSwings } from './nodeFinder';
 import type { TreeNode } from './tree';
+import * as winningChances from './winningChances';
 
 // ---------- Stand-ins for things lila provides globally or in its lib ----------
 
@@ -50,6 +52,9 @@ export interface RetroRoot {
   redraw: Redraw;
   flip(): void; // flip the board; if retro is open, restart it for the new bottom color
   toggleRetro(): void; // open or close "Learn from your mistakes"
+  // Not in lila, whose engine evaluates every position the board shows: start Stockfish on a
+  // move to check. It sets node.ceval as it searches, and calls retro.onCeval each time.
+  evaluateNode(node: TreeNode): void;
   card?: RetroCardOpts; // Step 9: set when reviewing a card, rather than a whole game
 }
 
@@ -197,13 +202,31 @@ export function make(root: RetroRoot, color: Color): RetroCtrl {
         onWin(); // found in opening explorer, checkmate ends the game, or comp solution line
       else if (node.eval)
         onFail(); // the move that was played in the game
-      else
-        onFail(); // Trim: lila asks the engine whether this other move is also good enough. No engine yet.
+      else {
+        feedback('eval');
+        root.evaluateNode(node); // Not in lila: there, the engine is already on it
+        checkCeval();
+      }
     } else if (isSolving() && cur.prev.path !== root.path) feedback('offTrack');
     root.setAutoShapes();
   }
 
-  // Trim: removed isCevalReady and checkCeval (the engine check above).
+  // Trim: lila lets other pages (api.overrides) say when the engine has searched enough.
+  const isCevalReady = (node: TreeNode): boolean => {
+    if (!node.ceval) return false;
+    return Boolean(node.ceval.bestmove || node.ceval.nodes >= 1_000_000 || (node.ceval.millis ?? 0) > 3000);
+  };
+
+  function checkCeval(): void {
+    const node = root.node,
+      cur = current();
+    if (!cur || feedback() !== 'eval' || cur.fault.node.ply !== node.ply) return;
+    if (isCevalReady(node)) {
+      const diff = winningChances.povDiff(color, node.ceval!, cur.prev.node.eval!);
+      if (diff > -0.04) onWin();
+      else onFail();
+    }
+  }
 
   function onWin(): void {
     card?.onResult('win'); // Step 9
@@ -268,7 +291,7 @@ export function make(root: RetroRoot, color: Color): RetroCtrl {
     viewSolution,
     hideComputerLine,
     showBadNode,
-    onCeval: () => {}, // Trim: was checkCeval.
+    onCeval: checkCeval,
     onMergeAnalysisData,
     feedback,
     isSolving,

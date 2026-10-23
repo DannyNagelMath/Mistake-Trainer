@@ -15,6 +15,7 @@ import { toggle, type Toggle } from './common';
 import { ForkCtrl } from './fork';
 import Navigate from './navigate';
 import { nextGlyphSymbol } from './nodeFinder';
+import { evaluate } from './engine';
 import { make as makeRetro, type RetroCardOpts, type RetroCtrl, type RetroRoot } from './retroCtrl';
 import * as treeOps from './tree';
 import { TreeView } from './treeView';
@@ -302,6 +303,18 @@ export class AnalysisCtrl implements RetroRoot {
 
   // redraw removed in step 4a-2
   // redraw = (): void => {}; // Step 4: re-render the page.
+
+  // Not in lila, whose engine evaluates every position the board shows: Stockfish evaluates
+  // a move retroCtrl has to check (engine.ts). node.ceval follows the search as it goes deeper,
+  // as in lila, and retroCtrl judges the move once the engine has searched enough.
+  evaluateNode = (node: TreeNode): void => {
+    const update = (ceval: TreeNode['ceval']) => {
+      node.ceval = ceval;
+      this.retro?.onCeval();
+      this.redraw();
+    };
+    evaluate(node.fen, update).then(update, (e: Error) => alert(`Stockfish couldn't check your move: ${e.message}`));
+  };
 
   // Like lila's flip: if "Learn from your mistakes" is open, restart it for the new bottom color.
   // That's how the panel's "Review Black's mistakes" button works.

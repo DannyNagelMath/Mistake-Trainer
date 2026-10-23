@@ -23,7 +23,9 @@ on Lichess's open-source code, with gratitude: if you find it useful, please con
   and saves the answers in `pipeline/data/masters.json`.
 - `web/` is the review page: Lichess's analysis board and "Learn from your mistakes" panel, ported
   from [lila](https://github.com/lichess-org/lila) (the software behind lichess.org), dealing the
-  cards in spaced-repetition order. Your review history is saved to `web/data/reviews.json`.
+  cards in spaced-repetition order. As on Lichess, a move other than the engine's best is checked by
+  [Stockfish](https://stockfishchess.org/), running in the browser: it counts as right if it's
+  nearly as good. Your review history is saved to `web/data/reviews.json`.
   Its Settings page (the link at the top right) is where you choose, for example, which new cards
   come first and how far apart reviews are (saved to `web/data/settings.json`), and where you can
   bring back cards you've suspended.
@@ -71,7 +73,9 @@ you must offer them its source code.
   [chessops](https://github.com/niklasf/chessops) (GPL-3.0-or-later),
   [python-chess](https://github.com/niklasf/python-chess) (GPL-3.0-or-later),
   [snabbdom](https://github.com/snabbdom/snabbdom), [ts-fsrs](https://github.com/open-spaced-repetition/ts-fsrs),
-  and [Chart.js](https://www.chartjs.org/) (MIT), and development tools under MIT or Apache 2.0.
+  and [Chart.js](https://www.chartjs.org/) (MIT),
+  [stockfish.js](https://github.com/nmrugg/stockfish.js), Stockfish compiled to WebAssembly
+  (GPL-3.0), and development tools under MIT or Apache 2.0.
 - lila's stylesheets, fonts, piece set, and board images aren't included either: step 2 above builds
   them from your own copy of lila, into `web/public/lila` (gitignored). They keep their own licences,
   listed in lila's

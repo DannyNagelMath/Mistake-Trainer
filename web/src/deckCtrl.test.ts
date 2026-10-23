@@ -1,7 +1,7 @@
 // deckCtrl.test.ts: checks how DeckCtrl grades a card. A wrong first move, "View the solution",
 // or "Skip" is Again at once; the right first move waits for you to choose Hard, Good, or Easy.
 // Moves are played through the controller, the way the board plays them. Saving is stubbed out,
-// so nothing is written anywhere.
+// so nothing is written anywhere, and Stockfish, which needs a browser, has a stand-in.
 import { makeUci } from 'chessops';
 import { Chess } from 'chessops/chess';
 import { parseFen } from 'chessops/fen';
@@ -13,8 +13,20 @@ import type { AnalysisCtrl } from './analysisCtrl';
 import { cardsOfGame, mistakeOf, type Card, type Deck } from './deck';
 import { DeckCtrl } from './deckCtrl';
 import type { ReviewHistory } from './reviews';
+import type { EngineEval } from './engine';
 import { defaultSettings, type Settings } from './settings';
 import type { LichessGameJson } from './tree';
+
+// The stand-in for Stockfish (engine.ts): it reports each of `updates` as the search goes deeper,
+// the last one as its final answer. vi.mock replaces the module for everything this file uses.
+const engine = vi.hoisted(() => ({ updates: [] as EngineEval[], asked: [] as string[] }));
+vi.mock('./engine', () => ({
+  evaluate: async (fen: string, onInfo: (e: EngineEval) => void) => {
+    engine.asked.push(fen);
+    engine.updates.slice(0, -1).forEach(onInfo);
+    return engine.updates.at(-1)!;
+  },
+}));
 
 const game = real1 as unknown as LichessGameJson;
 const deck: Deck = { username: 'mugglesman1982', builtAt: '', games: { [game.id]: game }, cards: cardsOfGame(game, 'white') };
@@ -22,6 +34,8 @@ const deck: Deck = { username: 'mugglesman1982', builtAt: '', games: { [game.id]
 let saved: unknown[]; // what the page sent to save
 beforeEach(() => {
   saved = [];
+  engine.updates = [];
+  engine.asked = [];
   vi.stubGlobal(
     'fetch',
     vi.fn(async (_url: string, init: RequestInit) => {
@@ -181,16 +195,65 @@ const legalMoves = (fen: string): string[] => {
   return [...pos.allDests()].flatMap(([from, tos]) => [...tos].map(to => makeUci({ from, to })));
 };
 
-test("a move masters have played counts as a right answer, like the engine's, as in lila", () => {
-  const [card] = deck.cards;
+// A legal move at the card's position that is neither the game move nor the engine's best.
+function otherMove(card: Card): string {
   const { fen, uci: played } = mistakeOf(game, card);
-  const other = legalMoves(fen).find(m => m !== played && m !== game.analysis![card.ply - 1].best)!;
-  const feedbackAfter = (shown: Card) => {
-    const deckCtrl = new DeckCtrl({ ...deck, cards: [shown] }, { cards: {}, log: [] }, defaultSettings, () => {});
-    deckCtrl.analysis.toggleRetro();
-    deckCtrl.analysis.playUci(other);
-    return deckCtrl.analysis.retro!.feedback();
+  return legalMoves(fen).find(m => m !== played && m !== game.analysis![card.ply - 1].best)!;
+}
+
+// A session on just this card, with the panel open on it.
+function startOn(card: Card) {
+  const history: ReviewHistory = { cards: {}, log: [] };
+  const deckCtrl = new DeckCtrl({ ...deck, cards: [card] }, history, defaultSettings, () => {});
+  deckCtrl.analysis.toggleRetro();
+  return { history, ctrl: deckCtrl.analysis, feedback: () => deckCtrl.analysis.retro!.feedback() };
+}
+const afterTheEngine = () => new Promise(resolve => setTimeout(resolve, 0)); // its answer is a promise
+
+// The first card is 20.Qh4??, which gave up a forced mate.
+const evaluation = (score: { cp?: number; mate?: number }, nodes = 1_000_000): EngineEval => ({
+  ...score,
+  depth: 18,
+  nodes,
+  millis: 1500,
+});
+
+test("a move masters have played counts as a right answer at once, like the engine's, as in lila", () => {
+  const [card] = deck.cards;
+  const other = otherMove(card);
+  const { ctrl, feedback } = startOn({ ...card, masterMoves: [other] });
+  ctrl.playUci(other);
+  expect(feedback()).toBe('win');
+  expect(engine.asked).toEqual([]); // no need for Stockfish
+});
+
+test('any other move goes to Stockfish: right if within 0.08 winning chances of the best, as in lila', async () => {
+  const [card] = deck.cards;
+  const tryMove = async (answer: EngineEval) => {
+    engine.updates = [answer];
+    const session = startOn(card);
+    session.ctrl.playUci(otherMove(card));
+    const meanwhile = session.feedback();
+    await afterTheEngine();
+    return { meanwhile, then: session.feedback(), log: session.history.log };
   };
-  expect(feedbackAfter(card)).toBe('fail');
-  expect(feedbackAfter({ ...card, masterMoves: [other] })).toBe('win');
+  const stillMates = await tryMove(evaluation({ mate: 4 }));
+  expect(stillMates.meanwhile).toBe('eval'); // "Evaluating your move ..."
+  expect(stillMates.then).toBe('win'); // then the rating buttons, as after the engine's move
+  const onlyLevel = await tryMove(evaluation({ cp: 0 }));
+  expect(onlyLevel.then).toBe('fail');
+  expect(onlyLevel.log.map(e => [e.result, e.log.rating])).toEqual([['fail', Rating.Again]]);
+});
+
+test('the move is judged once Stockfish has searched enough: 1,000,000 positions, 3 seconds, or done', async () => {
+  const [card] = deck.cards;
+  engine.updates = [
+    evaluation({ cp: 0 }, 300_000), // early in the search it looks bad, but that's too soon to say...
+    evaluation({ mate: 4 }), // ...and after 1,000,000 positions it's fine
+  ];
+  const { ctrl, feedback } = startOn(card);
+  ctrl.playUci(otherMove(card));
+  expect(feedback()).toBe('eval');
+  await afterTheEngine();
+  expect(feedback()).toBe('win');
 });
