@@ -12,6 +12,7 @@ import type { DeckCtrl } from './deckCtrl';
 import renderClocks from './clocks';
 import { stepwiseScroll } from './common';
 import { renderResult } from './components';
+import { renderCeval, renderPvs } from './cevalView';
 import { renderControls } from './controls';
 import { renderGauge } from './evalGauge';
 import { view as forkView } from './fork';
@@ -93,10 +94,15 @@ function renderBoard(ctrl: AnalysisCtrl): VNode {
 // Like lila's renderTools (view/tools.ts). Step 5: the "Learn from your mistakes" panel.
 // Step 6: the move list above it. Step 7: the choice of continuations, and the ☰ menu, which
 // the CSS places over the move list.
-// Trim: no engine lines, explorer, or practice mode.
+// Trim: no explorer or practice mode.
 // hl leaves out retroView's result when it's undefined, i.e. when the panel is closed.
+// The engine's box and its line, above the move list, as in lila, only once a card is done
+// (isCevalAllowed). Trim: lila doesn't show them on a phone unless you ask (showCeval).
 function renderTools(ctrl: AnalysisCtrl): VNode {
+  const showCeval = ctrl.isCevalAllowed();
   return hl('div.analyse__tools', [
+    showCeval && renderCeval(ctrl),
+    showCeval && renderPvs(ctrl),
     renderMoveList(ctrl),
     forkView(ctrl),
     retroView(ctrl),

@@ -7,6 +7,7 @@
 //   shift+left / shift+right (or shift+k / shift+j): previous / next variation
 //   shift+c: show or hide comments   shift+i: inline or two-column move list
 //   z: show or hide Lichess's analysis   a: show or hide the best move arrows
+//   l: switch the engine on or off
 //   h: open or close the menu        f: flip the board
 
 import type { AnalysisCtrl } from './analysisCtrl';
@@ -51,9 +52,10 @@ export const bind = (ctrl: AnalysisCtrl) => {
     })
     .bind('f', ctrl.flip)
     .bind('z', () => ctrl.settings.set('showStaticAnalysis', !ctrl.settings.showStaticAnalysis))
-    .bind('a', () => ctrl.settings.set('showBestMoveArrows', !ctrl.settings.showBestMoveArrows));
-  // Trim: lila also has b (board editor), ? (keyboard help), l (engine), v (variation arrows),
-  // x (threat), and e (opening explorer).
+    .bind('a', () => ctrl.settings.set('showBestMoveArrows', !ctrl.settings.showBestMoveArrows))
+    .bind('l', () => ctrl.cevalEnabled(!ctrl.cevalEnabled()));
+  // Trim: lila also has b (board editor), ? (keyboard help), v (variation arrows), x (threat),
+  // and e (opening explorer).
 
   kbd
     .bind(['shift+left', 'shift+k'], () => {

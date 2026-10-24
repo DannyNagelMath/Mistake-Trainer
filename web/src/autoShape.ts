@@ -27,12 +27,12 @@ export function compute(ctrl: AnalysisCtrl): DrawShape[] {
   const badNode = ctrl.showBadMoveArrow ? ctrl.retro?.showBadNode() : undefined;
   if (badNode?.uci) return makeShapesFromUci(badNode.uci, 'paleRed', { lineWidth: 8 });
   // Green: what Lichess's analysis says should have been played instead of the move that led here.
-  // Blue: the best move from here, for the game's moves, from Lichess's analysis.
-  // Trim: lila also checks the engine is allowed here (isCevalAllowed). When its engine is on,
-  // the engine's best move is the blue arrow, with paler ones for its other lines.
+  // Blue: the best move from here: the engine's, or for the game's moves, Lichess's analysis's.
+  // Trim: lila also checks the engine is allowed here (isCevalAllowed), and lets you have several
+  // engine lines, with a paler arrow for each of the others.
   if (ctrl.showBestMoveArrows() && ctrl.showEvaluation()) {
     if (ctrl.node.eval?.best) shapes = shapes.concat(makeShapesFromUci(ctrl.node.eval.best, 'paleGreen'));
-    const nextBest = ctrl.nextNodeBest();
+    const nextBest = ctrl.node.ceval?.pv?.[0] || ctrl.nextNodeBest();
     if (nextBest) shapes = shapes.concat(makeShapesFromUci(nextBest, 'paleBlue'));
   }
   if (ctrl.showMoveAnnotations()) shapes = shapes.concat(annotationShapes(ctrl.node));

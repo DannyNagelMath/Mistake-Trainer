@@ -21,15 +21,27 @@ import { defaultSettings, type Settings } from './settings';
 import { renderSide } from './side';
 import type { LichessGameJson } from './tree';
 
-// The stand-in for Stockfish (engine.ts): it reports each of `updates` as the search goes deeper,
-// the last one as its final answer. vi.mock replaces the module for everything this file uses.
-const engine = vi.hoisted(() => ({ updates: [] as EngineEval[], asked: [] as string[] }));
+// The stand-in for Stockfish (engine.ts). A move check reports each of `updates` as the search
+// goes deeper, the last one as its final answer. Live analysis is noted in `analyses`, for the
+// test to report on. vi.mock replaces the module for everything this file uses.
+type Analysis = { fen: string; onInfo: (e: EngineEval) => void };
+const engine = vi.hoisted(() => ({
+  updates: [] as EngineEval[],
+  asked: [] as string[],
+  analyses: [] as Analysis[],
+  stops: 0,
+}));
 vi.mock('./engine', () => ({
   evaluate: async (fen: string, onInfo: (e: EngineEval) => void) => {
     engine.asked.push(fen);
     engine.updates.slice(0, -1).forEach(onInfo);
     return engine.updates.at(-1)!;
   },
+  analyse: (fen: string, onInfo: (e: EngineEval) => void) => engine.analyses.push({ fen, onInfo }),
+  stopAnalysis: () => engine.stops++,
+  isAnalysing: () => false,
+  ANALYSIS_MILLIS: 8000,
+  ENGINE_NAME: 'Stockfish',
 }));
 
 const game = real1 as unknown as LichessGameJson;
@@ -40,6 +52,8 @@ beforeEach(() => {
   saved = [];
   engine.updates = [];
   engine.asked = [];
+  engine.analyses = [];
+  engine.stops = 0;
   vi.stubGlobal(
     'fetch',
     vi.fn(async (_url: string, init: RequestInit) => {
@@ -283,4 +297,24 @@ test("while solving, no evaluation and no best move arrows; once done, Lichess's
   ctrl.settings.set('showBestMoveArrows', false); // the setting in the menu
   expect(arrows()).toEqual([]);
   ctrl.settings.set('showBestMoveArrows', true);
+});
+
+test("the engine stays off while you're solving; once done, it analyses the position on the board", () => {
+  const card = deck.cards[1]; // not the first card, whose solution is checkmate: nothing to analyse
+  const { ctrl } = startOn(card);
+  const blueArrows = () => autoShapes(ctrl).filter(s => s.brush === 'paleBlue').map(s => s.orig + s.dest);
+  ctrl.cevalEnabled(true); // switching it on while solving does nothing
+  expect(ctrl.cevalEnabled()).toBe(false);
+  expect(engine.analyses).toEqual([]);
+  playSolution(ctrl);
+  expect(ctrl.cevalEnabled()).toBe(false); // still off once done: it wasn't switched on for later
+  ctrl.cevalEnabled(true);
+  expect(ctrl.cevalEnabled()).toBe(true);
+  expect(engine.analyses.map(a => a.fen)).toEqual([ctrl.node.fen]); // the position after the solution
+  engine.analyses[0].onInfo({ cp: 120, depth: 14, nodes: 500_000, millis: 1200, pv: ['a2a3', 'a7a6'] });
+  expect(ctrl.node.ceval?.depth).toBe(14);
+  expect(blueArrows()).toEqual(['a2a3']); // the engine's best move
+  const stops = engine.stops;
+  ctrl.cevalEnabled(false);
+  expect(engine.stops).toBe(stops + 1);
 });

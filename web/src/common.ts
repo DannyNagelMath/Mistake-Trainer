@@ -1,5 +1,6 @@
 // common.ts: small helpers from lila's ui/lib (master, commit 27ffc8b): toggle, repeater, and
-// blurIfPrimaryClick from src/common.ts, isTouchDevice, isMac, and displayColumns from src/device.ts,
+// blurIfPrimaryClick from src/common.ts, storedBooleanProp from src/storage.ts,
+// isTouchDevice, isMac, and displayColumns from src/device.ts,
 // addPointerListeners from src/pointer.ts, and stepwiseScroll from src/view/stepwiseScroll.ts.
 // Every change from lila's version is marked with a comment starting "Trim:".
 
@@ -49,6 +50,27 @@ export function blurIfPrimaryClick(e: Event): void {
   const target = document.activeElement;
   if (target instanceof HTMLElement && e.button === 0 && (e.clientX || e.clientY))
     requestAnimationFrame(() => target.blur());
+}
+
+// ---------- storage.ts ----------
+
+// A true/false the browser remembers (localStorage): read it with p(), set it with p(value).
+// Not in lila: where there's no storage (the tests), it works for the page's lifetime.
+export function storedBooleanProp(key: string, defaultValue: boolean): (value?: boolean) => boolean {
+  let value = defaultValue;
+  try {
+    const stored = localStorage.getItem(key);
+    if (stored !== null) value = stored === 'true';
+  } catch {}
+  return (v?: boolean) => {
+    if (v !== undefined) {
+      value = v;
+      try {
+        localStorage.setItem(key, String(v));
+      } catch {}
+    }
+    return value;
+  };
 }
 
 // ---------- device.ts ----------

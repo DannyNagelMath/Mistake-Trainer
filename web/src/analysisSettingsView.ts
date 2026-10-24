@@ -120,8 +120,8 @@ const keys = (shortcuts: string[]): (VNode | string)[] =>
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
 // lila's helpHtml: the keyboard shortcuts.
-// Trim: lila lists "Toggle local engine" (l), as we have no engine display, and has a "More"
-// button for its full list of shortcuts. Not in lila: instead, ours are all here.
+// Trim: lila has a "More" button for its full list of shortcuts. Not in lila: instead, ours are
+// all here.
 function helpView(): VNode {
   const shortcut = (label: string, shortcuts: string[]) => hl('div.setting.inert', [label, hl('span', keys(shortcuts))]);
   return hl(
@@ -129,6 +129,7 @@ function helpView(): VNode {
     hl('fieldset.help-pane', { attrs: { 'data-key': 'keyboardShortcuts' } }, [
       hl('legend', i18n.site.keyboardShortcuts),
       shortcut(i18n.site.flipBoard, ['f']),
+      shortcut(i18n.site.toggleLocalEngine, ['l']),
       (Object.keys(settings) as SettingKey[]).map(
         key => settings[key].shortcut && shortcut(settings[key].label, settings[key].shortcut!),
       ),

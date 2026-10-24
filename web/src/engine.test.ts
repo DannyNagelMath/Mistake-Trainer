@@ -6,9 +6,10 @@ import { parseInfo } from './engine';
 
 const line = 'info depth 14 seldepth 20 multipv 1 score cp 35 nodes 812345 nps 450000 time 1805 pv e2e4 e7e5';
 
-test('an info line gives the score from White’s side, and how far the search got', () => {
-  expect(parseInfo(line, true)).toEqual({ cp: 35, depth: 14, nodes: 812345, millis: 1805 });
-  expect(parseInfo(line, false)).toEqual({ cp: -35, depth: 14, nodes: 812345, millis: 1805 }); // Black to move
+test('an info line gives the score from White’s side, how far the search got, and the line', () => {
+  const pv = ['e2e4', 'e7e5'];
+  expect(parseInfo(line, true)).toEqual({ cp: 35, depth: 14, nodes: 812345, millis: 1805, pv });
+  expect(parseInfo(line, false)).toEqual({ cp: -35, depth: 14, nodes: 812345, millis: 1805, pv }); // Black to move
   expect(parseInfo(line.replace('cp 35', 'mate -3'), false)).toMatchObject({ mate: 3 }); // Black is mated: White mates
 });
 

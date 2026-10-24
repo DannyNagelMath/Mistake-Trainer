@@ -13,11 +13,11 @@ import type { Key } from '@lichess-org/chessground/types'; // Step 3a
 
 import { AnalysisSettingsCtrl } from './analysisSettings';
 import { compute as computeAutoShapes } from './autoShape';
-import { displayColumns, toggle, type Toggle } from './common';
+import { displayColumns, storedBooleanProp, toggle, type Toggle } from './common';
 import { ForkCtrl } from './fork';
 import Navigate from './navigate';
 import { nextGlyphSymbol } from './nodeFinder';
-import { evaluate } from './engine';
+import { analyse, evaluate, stopAnalysis, type EngineEval } from './engine';
 import { make as makeRetro, type RetroCardOpts, type RetroCtrl, type RetroRoot } from './retroCtrl';
 import * as treeOps from './tree';
 import { TreeView } from './treeView';
@@ -101,6 +101,12 @@ export class AnalysisCtrl implements RetroRoot {
   // Not in lila: lila always draws the move you played in the game as a pale red arrow while you
   // look for a better one. Off here; set it to true to bring the arrow back.
   readonly showBadMoveArrow = false;
+  // From lila: whether you've switched the engine on (the switch above the move list, or l). As in
+  // lila, the browser remembers it, and it's off to begin with.
+  private readonly cevalEnabledProp = storedBooleanProp('engine.enabled', false);
+  // Not in lila: the positions the engine has analysed to the end, so going back to one doesn't
+  // start again. (lila keeps the best analysis of each position in its own way.)
+  private readonly analysed = new WeakSet<TreeNode>();
 
   // Step 7: navigation and the menu.
   fork!: ForkCtrl; // the choice of continuations shown under the move list
@@ -125,6 +131,7 @@ export class AnalysisCtrl implements RetroRoot {
   // Step 9: set up for a game, like lila's initialize, which its constructor calls too.
   // Trim: lila reads the orientation from the game data.
   private initialize(game: LichessGameJson, orientation: Color, card: RetroCardOpts | undefined): void {
+    stopAnalysis(); // Not in lila: a new card, which the engine mustn't see before it's done
     this.game = game;
     this.tree = makeGameTree(treeOps.buildTree(game));
     this.mainline = treeOps.mainline(this.tree.root);
@@ -225,6 +232,7 @@ export class AnalysisCtrl implements RetroRoot {
     if (pathChanged) this.retro?.onJump();
     this.cg?.set(this.cgConfig()); // Step 3a: `?.` skips this when there is no board
     this.setAutoShapes(); // like lila's showGround, which jump calls
+    if (pathChanged) this.startCeval(); // like lila's jump
   };
 
   // Step 8: from lila. Jump to the game's move at `ply`.
@@ -291,10 +299,53 @@ export class AnalysisCtrl implements RetroRoot {
   // An empty list clears what was drawn.
   setAutoShapes = (): void => this.cg?.setAutoShapes(computeAutoShapes(this));
 
-  // From lila: whether evaluations show (the gauge, the best move arrows).
-  // Trim: lila also shows them while its engine is on. Not in lila: never while you're solving a
-  // card (hidingHints).
-  showEvaluation = (): boolean => this.settings.showStaticAnalysis && !this.hidingHints();
+  // From lila: whether evaluations show (the gauge, the best move arrows): Lichess's analysis, or
+  // the engine's while it's on. Not in lila: never while you're solving a card (hidingHints).
+  showEvaluation = (): boolean => !this.hidingHints() && (this.settings.showStaticAnalysis || this.cevalEnabled());
+
+  // From lila: whether the engine may run. Not in lila: never while you're solving a card, when it
+  // would give the answer away. Trim: lila checks the game isn't being played, and studies' rules.
+  isCevalAllowed = (): boolean => !this.hidingHints();
+
+  // From lila: whether the engine is on, and with a value, switches it on or off.
+  // Trim: lila's can be forced on, for its practice mode and the move check, which has its own
+  // way here (evaluateNode).
+  cevalEnabled = (enable?: boolean): boolean => {
+    const state = this.cevalEnabledProp() && this.isCevalAllowed();
+    if (enable === undefined) return state;
+    // Not in lila: while you're solving, switching it (l) does nothing. It reads as off then, so
+    // l would otherwise switch it on for later.
+    if (!this.isCevalAllowed()) return false;
+    this.cevalEnabledProp(enable);
+    if (enable !== state) {
+      if (enable) this.startCeval();
+      else stopAnalysis();
+      this.setAutoShapes();
+      this.redraw();
+    }
+    return enable;
+  };
+
+  // From lila: the engine analyses the position on the board, if it's on (engine.ts). node.ceval
+  // follows the search as it goes deeper; the gauge, the arrows, and the engine's box show it.
+  // Trim: lila also uses the analyses Lichess keeps in the cloud, and skips threefold repetitions.
+  startCeval = (): void => {
+    const node = this.node;
+    if (!this.cevalEnabled() || this.analysed.has(node) || positionOf(node).isEnd()) return;
+    const update = (ceval: EngineEval) => {
+      node.ceval = ceval;
+      if (node !== this.node) return;
+      this.setAutoShapes();
+      this.redraw();
+    };
+    analyse(node.fen, update, ceval => {
+      if (ceval.bestmove) this.analysed.add(node);
+      update(ceval);
+    });
+  };
+
+  // From lila: plays a line of moves, e.g. the engine's up to the move you click.
+  playUciList = (ucis: string[]): void => ucis.forEach(this.playUci);
 
   // From lila: the evaluation gauge beside the board (evalGauge.ts), if there's an evaluation to
   // show, and not on a phone (one column), nor after the game ended in that position.
@@ -303,7 +354,7 @@ export class AnalysisCtrl implements RetroRoot {
     this.settings.showGauge &&
     displayColumns() > 1 &&
     this.showEvaluation() &&
-    (!!this.node.eval || !!this.node.ceval) &&
+    (this.cevalEnabled() || !!this.node.eval || !!this.node.ceval) &&
     !positionOf(this.node).outcome();
 
   // From lila: the best move arrows (autoShape.ts), unless "Learn from your mistakes" is hiding
@@ -330,6 +381,7 @@ export class AnalysisCtrl implements RetroRoot {
     const update = (ceval: TreeNode['ceval']) => {
       node.ceval = ceval;
       this.retro?.onCeval();
+      this.startCeval(); // once the move is judged right, the card is done, and the engine may start
       this.redraw();
     };
     evaluate(node.fen, update).then(update, (e: Error) => alert(`Stockfish couldn't check your move: ${e.message}`));
