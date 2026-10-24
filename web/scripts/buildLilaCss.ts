@@ -1,5 +1,5 @@
-// buildLilaCss.ts: compiles the three stylesheets that Lichess's analysis page loads, into public/lila/css,
-// and copies the fonts and images they use into public/lila.
+// buildLilaCss.ts: compiles the three stylesheets that Lichess's analysis page loads, and the one
+// for its dialogs, into public/lila/css, and copies the fonts and images they use into public/lila.
 // Run from web: npx tsx scripts/buildLilaCss.ts <path to your lila clone>
 // The lila clone should be checked out at the reference commit, 27ffc8b.
 // Source in lila: ui/.build/src/sass.ts (buildColorWrap, and the options in SASS_ARGS).
@@ -42,11 +42,13 @@ mkdirSync(join(themeDir, 'gen'), { recursive: true });
 writeFileSync(join(themeDir, 'gen', '_wrap.scss'), wrap); // lila's .gitignore already ignores gen/
 console.log(`_wrap.scss: ${names.size} variables`);
 
-// Step 2: compile the three stylesheets from the <head> of Lichess's analysis page.
+// Step 2: compile the three stylesheets from the <head> of Lichess's analysis page, and the
+// dialogs' (lila loads that one when a dialog first opens, e.g. the analysis settings).
 const sources = [
   'ui/lib/css/build/lib.theme.all.scss',
   'ui/site/css/build/site.scss',
   'ui/analyse/css/build/analyse.round.scss',
+  'ui/bits/css/build/bits.dialog.scss',
 ];
 const outDir = join('public', 'lila', 'css');
 mkdirSync(outDir, { recursive: true });

@@ -16,7 +16,7 @@ export function renderProgress(deck: DeckCtrl): VNode {
     hl('div.mt-progress__counts', [
       count(p.started, 'started', 'Reviewed at least once'),
       count(p.notStarted, 'not started', 'New cards'),
-      p.suspended > 0 && count(p.suspended, 'suspended', 'Not shown until you bring them back on the Settings page'),
+      p.suspended > 0 && count(p.suspended, 'suspended', 'Not shown until you bring them back in Training settings'),
     ]),
     hl('div.mt-progress__now', `Due now: ${p.dueNow}`),
   ]);

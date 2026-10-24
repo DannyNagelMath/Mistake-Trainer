@@ -10,8 +10,8 @@ import { licon } from './licon';
 import { bind, hl } from './snabbdom';
 
 // Trim: lila's menu also has the board editor, practice with the computer, continue from here
-// (against the computer or a friend), study, clear local data, the settings dialog, and replay
-// mode (autoplay). They need a Lichess server, the engine, or settings we don't keep.
+// (against the computer or a friend), study, clear local data, and replay mode (autoplay). They
+// need a Lichess server, the engine, or settings we don't keep.
 export function view(ctrl: AnalysisCtrl): VNode {
   // Trim: lila also checks it isn't an embedded board. Not in lila: never for cards, whose panel stays open.
   const canRetro = ctrl.hasFullComputerAnalysis() && !ctrl.retro && !ctrl.card;
@@ -36,6 +36,12 @@ export function view(ctrl: AnalysisCtrl): VNode {
           { hook: bind('click', ctrl.toggleRetro, ctrl.redraw), attrs: { 'data-icon': licon.GraduateCap } },
           i18n.site.learnFromYourMistakes,
         ),
+      // The analysis board's settings (analysisSettingsView.ts). Trim: lila calls showSettingsDialog.
+      hl(
+        'button',
+        { attrs: { 'data-icon': licon.Gear, title: i18n.site.settings }, on: { click: ctrl.openSettings } },
+        i18n.site.settings,
+      ),
     ]),
   ];
 

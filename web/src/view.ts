@@ -7,6 +7,7 @@ import { h, type VNode } from 'snabbdom';
 
 import { view as actionMenu } from './actionMenu';
 import type { AnalysisCtrl } from './analysisCtrl';
+import { view as analysisSettingsView } from './analysisSettingsView';
 import type { DeckCtrl } from './deckCtrl';
 import renderClocks from './clocks';
 import { stepwiseScroll } from './common';
@@ -135,6 +136,8 @@ export function view(ctrl: AnalysisCtrl, deck?: DeckCtrl): VNode {
       renderUnderboard(ctrl),
       trainingView(ctrl),
       renderSide(ctrl, deck && renderProgress(deck)),
+      // Not in lila, whose dialogs add themselves to the page: the menu's Settings dialog, while open.
+      ctrl.settingsOpen && analysisSettingsView(ctrl),
     ],
   );
 }

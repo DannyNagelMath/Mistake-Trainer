@@ -9,10 +9,13 @@ import { makeSanAndPlay, parseSan } from 'chessops/san';
 import { scalachessCharPair, chessgroundDests } from 'chessops/compat';
 import type { Api as CgApi } from '@lichess-org/chessground/api'; // Step 3a
 import type { Config as CgConfig } from '@lichess-org/chessground/config'; // Step 3a
+import type { DrawShape } from '@lichess-org/chessground/draw';
 import type { Key } from '@lichess-org/chessground/types'; // Step 3a
 
+import { AnalysisSettingsCtrl } from './analysisSettings';
 import { toggle, type Toggle } from './common';
 import { ForkCtrl } from './fork';
+import { annotationShapes } from './glyphs';
 import Navigate from './navigate';
 import { nextGlyphSymbol } from './nodeFinder';
 import { evaluate } from './engine';
@@ -89,15 +92,16 @@ export class AnalysisCtrl implements RetroRoot {
   gamePath!: string; // the path of the game's last move
   readonly treeView: TreeView;
   showComments = true;
-  // Trim: lila's SettingsCtrl, which the user changes in the analysis settings menu.
-  // These are lila's defaults. Step 7: shift+i switches `inline`.
-  readonly settings = {
-    inline: false, // two-column move list, rather than a paragraph
-    showStaticAnalysis: true, // show the server analysis: evals, glyphs, comments, engine lines
-    // Not a lila setting: lila always draws the move you played in the game as a pale red arrow
-    // while you look for a better one. Off here; set it to true to bring the arrow back.
-    showBadMoveArrow: false,
-  };
+  // The analysis board's settings, which "Settings" in the menu changes (analysisSettings.ts).
+  // As in lila, a change redraws the board's arrows and annotations, and the page.
+  readonly settings = new AnalysisSettingsCtrl(() => {
+    this.setAutoShapes();
+    this.redraw();
+  });
+  settingsOpen = false; // Not in lila, which opens its dialog itself: whether the dialog is showing
+  // Not in lila: lila always draws the move you played in the game as a pale red arrow while you
+  // look for a better one. Off here; set it to true to bring the arrow back.
+  readonly showBadMoveArrow = false;
 
   // Step 7: navigation and the menu.
   fork!: ForkCtrl; // the choice of continuations shown under the move list
@@ -221,6 +225,7 @@ export class AnalysisCtrl implements RetroRoot {
     this.onMainline = this.tree.pathIsMainline(path);
     if (pathChanged) this.retro?.onJump();
     this.cg?.set(this.cgConfig()); // Step 3a: `?.` skips this when there is no board
+    this.setAutoShapes(); // like lila's showGround, which jump calls
   };
 
   // Step 8: from lila. Jump to the game's move at `ply`.
@@ -283,23 +288,31 @@ export class AnalysisCtrl implements RetroRoot {
     this.playUci(orig + dest + (promotes ? 'q' : ''));
   };
 
-  // Step 3c: draws the game's bad move as a pale red arrow while you're solving,
-  // like lila's setAutoShapes and autoShape.ts, when settings.showBadMoveArrow is on.
-  setAutoShapes = (): void => {
-    const bad = this.settings.showBadMoveArrow ? this.retro?.showBadNode() : undefined;
-    this.cg?.setAutoShapes(
-      bad?.uci
-        ? [
-            {
-              orig: bad.uci.slice(0, 2) as Key,
-              dest: bad.uci.slice(2, 4) as Key,
-              brush: 'paleRed',
-              modifiers: { lineWidth: 8 },
-            },
-          ]
-        : [], // an empty list clears the arrow
-    );
+  // What the board draws on its own, like lila's autoShape.ts (compute): Step 3c, the game's bad
+  // move as a pale red arrow while you're solving, when showBadMoveArrow is on; and the move's
+  // annotations (??, ?!, ...) on its square.
+  // Trim: lila also draws the engine's arrows, variation arrows, and more.
+  autoShapes = (): DrawShape[] => {
+    const shapes: DrawShape[] = [];
+    const bad = this.showBadMoveArrow ? this.retro?.showBadNode() : undefined;
+    if (bad?.uci)
+      shapes.push({
+        orig: bad.uci.slice(0, 2) as Key,
+        dest: bad.uci.slice(2, 4) as Key,
+        brush: 'paleRed',
+        modifiers: { lineWidth: 8 },
+      });
+    if (this.showMoveAnnotations()) shapes.push(...annotationShapes(this.node));
+    return shapes;
   };
+
+  // Like lila's setAutoShapes. An empty list clears what was drawn.
+  setAutoShapes = (): void => this.cg?.setAutoShapes(this.autoShapes());
+
+  // From lila: annotations on the board, when the setting is on, and not while you're solving
+  // (showMoveGlyphs is false then too: AnalysisCtrl.hidingHints).
+  showMoveAnnotations = (): boolean =>
+    this.settings.showMoveAnnotationsOnBoard && !this.retro?.isSolving() && this.showMoveGlyphs();
 
   // redraw removed in step 4a-2
   // redraw = (): void => {}; // Step 4: re-render the page.
@@ -350,6 +363,17 @@ export class AnalysisCtrl implements RetroRoot {
   // Step 7: from lila. Trim: lila closes the opening explorer when opening the menu.
   toggleActionMenu = (): void => {
     this.actionMenu.toggle();
+  };
+
+  // Not in lila, whose dialog opens and closes itself (showSettingsDialog): the menu's Settings
+  // dialog (analysisSettingsView.ts) is part of the page, shown while settingsOpen is true.
+  openSettings = (): void => {
+    this.settingsOpen = true;
+    this.redraw();
+  };
+  closeSettings = (): void => {
+    this.settingsOpen = false;
+    this.redraw();
   };
 
   // Step 7: which tool is open from the controls bar, if any. Trim: lila's can also be the opening explorer.

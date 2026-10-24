@@ -235,13 +235,13 @@ export default function (root: AnalysisCtrl): VNode | undefined {
           attrs: { 'data-icon': licon.X, 'aria-label': 'Close learn window' },
         }),
       // Step 9: in card mode, while a card is shown, suspend it. It asks first, as undoing it means
-      // going to the Settings page.
+      // going to Training settings.
       ctrl.card &&
         ctrl.current() &&
         hl(
           'a.suspend',
           {
-            attrs: { title: 'Never show this card again (you can bring it back on the Settings page)' },
+            attrs: { title: 'Never show this card again (you can bring it back in Training settings)' },
             hook: bind('click', () => {
               if (confirm("Suspend this card? It won't come up again.")) ctrl.card!.suspend();
             }),

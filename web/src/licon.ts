@@ -4,6 +4,7 @@
 // characters written as escapes, with lila's hex codes.
 export const licon = {
   Rabbit: '\ue002',
+  Gear: '\ue005',
   FlameBlitz: '\ue008',
   Turtle: '\ue00a',
   GraduateCap: '\ue018',

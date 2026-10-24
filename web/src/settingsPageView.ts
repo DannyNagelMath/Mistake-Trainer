@@ -15,7 +15,7 @@ import { buildTree, mainline, type LichessGameJson } from './tree';
 
 export function view(ctrl: SettingsPageCtrl): VNode {
   return hl('main.page-small.box.box-pad.mt-settings-page', [
-    hl('h1.box__top', 'Settings'),
+    hl('h1.box__top', 'Training settings'),
     renderCounts(ctrl),
     renderSettings(ctrl),
     renderSuspended(ctrl),

@@ -26,9 +26,9 @@ on Lichess's open-source code, with gratitude: if you find it useful, please con
   cards in spaced-repetition order. As on Lichess, a move other than the engine's best is checked by
   [Stockfish](https://stockfishchess.org/), running in the browser: it counts as right if it's
   nearly as good. Your review history is saved to `web/data/reviews.json`.
-  Its Settings page (the link at the top right) is where you choose, for example, which new cards
-  come first and how far apart reviews are (saved to `web/data/settings.json`), and where you can
-  bring back cards you've suspended.
+  Its Training settings page (the link at the top right) is where you choose, for example, which
+  new cards come first and how far apart reviews are (saved to `web/data/settings.json`), and
+  where you can bring back cards you've suspended.
 
 ## Running it
 

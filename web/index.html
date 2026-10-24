@@ -15,6 +15,9 @@
     <link rel="stylesheet" href="/lila/css/lib.theme.all.css" />
     <link rel="stylesheet" href="/lila/css/site.css" />
     <link rel="stylesheet" href="/lila/css/analyse.round.css" />
+    <!-- Not in the analysis page's <head>: lila loads its dialogs' stylesheet when the first one
+         opens, e.g. the Settings dialog in the menu. -->
+    <link rel="stylesheet" href="/lila/css/bits.dialog.css" />
     <!-- The icon font, from layout.scala (lichessFontFaceCss). -->
     <style>
       @font-face {
@@ -61,9 +64,10 @@
           <div class="site-name">Mistake Trainer</div>
         </div>
       </div>
-      <!-- Not in lila: the link to the settings page (settings.html), styled like lila's header links. -->
+      <!-- Not in lila: the link to your training settings (settings.html), styled like lila's
+           header links. The analysis board's own settings are in its menu. -->
       <div class="site-buttons">
-        <a class="link" href="/settings.html">Settings</a>
+        <a class="link" href="/settings.html">Training settings</a>
       </div>
     </header>
     <div id="main-wrap" class="is2d">

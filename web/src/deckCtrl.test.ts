@@ -247,3 +247,17 @@ test('the move is judged once Stockfish has searched enough: 1,000,000 positions
   await afterTheEngine();
   expect(feedback()).toBe('win');
 });
+
+test("while solving, the board shows no annotations, not even the opponent's ??; once done, it does", () => {
+  const [card] = deck.cards; // 20.Qh4??, just after Black's 19...Bg7??
+  const { ctrl } = startOn(card);
+  const annotated = () => ctrl.autoShapes().filter(s => s.customSvg).map(s => s.orig);
+  expect(ctrl.node.glyphs?.map(g => g.symbol)).toEqual(['??']); // on the board, it would be a hint
+  expect(annotated()).toEqual([]);
+  playSolution(ctrl);
+  ctrl.userJump(ctrl.retro!.current()!.prev.path); // back to the position, now that it's solved
+  expect(annotated()).toEqual(['g7']);
+  ctrl.settings.set('showMoveAnnotationsOnBoard', false); // the setting in the menu
+  expect(annotated()).toEqual([]);
+  ctrl.settings.set('showMoveAnnotationsOnBoard', true);
+});

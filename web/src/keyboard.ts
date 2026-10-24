@@ -6,6 +6,7 @@
 //   up / down when there's a choice of continuations: change which one "next" follows
 //   shift+left / shift+right (or shift+k / shift+j): previous / next variation
 //   shift+c: show or hide comments   shift+i: inline or two-column move list
+//   z: show or hide Lichess's analysis
 //   h: open or close the menu        f: flip the board
 
 import type { AnalysisCtrl } from './analysisCtrl';
@@ -40,11 +41,7 @@ export const bind = (ctrl: AnalysisCtrl) => {
       ctrl.treeView.requestAutoScroll('smooth');
       ctrl.redraw();
     })
-    .bind('shift+i', () => {
-      // Trim: lila's settings.set also saves the choice for next time.
-      ctrl.settings.inline = !ctrl.settings.inline;
-      ctrl.redraw();
-    });
+    .bind('shift+i', () => ctrl.settings.set('inline', !ctrl.settings.inline));
   // Trim: lila's space bar plays the engine's best move, or turns the engine on.
 
   kbd
@@ -52,9 +49,10 @@ export const bind = (ctrl: AnalysisCtrl) => {
       ctrl.toggleActionMenu();
       ctrl.redraw();
     })
-    .bind('f', ctrl.flip);
-  // Trim: lila also has b (board editor), ? (keyboard help), l (engine), z (computer analysis),
-  // a (best move arrows), v (variation arrows), x (threat), and e (opening explorer).
+    .bind('f', ctrl.flip)
+    .bind('z', () => ctrl.settings.set('showStaticAnalysis', !ctrl.settings.showStaticAnalysis));
+  // Trim: lila also has b (board editor), ? (keyboard help), l (engine), a (best move arrows),
+  // v (variation arrows), x (threat), and e (opening explorer).
 
   kbd
     .bind(['shift+left', 'shift+k'], () => {

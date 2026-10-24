@@ -16,6 +16,13 @@ div.site-title:hover {
   margin-inline-start: auto;
 }
 
+/* The analysis board's Settings dialog (analysisSettingsView.ts). lila caps its help pane at
+   300px: it lists a few shortcuts, and swaps in a help video when you point at a setting. Ours has
+   all the shortcuts, and no videos, so it takes the room they need. */
+.analysis-settings-view .help-pane[data-key='keyboardShortcuts'] {
+  max-height: none;
+}
+
 /* The buttons for how a correct answer went (renderRatingChoices in retroView.ts). They take the
    place of lila's big Next button, in the bottom half of the panel: lila's button style, in an
    evenly spaced row, which wraps on narrow screens. */
