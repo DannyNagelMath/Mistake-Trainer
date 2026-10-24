@@ -5,14 +5,16 @@
 // Like lila, the browser remembers them (localStorage), for this address: a dev server on another
 // port starts again from the defaults.
 
-// lila's defaults.
-// Trim: lila also has showGauge, disclosureMode, showLiveAnnotations, showBestMoveArrows,
-// showManeuverMoveArrows, showVariationArrows, showUndefendedPieces, showPinnedPieces, and
-// showCheckableKing, for things we don't have.
+// lila's defaults, in lila's order.
+// Trim: lila also has disclosureMode, showLiveAnnotations, showManeuverMoveArrows,
+// showVariationArrows, showUndefendedPieces, showPinnedPieces, and showCheckableKing, for things
+// we don't have.
 export class AnalysisSettings {
   constructor(
+    public readonly showGauge = true, // the evaluation bar beside the board
     public readonly inline = false, // the move list as a paragraph, rather than in two columns
     public readonly showStaticAnalysis = true, // Lichess's analysis: evals, ?? marks, comments, engine lines
+    public readonly showBestMoveArrows = true, // the better move instead, and the best move from here
     public readonly showMoveAnnotationsOnBoard = true, // the move's ?? or ?! on its square
   ) {}
 }

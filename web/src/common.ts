@@ -1,5 +1,5 @@
 // common.ts: small helpers from lila's ui/lib (master, commit 27ffc8b): toggle, repeater, and
-// blurIfPrimaryClick from src/common.ts, isTouchDevice and isMac from src/device.ts,
+// blurIfPrimaryClick from src/common.ts, isTouchDevice, isMac, and displayColumns from src/device.ts,
 // addPointerListeners from src/pointer.ts, and stepwiseScroll from src/view/stepwiseScroll.ts.
 // Every change from lila's version is marked with a comment starting "Trim:".
 
@@ -55,6 +55,15 @@ export function blurIfPrimaryClick(e: Event): void {
 
 // Trim: lila works these out once and remembers them (memoize).
 export const isTouchDevice = (): boolean => !window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+// How many columns the page is laid out in (1 on a phone, 2 or 3 wider), from lila's CSS.
+let colCache: number | undefined;
+if (typeof window !== 'undefined') window.addEventListener('resize', () => (colCache = undefined)); // Trim: not in the tests
+export function displayColumns(): number {
+  if (colCache === undefined)
+    colCache = Number(window.getComputedStyle(document.body).getPropertyValue('---display-columns'));
+  return colCache;
+}
 
 export const isMac = (): boolean => navigator.userAgent.toLowerCase().includes('macintosh') && !('ontouchstart' in window);
 

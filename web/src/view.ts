@@ -13,6 +13,7 @@ import renderClocks from './clocks';
 import { stepwiseScroll } from './common';
 import { renderResult } from './components';
 import { renderControls } from './controls';
+import { renderGauge } from './evalGauge';
 import { view as forkView } from './fork';
 import { renderMaterialDiffs } from './material';
 import { renderProgress } from './progressView';
@@ -121,6 +122,10 @@ const renderMoveList = (ctrl: AnalysisCtrl): VNode =>
 // Not in lila: with a deck, the progress box goes in the side panel, under the game's details,
 // where it's in view without scrolling on wide screens. (trainingView shows nothing for cards.)
 export function view(ctrl: AnalysisCtrl, deck?: DeckCtrl): VNode {
+  // The evaluation gauge, beside the board: the gauge-on class makes room for it.
+  // Trim: lila also tells the board to resize when the gauge comes or goes; the board notices by
+  // itself here (chessground watches its size).
+  const gaugeOn = ctrl.showEvalGauge();
   return hl(
     'main.analyse.variant-standard',
     {
@@ -128,9 +133,11 @@ export function view(ctrl: AnalysisCtrl, deck?: DeckCtrl): VNode {
         'data-active-tool': ctrl.activeControlBarTool(),
         'data-active-mode': ctrl.activeControlMode(),
       },
+      class: { 'gauge-on': gaugeOn },
     },
     [
       renderBoard(ctrl),
+      gaugeOn && renderGauge(ctrl),
       renderTools(ctrl),
       renderControls(ctrl),
       renderUnderboard(ctrl),

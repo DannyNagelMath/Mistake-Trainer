@@ -9,13 +9,12 @@ import { makeSanAndPlay, parseSan } from 'chessops/san';
 import { scalachessCharPair, chessgroundDests } from 'chessops/compat';
 import type { Api as CgApi } from '@lichess-org/chessground/api'; // Step 3a
 import type { Config as CgConfig } from '@lichess-org/chessground/config'; // Step 3a
-import type { DrawShape } from '@lichess-org/chessground/draw';
 import type { Key } from '@lichess-org/chessground/types'; // Step 3a
 
 import { AnalysisSettingsCtrl } from './analysisSettings';
-import { toggle, type Toggle } from './common';
+import { compute as computeAutoShapes } from './autoShape';
+import { displayColumns, toggle, type Toggle } from './common';
 import { ForkCtrl } from './fork';
-import { annotationShapes } from './glyphs';
 import Navigate from './navigate';
 import { nextGlyphSymbol } from './nodeFinder';
 import { evaluate } from './engine';
@@ -288,26 +287,33 @@ export class AnalysisCtrl implements RetroRoot {
     this.playUci(orig + dest + (promotes ? 'q' : ''));
   };
 
-  // What the board draws on its own, like lila's autoShape.ts (compute): Step 3c, the game's bad
-  // move as a pale red arrow while you're solving, when showBadMoveArrow is on; and the move's
-  // annotations (??, ?!, ...) on its square.
-  // Trim: lila also draws the engine's arrows, variation arrows, and more.
-  autoShapes = (): DrawShape[] => {
-    const shapes: DrawShape[] = [];
-    const bad = this.showBadMoveArrow ? this.retro?.showBadNode() : undefined;
-    if (bad?.uci)
-      shapes.push({
-        orig: bad.uci.slice(0, 2) as Key,
-        dest: bad.uci.slice(2, 4) as Key,
-        brush: 'paleRed',
-        modifiers: { lineWidth: 8 },
-      });
-    if (this.showMoveAnnotations()) shapes.push(...annotationShapes(this.node));
-    return shapes;
-  };
+  // Like lila's setAutoShapes: the arrows and annotations the board draws by itself (autoShape.ts).
+  // An empty list clears what was drawn.
+  setAutoShapes = (): void => this.cg?.setAutoShapes(computeAutoShapes(this));
 
-  // Like lila's setAutoShapes. An empty list clears what was drawn.
-  setAutoShapes = (): void => this.cg?.setAutoShapes(this.autoShapes());
+  // From lila: whether evaluations show (the gauge, the best move arrows).
+  // Trim: lila also shows them while its engine is on. Not in lila: never while you're solving a
+  // card (hidingHints).
+  showEvaluation = (): boolean => this.settings.showStaticAnalysis && !this.hidingHints();
+
+  // From lila: the evaluation gauge beside the board (evalGauge.ts), if there's an evaluation to
+  // show, and not on a phone (one column), nor after the game ended in that position.
+  // Trim: lila also checks the engine is allowed here, and shows it whenever its engine is on.
+  showEvalGauge = (): boolean =>
+    this.settings.showGauge &&
+    displayColumns() > 1 &&
+    this.showEvaluation() &&
+    (!!this.node.eval || !!this.node.ceval) &&
+    !positionOf(this.node).outcome();
+
+  // From lila: the best move arrows (autoShape.ts), unless "Learn from your mistakes" is hiding
+  // the engine's line here.
+  showBestMoveArrows = (): boolean =>
+    this.settings.showBestMoveArrows && !this.retro?.hideComputerLine(this.node);
+
+  // From lila: the best move from here according to Lichess's analysis, which it gives on the
+  // judged move that follows in the game (treeOps.withMainlineChild).
+  nextNodeBest = (): string | undefined => this.node.children[0]?.eval?.best;
 
   // From lila: annotations on the board, when the setting is on, and not while you're solving
   // (showMoveGlyphs is false then too: AnalysisCtrl.hidingHints).

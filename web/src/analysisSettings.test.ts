@@ -22,14 +22,16 @@ test("lila's defaults, until you change one; the browser remembers the change", 
   const stored = fakeStorage();
   const redraw = vi.fn();
   const settings = new AnalysisSettingsCtrl(redraw);
-  expect([settings.inline, settings.showStaticAnalysis, settings.showMoveAnnotationsOnBoard]).toEqual([false, true, true]);
-  settings.set('inline', true);
-  expect(redraw).toHaveBeenCalledOnce();
-  expect(JSON.parse(stored['analyse.settings'])).toEqual({
-    inline: true,
+  expect(Object.fromEntries(settings.keys().map(k => [k, settings[k]]))).toEqual({
+    showGauge: true,
+    inline: false,
     showStaticAnalysis: true,
+    showBestMoveArrows: true,
     showMoveAnnotationsOnBoard: true,
   });
+  settings.set('inline', true);
+  expect(redraw).toHaveBeenCalledOnce();
+  expect(JSON.parse(stored['analyse.settings'])).toMatchObject({ inline: true, showStaticAnalysis: true });
   expect(new AnalysisSettingsCtrl().inline).toBe(true); // the next time the page loads
   settings.set('inline', true);
   expect(redraw).toHaveBeenCalledOnce(); // no change, no redraw

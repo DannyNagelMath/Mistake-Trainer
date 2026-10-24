@@ -11,8 +11,10 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 import real1 from '../fixtures/real1.json';
 import type { AnalysisCtrl } from './analysisCtrl';
+import { compute as autoShapes } from './autoShape';
 import { cardsOfGame, mistakeOf, type Card, type Deck } from './deck';
 import { DeckCtrl } from './deckCtrl';
+import { getBestEval } from './evalGauge';
 import type { ReviewHistory } from './reviews';
 import type { EngineEval } from './engine';
 import { defaultSettings, type Settings } from './settings';
@@ -251,7 +253,7 @@ test('the move is judged once Stockfish has searched enough: 1,000,000 positions
 test("while solving, the board shows no annotations, not even the opponent's ??; once done, it does", () => {
   const [card] = deck.cards; // 20.Qh4??, just after Black's 19...Bg7??
   const { ctrl } = startOn(card);
-  const annotated = () => ctrl.autoShapes().filter(s => s.customSvg).map(s => s.orig);
+  const annotated = () => autoShapes(ctrl).filter(s => s.customSvg).map(s => s.orig);
   expect(ctrl.node.glyphs?.map(g => g.symbol)).toEqual(['??']); // on the board, it would be a hint
   expect(annotated()).toEqual([]);
   playSolution(ctrl);
@@ -260,4 +262,25 @@ test("while solving, the board shows no annotations, not even the opponent's ??;
   ctrl.settings.set('showMoveAnnotationsOnBoard', false); // the setting in the menu
   expect(annotated()).toEqual([]);
   ctrl.settings.set('showMoveAnnotationsOnBoard', true);
+});
+
+test("while solving, no evaluation and no best move arrows; once done, Lichess's, as lila draws them", () => {
+  const [card] = deck.cards; // 20.Qh4?? when 20.Qxg7# was mate
+  const { ctrl } = startOn(card);
+  const arrows = () => autoShapes(ctrl).filter(s => s.dest).map(s => [s.brush, s.orig + s.dest]);
+  expect(getBestEval(ctrl)).toBeUndefined(); // so the gauge has nothing to show
+  expect(arrows()).toEqual([]);
+  playSolution(ctrl);
+  const { prev, fault } = ctrl.retro!.current()!;
+  ctrl.userJump(prev.path); // the position you faced
+  expect(getBestEval(ctrl)).toEqual(prev.node.eval);
+  expect(arrows()).toEqual([
+    ['paleGreen', 'd6f4'], // what Black should have played instead of 19...Bg7??, the move that led here
+    ['paleBlue', 'h6g7'], // the best move from here, 20.Qxg7#
+  ]);
+  ctrl.userJump(fault.path); // after 20.Qh4
+  expect(arrows()).toContainEqual(['paleGreen', 'h6g7']); // what should have been played instead
+  ctrl.settings.set('showBestMoveArrows', false); // the setting in the menu
+  expect(arrows()).toEqual([]);
+  ctrl.settings.set('showBestMoveArrows', true);
 });

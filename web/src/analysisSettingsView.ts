@@ -27,10 +27,19 @@ const settings: Record<SettingKey, Setting> = {
     shortcut: ['z'],
     group: i18n.preferences.generalSettings,
   },
+  showGauge: {
+    label: i18n.preferences.showGauge,
+    group: i18n.preferences.generalSettings,
+  },
   inline: {
     label: i18n.preferences.inlineNotation,
     shortcut: ['shift+i'],
     group: i18n.preferences.moveListSettings,
+  },
+  showBestMoveArrows: {
+    label: i18n.preferences.showBestMoveArrows,
+    shortcut: ['a'],
+    group: i18n.preferences.boardSettings,
   },
   showMoveAnnotationsOnBoard: {
     label: i18n.preferences.showMoveAnnotationsOnBoard,

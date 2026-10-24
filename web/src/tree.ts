@@ -69,7 +69,9 @@ export interface TreeNode {
   fen: string;
   uci?: string;
   san?: string;
-  eval?: { cp?: number; mate?: number };
+  // Lichess's analysis of the position. best: on a judged move, the better move Lichess's analysis
+  // gives instead of it, from the position before (LichessAnalysisEntry.best).
+  eval?: { cp?: number; mate?: number; best?: string };
   // lila's ceval: Stockfish's evaluation of the position, in the browser, while it searches.
   // Only set on a move you try that retroCtrl has to check (see engine.ts).
   ceval?: EngineEval;
@@ -132,8 +134,9 @@ function playSan(pos: Position, san: string, ply: number): TreeNode {
 }
 
 function toEval(entry: LichessAnalysisEntry): TreeNode['eval'] {
-  if (entry.mate !== undefined) return { mate: entry.mate };
-  if (entry.eval !== undefined) return { cp: entry.eval };
+  const best = entry.best ? { best: entry.best } : {}; // for lila's best move arrows (autoShape.ts)
+  if (entry.mate !== undefined) return { mate: entry.mate, ...best };
+  if (entry.eval !== undefined) return { cp: entry.eval, ...best };
   return undefined;
 }
 

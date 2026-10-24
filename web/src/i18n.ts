@@ -137,6 +137,8 @@ export const i18n = {
     generalSettings: 'General',
     inlineNotation: 'Inline notation',
     moveListSettings: 'Move list',
+    showBestMoveArrows: 'Show best move arrows',
+    showGauge: 'Show evaluation gauge',
     showMoveAnnotationsOnBoard: 'Show move annotations',
     showServerAnalysis: 'Show server analysis',
   },
