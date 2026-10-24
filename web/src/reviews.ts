@@ -56,12 +56,14 @@ export async function saveUnsuspension(cardId: string): Promise<void> {
   if (!response.ok) throw new Error(`Couldn't unsuspend the card: ${response.status} ${await response.text()}`);
 }
 
-// Saves one review: the card's new schedule, and the log entry.
+// Saves one review: the card's new schedule, and the log entry. keepalive lets the request finish
+// even if the page is closing (DeckCtrl.leave).
 export async function saveReview(card: CardInput, entry: ReviewEntry): Promise<void> {
   const response = await fetch('/api/reviews', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ card, entry }),
+    keepalive: true,
   });
   if (!response.ok) throw new Error(`Couldn't save your review: ${response.status} ${await response.text()}`);
 }

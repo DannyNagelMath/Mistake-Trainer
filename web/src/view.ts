@@ -22,7 +22,6 @@ import retroView from './retroView';
 import { render as trainingView } from './roundTraining';
 import { renderSide } from './side';
 import { bindNonPassive, hl } from './snabbdom';
-import { renderUnderboard } from './underboard';
 
 // Like lila's ground.ts render, followed by the relevant part of AnalyseCtrl.setChessground.
 // lila puts a counter in the class (cgv1, cgv2, ...) and raises it to force a brand-new board:
@@ -119,12 +118,13 @@ const renderMoveList = (ctrl: AnalysisCtrl): VNode =>
 
 // Like lila's analyseView and renderMain. lila builds the class from the game's variant;
 // the fixtures are all standard chess.
-// Step 8: the underboard (the eval chart), the advice summary (trainingView), and the side panel,
-// in lila's order. The CSS grid places them: on wide screens, the side panel left of the board,
-// the chart under it, and the summary under the controls.
+// Step 8: the advice summary (trainingView) and the side panel, in lila's order. The CSS grid
+// places them: on wide screens, the side panel left of the board, and the summary under the
+// controls. Trim: no underboard, lila's tabs under the board, whose eval chart was little use
+// here beside the evaluation gauge.
 // Step 7: the data-active-tool and data-active-mode attributes, which the phone layout's CSS
 // uses. snabbdom leaves an attribute out when its value is false.
-// Trim: no state classes (comp-off, gauge-on, ...) yet.
+// Trim: of lila's state classes, only gauge-on.
 // Not in lila: with a deck, the progress box goes in the side panel, under the game's details,
 // where it's in view without scrolling on wide screens. (trainingView shows nothing for cards.)
 export function view(ctrl: AnalysisCtrl, deck?: DeckCtrl): VNode {
@@ -146,7 +146,6 @@ export function view(ctrl: AnalysisCtrl, deck?: DeckCtrl): VNode {
       gaugeOn && renderGauge(ctrl),
       renderTools(ctrl),
       renderControls(ctrl),
-      renderUnderboard(ctrl),
       trainingView(ctrl),
       renderSide(ctrl, deck && renderProgress(deck)),
       // Not in lila, whose dialogs add themselves to the page: the menu's Settings dialog, while open.

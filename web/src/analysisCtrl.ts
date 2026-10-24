@@ -238,9 +238,6 @@ export class AnalysisCtrl implements RetroRoot {
   // Step 8: from lila. Jump to the game's move at `ply`.
   jumpToMain = (ply: number): void => this.userJump(this.mainlinePlyToPath(ply));
 
-  // Step 8: from lila, for the eval chart: its points are numbered from 0, for the first move.
-  jumpToIndex = (index: number): void => this.jumpToMain(index + 1 + this.tree.root.ply);
-
   // Step 8: from lila, for the advice summary: the next move by `color` marked `symbol`.
   jumpToGlyphSymbol = (color: Color, symbol: string): void => {
     const node = nextGlyphSymbol(color, symbol, this.mainline, this.node.ply);

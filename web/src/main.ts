@@ -55,6 +55,10 @@ redraw();
 // in the page only, so the headless scripts, which have no page, can still create an AnalysisCtrl.
 keyboard.bind(deckCtrl.analysis);
 
+// Not in lila: leaving the page with a right first move still to rate records it (DeckCtrl.leave).
+// pagehide also fires when the browser keeps the page to come back to, which leave handles too.
+window.addEventListener('pagehide', deckCtrl.leave);
+
 // For testing from the browser console; remove later.
 (window as any).ctrl = deckCtrl.analysis;
 (window as any).deck = deckCtrl;

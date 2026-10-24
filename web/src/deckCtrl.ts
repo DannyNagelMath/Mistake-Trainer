@@ -15,6 +15,7 @@ import type { CardResult, RetroCardOpts } from './retroCtrl';
 import { saveReview, saveSuspension, type ReviewEntry, type ReviewHistory } from './reviews';
 import {
   activeCards,
+  canComeUp,
   gradeOf,
   nextAvailable,
   orderNewCards,
@@ -34,6 +35,23 @@ function shuffle<T>(items: T[]): T[] {
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
+}
+
+// The card on screen, remembered for this browser tab (sessionStorage), so that reloading the
+// page, e.g. coming back from Training settings, shows it again rather than dealing another. Where
+// there's no storage (the tests), nothing is remembered.
+const CARD_KEY = 'mistakeTrainer.card';
+function rememberCard(cardId: string): void {
+  try {
+    sessionStorage.setItem(CARD_KEY, cardId);
+  } catch {}
+}
+function rememberedCard(): string | null {
+  try {
+    return sessionStorage.getItem(CARD_KEY);
+  } catch {
+    return null;
+  }
 }
 
 // E.g. "now", "in 8 minutes", or "on Thu, Oct 2, 2:05 PM".
@@ -61,7 +79,13 @@ export class DeckCtrl {
     private readonly redraw: () => void,
   ) {
     this.cards = orderNewCards(shuffle(deck.cards), settings); // random among cards the order ties
-    const first = pickNext(this.cards, history, new Date(), settings);
+    // The card you left, if you hadn't answered it and it can still come up; else the next one.
+    // (Once answered, it isn't due again for days, so it can't.)
+    const left = rememberedCard();
+    const first =
+      (left && canComeUp(this.cards, history, new Date(), settings, left) && this.cards.find(c => c.id === left)) ||
+      pickNext(this.cards, history, new Date(), settings);
+    if (first) rememberCard(first.id);
     // With nothing due, show the last card you reviewed, with the panel saying when the next is due.
     // Its ply is -1, which matches no mistake, so the panel opens on that message.
     this.card = first ?? this.lastReviewed() ?? this.cards[0];
@@ -151,11 +175,19 @@ export class DeckCtrl {
     const card = pickNext(this.cards, this.history, new Date(), this.settings, this.card.id);
     if (!card) return false;
     this.card = card;
+    rememberCard(card.id);
     this.graded = false;
     this.analysis.loadGame(this.deck.games[card.gameId], card.color, this.cardOpts(card.ply));
     this.analysis.toggleRetro(); // jumps to the card's mistake
     this.redraw();
     return true;
+  };
+
+  // When you leave the page (main.ts: pagehide) after the right first move without saying how it
+  // went: record it as Good, as Next does, rather than lose the review. saveReview sends it so
+  // that it arrives even as the page goes (keepalive).
+  leave = (): void => {
+    if (this.awaitingRating) this.record('win', gradeOf('win'));
   };
 
   // For the button at the end: deals a card if one has come due since.

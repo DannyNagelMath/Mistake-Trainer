@@ -72,8 +72,8 @@ you must offer them its source code.
   [chessground](https://github.com/lichess-org/chessground) and
   [chessops](https://github.com/niklasf/chessops) (GPL-3.0-or-later),
   [python-chess](https://github.com/niklasf/python-chess) (GPL-3.0-or-later),
-  [snabbdom](https://github.com/snabbdom/snabbdom), [ts-fsrs](https://github.com/open-spaced-repetition/ts-fsrs),
-  and [Chart.js](https://www.chartjs.org/) (MIT),
+  [snabbdom](https://github.com/snabbdom/snabbdom) and
+  [ts-fsrs](https://github.com/open-spaced-repetition/ts-fsrs) (MIT),
   [stockfish.js](https://github.com/nmrugg/stockfish.js), Stockfish compiled to WebAssembly
   (GPL-3.0), and development tools under MIT or Apache 2.0.
 - lila's stylesheets, fonts, piece set, and board images aren't included either: step 2 above builds
@@ -81,7 +81,8 @@ you must offer them its source code.
   listed in lila's
   [COPYING.md](https://github.com/lichess-org/lila/blob/27ffc8b5f296d180e7a648d6bfdad27eef3f86a2/COPYING.md).
   The script only copies ones with free licences: the brown board (AGPL-3.0+), the cburnett pieces
-  (GPL-2.0+, Colin M.L. Burnett), Noto Sans and Roboto (Apache 2.0), and the icon and chess fonts
+  (GPL-2.0+, Colin M.L. Burnett), the mono pieces (GPL-2.0+, Thibault Duplessis and Colin M.L.
+  Burnett), Noto Sans and Roboto (Apache 2.0), and the icon and chess fonts
   (OFL, MIT, CC BY 3.0, GPL-2.0+, and AGPL-3.0+). If you change the board or pieces, check their
   entry in COPYING.md: some of lila's are non-free or non-commercial.
 - Mistake Trainer doesn't use the Lichess name or logo as its own; lila's COPYING.md reserves the

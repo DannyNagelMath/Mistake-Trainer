@@ -71,7 +71,7 @@ function start(settings: Settings = defaultSettings) {
   const deckCtrl = new DeckCtrl(deck, history, settings, () => {});
   const ctrl = deckCtrl.analysis;
   ctrl.toggleRetro();
-  return { history, ctrl, retro: () => ctrl.retro! };
+  return { history, ctrl, retro: () => ctrl.retro!, deckCtrl };
 }
 const playSolution = (ctrl: AnalysisCtrl) => ctrl.playUci(ctrl.retro!.current()!.solution.node.uci!);
 const playGameMove = (ctrl: AnalysisCtrl) => ctrl.playUci(ctrl.retro!.current()!.fault.node.uci!);
@@ -317,4 +317,38 @@ test("the engine stays off while you're solving; once done, it analyses the posi
   const stops = engine.stops;
   ctrl.cevalEnabled(false);
   expect(engine.stops).toBe(stops + 1);
+});
+
+test('coming back to the page shows the card you left, unless you had answered it', () => {
+  const stored: Record<string, string> = {}; // a stand-in for the browser's sessionStorage
+  vi.stubGlobal('sessionStorage', {
+    getItem: (key: string) => stored[key] ?? null,
+    setItem: (key: string, value: string) => (stored[key] = value),
+  });
+  const history: ReviewHistory = { cards: {}, log: [] };
+  const open = () => {
+    const deckCtrl = new DeckCtrl(deck, history, defaultSettings, () => {});
+    deckCtrl.analysis.toggleRetro();
+    return deckCtrl.analysis;
+  };
+  const cardOn = (ctrl: AnalysisCtrl) => `${ctrl.game.id}/${ctrl.retro!.card!.ply}`;
+  const left = deck.cards[2]; // not the card that would come up first
+  stored['mistakeTrainer.card'] = left.id;
+  const ctrl = open();
+  expect(cardOn(ctrl)).toBe(left.id);
+  expect(cardOn(open())).toBe(left.id); // and again
+  playGameMove(ctrl); // answered
+  expect(cardOn(open())).not.toBe(left.id);
+});
+
+test('leaving the page after the right first move, without rating it, records it as Good', () => {
+  const { history, ctrl, deckCtrl } = start();
+  deckCtrl.leave(); // nothing to record yet
+  expect(history.log).toEqual([]);
+  playSolution(ctrl);
+  deckCtrl.leave();
+  expect(history.log.map(e => [e.result, e.log.rating])).toEqual([['win', Rating.Good]]);
+  expect(saved).toHaveLength(1);
+  deckCtrl.leave(); // only once
+  expect(history.log).toHaveLength(1);
 });

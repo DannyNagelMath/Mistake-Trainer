@@ -137,6 +137,15 @@ function queues(deck: Card[], history: ReviewHistory, now: Date, s: Settings) {
   };
 }
 
+// Whether the card could be dealt now: not suspended, its game not waiting, and either due, or
+// new with the new-card limit allowing another. For coming back to the card you left (DeckCtrl).
+export function canComeUp(deck: Card[], history: ReviewHistory, now: Date, s: Settings, cardId: string): boolean {
+  const card = activeCards(deck, history).find(c => c.id === cardId);
+  if (!card || (gameRestEnds(history).get(card.gameId) ?? 0) > now.getTime()) return false;
+  if (history.cards[card.id]) return dueTime(history, card) <= now.getTime();
+  return newCardsInLastDay(history, now) < newCardLimit(s);
+}
+
 // The next card to show, or undefined when nothing is due. `avoid` is the card just shown: it's
 // only picked again when there's no other choice.
 export function pickNext(deck: Card[], history: ReviewHistory, now: Date, s: Settings, avoid?: string): Card | undefined {

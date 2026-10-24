@@ -5,6 +5,7 @@ import { expect, test } from 'vitest';
 import type { Card } from './deck';
 import type { ReviewEntry, ReviewHistory } from './reviews';
 import {
+  canComeUp,
   cardsLeft,
   gradeOf,
   isCollapse,
@@ -275,4 +276,21 @@ test('a higher desired retention brings a card back sooner', () => {
   };
   expect(gapAfterTwoGoods(0.95)).toBeLessThan(gapAfterTwoGoods(0.9));
   expect(gapAfterTwoGoods(0.9)).toBeLessThan(gapAfterTwoGoods(0.8));
+});
+
+test('canComeUp: a card you left can come back if it could be dealt now', () => {
+  const h = history(
+    { 'a/1': scheduled(State.Review, minutes(-10)), 'b/3': scheduled(State.Review, minutes(60)) },
+    [reviewed('g/9', minutes(-60))], // a game reviewed an hour ago: its cards wait
+  );
+  h.suspended = { 'c/5': now.toISOString() };
+  const cards = [...deck, card('g/1')];
+  expect(canComeUp(cards, h, now, s, 'a/1')).toBe(true); // due
+  expect(canComeUp(cards, h, now, s, 'b/3')).toBe(false); // not due yet: e.g. you'd answered it
+  expect(canComeUp(cards, h, now, s, 'c/5')).toBe(false); // suspended
+  expect(canComeUp(cards, h, now, s, 'd/7')).toBe(true); // new
+  expect(canComeUp(cards, h, now, s, 'g/1')).toBe(false); // its game is waiting
+  expect(canComeUp(cards, h, now, s, 'z/1')).toBe(false); // not in the deck
+  const fullDay = Array.from({ length: LIMIT }, (_, i) => reviewed(`x${i}/1`, minutes(-60), State.New));
+  expect(canComeUp(cards, history({}, fullDay), now, limited, 'd/7')).toBe(false); // the new-card limit is reached
 });
