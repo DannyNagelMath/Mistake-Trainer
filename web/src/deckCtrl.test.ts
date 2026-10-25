@@ -45,6 +45,7 @@ vi.mock('./engine', () => ({
   isAnalysing: () => false,
   ANALYSIS_MILLIS: 8000,
   ENGINE_NAME: 'Stockfish',
+  MULTI_THREADED: false,
 }));
 
 const game = real1 as unknown as LichessGameJson;

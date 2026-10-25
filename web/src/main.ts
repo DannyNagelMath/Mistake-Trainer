@@ -9,6 +9,7 @@ import { init, attributesModule, classModule, eventListenersModule, propsModule 
 
 import { loadDeck } from './deck';
 import { DeckCtrl } from './deckCtrl';
+import { preload } from './engine';
 import * as keyboard from './keyboard';
 import { loadHistory } from './reviews';
 import { loadSettings } from './settings';
@@ -54,6 +55,9 @@ redraw();
 // Step 7: keyboard shortcuts. lila binds them in AnalyseCtrl's constructor; here they're bound
 // in the page only, so the headless scripts, which have no page, can still create an AnalysisCtrl.
 keyboard.bind(deckCtrl.analysis);
+
+// Not in lila: load Stockfish in the background now, rather than when it's first needed.
+preload();
 
 // Not in lila: leaving the page with a right first move still to rate records it (DeckCtrl.leave).
 // pagehide also fires when the browser keeps the page to come back to, which leave handles too.

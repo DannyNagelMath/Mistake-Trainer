@@ -15,7 +15,7 @@ import type { VNode } from 'snabbdom';
 
 import type { AnalysisCtrl } from './analysisCtrl';
 import { renderEval } from './components';
-import { ANALYSIS_MILLIS, ENGINE_NAME, isAnalysing, type EngineEval } from './engine';
+import { ANALYSIS_MILLIS, ENGINE_NAME, isAnalysing, MULTI_THREADED, type EngineEval } from './engine';
 import { getBestEval } from './evalGauge';
 import { i18n } from './i18n';
 import { hl, onInsert, type LooseVNodes } from './snabbdom';
@@ -30,10 +30,18 @@ function localEvalNodes(ctrl: AnalysisCtrl, client?: EngineEval, server?: TreeNo
   return [client.depth > 0 ? i18n.site.depthX(client.depth) : ''];
 }
 
-// Trim: lila lets you choose among several engines; this is the one we have.
+// Trim: lila lets you choose among several engines; this is the one we have. As in lila, the
+// technology shows as good when the engine runs on several threads.
 const engineName = (): VNode[] => [
   hl('span', { attrs: { title: ENGINE_NAME } }, ENGINE_NAME),
-  hl('span.technology', { attrs: { title: 'Single-threaded WebAssembly' } }, 'NNUE'),
+  hl(
+    'span.technology',
+    {
+      class: { good: MULTI_THREADED },
+      attrs: { title: MULTI_THREADED ? 'Multi-threaded WebAssembly' : 'Single-threaded WebAssembly' },
+    },
+    'NNUE',
+  ),
 ];
 
 export function renderCeval(ctrl: AnalysisCtrl): VNode {

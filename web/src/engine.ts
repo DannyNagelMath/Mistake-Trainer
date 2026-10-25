@@ -7,10 +7,12 @@
 // need of it, reporting as each search goes deeper, as lila's does.
 //
 // The engine is stockfish.js (the npm package `stockfish`, GPL-3.0): Stockfish 19 compiled to
-// WebAssembly. Its "lite, single-threaded" build is small (about 2 MB) and needs nothing special
-// from the page; vite.config.ts serves it at /stockfish/. It runs in a Web Worker, so the page
-// doesn't freeze while it thinks, and speaks UCI, the chess engine protocol: we send it lines of
-// text like "go nodes 1000000", and it answers with lines like "info depth 12 ... score cp 35".
+// WebAssembly, with its full network, on several threads, like the engine Lichess users usually
+// run. vite.config.ts serves it at /stockfish/, and makes the pages "cross-origin isolated", as
+// threads need. A page without that gets the small "lite" build, on one thread. The engine runs
+// in a Web Worker, so the page doesn't freeze while it thinks, and speaks UCI, the chess engine
+// protocol: we send it lines of text like "go nodes 1000000", and it answers with lines like
+// "info depth 12 ... score cp 35".
 //
 // There's one engine, so one search at a time. Move checks come first, and wait their turn. Live
 // analysis only ever needs the latest position: asking for another stops the one running ("stop",
@@ -29,8 +31,12 @@ export interface EngineEval {
   bestmove?: string; // once the search has run its course; not if it was stopped early
 }
 
-export const ENGINE_NAME = 'Stockfish 19 lite';
-const ENGINE = '/stockfish/stockfish-19-lite-single.js';
+// The full network on several threads, where the page allows threads; else the lite build.
+export const MULTI_THREADED = typeof crossOriginIsolated !== 'undefined' && crossOriginIsolated;
+export const ENGINE_NAME = MULTI_THREADED ? 'Stockfish 19' : 'Stockfish 19 lite';
+const ENGINE = MULTI_THREADED ? '/stockfish/stockfish-19.js' : '/stockfish/stockfish-19-lite-single.js';
+// One thread fewer than the computer has, so the page stays responsive while the engine thinks.
+const THREADS = MULTI_THREADED ? Math.max(1, (navigator.hardwareConcurrency || 2) - 1) : 1;
 // lila judges your move once its engine has searched 1,000,000 positions or for 3 seconds
 // (retroCtrl's isCevalReady), so a move check stops there.
 const CHECK = 'go nodes 1000000 movetime 3000';
@@ -137,16 +143,28 @@ async function next(): Promise<void> {
   worker!.postMessage(search.go);
 }
 
-// Starts the engine, the first time it's needed. "uci" asks it to introduce itself; "uciok"
-// means it's ready for commands.
+// Starts the engine, the first time it's needed. "uci" asks it to introduce itself; at "uciok",
+// it's told how many threads to use, and "isready" waits for it to be ready ("readyok").
 function start(): Promise<void> {
   worker = new Worker(ENGINE);
   worker.onmessage = e => listener(String(e.data));
   return new Promise((resolve, reject) => {
     worker!.onerror = e => reject(new Error(e.message || `couldn't load ${ENGINE}`));
-    listener = line => line === 'uciok' && resolve();
+    listener = line => {
+      if (line === 'uciok') {
+        if (THREADS > 1) worker!.postMessage(`setoption name Threads value ${THREADS}`);
+        worker!.postMessage('isready');
+      } else if (line === 'readyok') resolve();
+    };
     worker!.postMessage('uci');
   });
+}
+
+// Loads the engine in the background, as the page opens (main.ts), so that the first check
+// doesn't wait for the full engine to load, which takes a few seconds. If it fails, the first
+// search reports it.
+export function preload(): void {
+  (started ??= start()).catch(e => console.error(e));
 }
 
 // One of Stockfish's "info" lines with a score, as an EngineEval; undefined for any other line.

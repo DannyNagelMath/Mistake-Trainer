@@ -6,7 +6,8 @@
 //                       { unsuspend } brings it back (see reviews.ts)
 //   GET  /api/settings  returns your settings ({} if you haven't saved any yet)
 //   POST /api/settings  replaces them (see settings.ts, which checks them when a page loads them)
-// It also serves Stockfish to the page at /stockfish/ (see stockfishFiles below).
+// It also serves Stockfish to the page at /stockfish/ (see stockfishFiles below), and makes the
+// pages "cross-origin isolated" so that it can run on several threads (crossOriginIsolation).
 // They only exist in the dev server (npm run dev), which is how this app runs.
 // To start your review history again, delete data/reviews.json; to go back to the default
 // settings, delete data/settings.json. To use other files, e.g. for testing, set the
@@ -131,9 +132,30 @@ function dataApi(): Plugin {
   };
 }
 
+// The two settings that make a page "cross-origin isolated", which lets Stockfish run on several
+// threads (WebAssembly threads need SharedArrayBuffer, which browsers only allow in such pages).
+// The price: a page can't embed anything from another site, and ours don't. Links to other
+// sites, like lichess.org, work as before.
+const ISOLATION = { 'Cross-Origin-Opener-Policy': 'same-origin', 'Cross-Origin-Embedder-Policy': 'require-corp' };
+
+// A Vite plugin that adds those settings to every response: added first (configureServer), its
+// handler sees every request before the others.
+function crossOriginIsolation(): Plugin {
+  return {
+    name: 'cross-origin-isolation',
+    configureServer(server) {
+      server.middlewares.use((_req, res, next) => {
+        for (const [name, value] of Object.entries(ISOLATION)) res.setHeader(name, value);
+        next();
+      });
+    },
+  };
+}
+
 // Serves the Stockfish engine files (src/engine.ts) at /stockfish/, straight from the npm package
 // `stockfish`, so they're always the installed version. Only files named like its engines, and
-// with the content types the browser needs to run them.
+// with the content types the browser needs to run them. The browser may keep them for a day:
+// the full engine is about 100 MB.
 function stockfishFiles(): Plugin {
   const dir = fileURLToPath(new URL('./node_modules/stockfish/bin/', import.meta.url));
   return {
@@ -143,10 +165,11 @@ function stockfishFiles(): Plugin {
         const name = (req.url ?? '').split('?')[0].replace(/^\//, '');
         if (!/^stockfish-[\w.-]+\.(js|wasm)$/.test(name) || !existsSync(dir + name)) return next();
         res.setHeader('Content-Type', name.endsWith('.wasm') ? 'application/wasm' : 'text/javascript');
+        res.setHeader('Cache-Control', 'max-age=86400');
         res.end(readFileSync(dir + name));
       });
     },
   };
 }
 
-export default defineConfig({ plugins: [dataApi(), stockfishFiles()] });
+export default defineConfig({ plugins: [crossOriginIsolation(), dataApi(), stockfishFiles()] });
