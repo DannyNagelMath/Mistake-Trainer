@@ -45,6 +45,10 @@ You need Node.js, Python 3, git, and a [Lichess API token](https://lichess.org/a
    token from step 3 for the masters database.
 5. Start the page with `npm run dev`, and open the address it prints.
 
+Later, to add the games you've played since, run `npm run update-deck` from `web`: it downloads
+them and builds the deck again. Your review history is backed up once a day, in
+`web/data/backups`; to go back to a backup, stop the page and copy it over `web/data/reviews.json`.
+
 ## Licence
 
 Mistake Trainer is free software: you can redistribute it and/or modify it under the terms of the

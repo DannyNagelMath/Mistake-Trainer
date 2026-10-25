@@ -11,10 +11,11 @@
 // To start your review history again, delete data/reviews.json; to go back to the default
 // settings, delete data/settings.json. To use other files, e.g. for testing, set the
 // REVIEWS_FILE and SETTINGS_FILE environment variables to their paths.
+// Your review history is backed up once a day (backupHistory below).
 
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { dirname } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, type Plugin } from 'vite';
 
@@ -35,6 +36,26 @@ function writeJson(file: string, data: unknown): void {
 }
 
 const readHistory = (): ReviewHistory => readJson(historyFile, { cards: {}, log: [] });
+
+// Backs up your review history once a day: a copy in data/backups, named by the date, made the
+// first time the dev server starts or saves a review that day, before anything changes. The 30
+// latest stay; older ones are deleted. To go back to one, stop the dev server and copy it over
+// data/reviews.json. (Only files named like these backups are ever deleted.)
+const BACKUPS_KEPT = 30;
+function backupHistory(): void {
+  if (!existsSync(historyFile)) return;
+  const dir = join(dirname(historyFile), 'backups');
+  const now = new Date();
+  const today = [now.getFullYear(), now.getMonth() + 1, now.getDate()].map(n => String(n).padStart(2, '0')).join('-');
+  const backup = join(dir, `reviews-${today}.json`);
+  if (existsSync(backup)) return;
+  mkdirSync(dir, { recursive: true });
+  copyFileSync(historyFile, backup);
+  const backups = readdirSync(dir)
+    .filter(name => /^reviews-\d{4}-\d{2}-\d{2}\.json$/.test(name))
+    .sort(); // oldest first, as the dates sort as text
+  for (const old of backups.slice(0, -BACKUPS_KEPT)) rmSync(join(dir, old));
+}
 
 // A request handler: GET replies with get(), as JSON; POST calls post() with the JSON the page
 // sent, which returns an error message if the request makes no sense. The files are read and
@@ -74,6 +95,7 @@ function dataApi(): Plugin {
   return {
     name: 'data-api',
     configureServer(server) {
+      backupHistory();
       server.middlewares.use(
         '/api/reviews',
         handler(readHistory, body => {
@@ -91,6 +113,7 @@ function dataApi(): Plugin {
             history.cards[entry.cardId] = card;
             history.log.push(entry);
           } else return 'Expected { card, entry }, { suspend, at }, or { unsuspend }';
+          backupHistory(); // before the day's first change, if the dev server has been running since yesterday
           writeJson(historyFile, history);
         }),
       );
