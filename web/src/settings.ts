@@ -27,6 +27,9 @@ export interface Settings {
   // Reviews
   desiredRetention: number; // FSRS's aim: your chance of still getting a card right when it's due
   minGapDays: number; // no card comes back sooner than this after a review
+  gameRestDays: number; // after you review a card, the other cards from its game wait this long
+  // Answers
+  bestMoveOnly: boolean; // only Lichess's best move counts as right (and master moves, checkmates)
 }
 
 export const defaultSettings: Settings = {
@@ -37,9 +40,11 @@ export const defaultSettings: Settings = {
   openingMoves: 12,
   desiredRetention: 0.9, // ts-fsrs's default
   minGapDays: 7,
+  gameRestDays: 1,
+  bestMoveOnly: false, // any move nearly as good counts, as on Lichess
 };
 
-type NumberKey = Exclude<keyof Settings, 'newCardOrder'>;
+export type NumberKey = Exclude<keyof Settings, 'newCardOrder' | 'bestMoveOnly'>;
 
 // What each number can be. Retention near 1 makes the reviews pile up, as FSRS then schedules
 // every card very soon; much below 0.7 you'd forget most cards before seeing them again. The
@@ -51,6 +56,7 @@ export const ranges: Record<NumberKey, { min: number; max: number; whole?: boole
   openingMoves: { min: 1, max: 60, whole: true },
   desiredRetention: { min: 0.7, max: 0.97 },
   minGapDays: { min: 1, max: 90, whole: true },
+  gameRestDays: { min: 0, max: 30, whole: true },
 };
 
 export type Problems = Partial<Record<keyof Settings, string>>;
@@ -59,6 +65,7 @@ export type Problems = Partial<Record<keyof Settings, string>>;
 export function problems(s: Settings): Problems {
   const found: Problems = {};
   if (!newCardOrders.includes(s.newCardOrder)) found.newCardOrder = 'Choose one of the orders';
+  if (typeof s.bestMoveOnly !== 'boolean') found.bestMoveOnly = 'On or off';
   for (const key of Object.keys(ranges) as NumberKey[]) {
     const value = s[key];
     const { min, max, whole } = ranges[key];

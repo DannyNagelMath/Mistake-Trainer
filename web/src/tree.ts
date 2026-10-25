@@ -76,6 +76,7 @@ export interface TreeNode {
   // Only set on a move you try that retroCtrl has to check (see engine.ts).
   ceval?: EngineEval;
   comp?: boolean; // only the first node of an engine line is marked comp = true
+  collapsed?: boolean; // its variations are folded away in the move list (variation hiding)
   glyphs?: { id: number; symbol: string; name: string }[];
   comments?: TreeComment[]; // Step 6: e.g. "Mistake. Nf3 was best." by 'lichess', on the judged move
   clock?: number; // Step 8: the clock of whoever just moved, in centiseconds; at the root, the starting time

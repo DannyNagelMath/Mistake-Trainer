@@ -52,7 +52,7 @@ class ColumnView extends InlineView {
           isWhite && emptyMove(),
           hl('interrupt', interruptData, [
             comments,
-            siblings.length > 0 && this.lines(siblings, opts), // Trim: lila draws a line to the fold button otherwise.
+            siblings.length > 0 ? this.lines(siblings, opts) : parentDisclose && this.disclosureConnector(parentPath),
           ]),
           isWhite && child.children.length > 0 && [renderIndex(child.ply, false), emptyMove()],
         ],

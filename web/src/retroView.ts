@@ -234,6 +234,14 @@ export default function (root: AnalysisCtrl): VNode | undefined {
           hook: bind('click', root.toggleRetro, root.redraw),
           attrs: { 'data-icon': licon.X, 'aria-label': 'Close learn window' },
         }),
+      // Not in lila: show or hide the move you played in the game, as lila's pale red arrow.
+      ctrl.card &&
+        ctrl.current() &&
+        hl(
+          'a.my-move',
+          { attrs: { title: 'The move you played in the game, as a red arrow' }, hook: bind('click', root.toggleBadMoveArrow) },
+          root.showBadMoveArrow() ? 'Hide my move' : 'Show my move',
+        ),
       // Step 9: in card mode, while a card is shown, suspend it. It asks first, as undoing it means
       // going to Training settings.
       ctrl.card &&

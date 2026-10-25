@@ -7,8 +7,8 @@
 // through reviewCard below: FSRS schedules it, and a card never comes back within the minimum gap.
 // "A day" always means 24 hours counted from a review, never a calendar day:
 //   - with a new-card limit, at most that many new cards in any 24 hours;
-//   - after you review a card, the other cards from its game wait until 24 hours after that
-//     review, so you don't see two positions from one game on the same day. They only wait in
+//   - after you review a card, the other cards from its game wait (s.gameRestDays, a day to begin
+//     with), so you don't see two positions from one game too close together. They only wait in
 //     the queue: their FSRS schedules don't change.
 // Suspended cards never come up.
 // The numbers come from your settings (settings.ts, changed on the settings page), which most
@@ -107,12 +107,13 @@ const newCardStarts = (history: ReviewHistory, now: Date): number[] =>
 // How many new cards you've started in the 24 hours up to `now`.
 export const newCardsInLastDay = (history: ReviewHistory, now: Date): number => newCardStarts(history, now).length;
 
-// For each game you've reviewed, when its cards can come up again: 24 hours after its latest review.
-function gameRestEnds(history: ReviewHistory): Map<string, number> {
+// For each game you've reviewed, when its cards can come up again: s.gameRestDays after its
+// latest review.
+function gameRestEnds(history: ReviewHistory, s: Settings): Map<string, number> {
   const ends = new Map<string, number>();
   for (const entry of history.log) {
     const game = gameOf(entry.cardId),
-      end = reviewTime(entry) + DAY;
+      end = reviewTime(entry) + s.gameRestDays * DAY;
     if (end > (ends.get(game) ?? 0)) ends.set(game, end);
   }
   return ends;
@@ -125,7 +126,7 @@ export const activeCards = (deck: Card[], history: ReviewHistory): Card[] =>
 // The cards for each of the two rules, each in the order they'd be shown, leaving out suspended
 // cards, and cards whose game is waiting.
 function queues(deck: Card[], history: ReviewHistory, now: Date, s: Settings) {
-  const restEnds = gameRestEnds(history);
+  const restEnds = gameRestEnds(history, s);
   const gameWaiting = (c: Card) => (restEnds.get(c.gameId) ?? 0) > now.getTime();
   const active = activeCards(deck, history);
   const reviewed = active.filter(c => history.cards[c.id]).sort((a, b) => dueTime(history, a) - dueTime(history, b));
@@ -141,7 +142,7 @@ function queues(deck: Card[], history: ReviewHistory, now: Date, s: Settings) {
 // new with the new-card limit allowing another. For coming back to the card you left (DeckCtrl).
 export function canComeUp(deck: Card[], history: ReviewHistory, now: Date, s: Settings, cardId: string): boolean {
   const card = activeCards(deck, history).find(c => c.id === cardId);
-  if (!card || (gameRestEnds(history).get(card.gameId) ?? 0) > now.getTime()) return false;
+  if (!card || (gameRestEnds(history, s).get(card.gameId) ?? 0) > now.getTime()) return false;
   if (history.cards[card.id]) return dueTime(history, card) <= now.getTime();
   return newCardsInLastDay(history, now) < newCardLimit(s);
 }
@@ -166,8 +167,8 @@ export interface Progress {
 
 // When the next of the cards you've started come up, after now: the first time one can (it's
 // due, and its game isn't waiting), in milliseconds, and how many come up that same day.
-function nextDue(deck: Card[], history: ReviewHistory, now: Date): Progress['nextDue'] {
-  const restEnds = gameRestEnds(history);
+function nextDue(deck: Card[], history: ReviewHistory, now: Date, s: Settings): Progress['nextDue'] {
+  const restEnds = gameRestEnds(history, s);
   const times = activeCards(deck, history)
     .filter(c => history.cards[c.id])
     .map(c => Math.max(dueTime(history, c), restEnds.get(c.gameId) ?? 0))
@@ -186,7 +187,7 @@ export function progress(deck: Card[], history: ReviewHistory, now: Date, s: Set
     notStarted: active.length - started,
     suspended: deck.length - active.length,
     dueNow: queues(deck, history, now, s).due.length,
-    nextDue: nextDue(deck, history, now),
+    nextDue: nextDue(deck, history, now, s),
   };
 }
 
@@ -202,7 +203,7 @@ export function cardsLeft(deck: Card[], history: ReviewHistory, now: Date, s: Se
 // A new card comes up when its game has stopped waiting and the new-card limit allows another:
 // at the limit, that's when enough of the last 24 hours' new cards are 24 hours old.
 export function nextAvailable(deck: Card[], history: ReviewHistory, now: Date, s: Settings): Date | undefined {
-  const restEnds = gameRestEnds(history);
+  const restEnds = gameRestEnds(history, s);
   const starts = newCardStarts(history, now);
   const limit = newCardLimit(s);
   const newCardAllowed = starts.length < limit ? now.getTime() : starts[starts.length - limit] + DAY;

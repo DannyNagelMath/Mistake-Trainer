@@ -18,13 +18,19 @@ import { hasBranching, type TreeComment, type TreeNode } from './tree';
 // ---------- Stand-in for lila's idbTree.discloseOf (ui/analyse/src/idbTree.ts) ----------
 
 // 'expanded' means a node's variations or comments break up the list, and 'collapsed' that you
-// folded them away. Trim: lila remembers folded variations in IndexedDB. You can only fold them
-// in "disclosure mode", which is off by default, so nothing here is ever 'collapsed'.
+// folded them away with its button, which only shows with "Enable variation hiding" on (lila's
+// disclosure mode, in the analysis settings).
+// Trim: lila remembers folded variations in IndexedDB; here they stay folded until the next card,
+// whose game gets a new tree.
 export type DiscloseState = undefined | 'expanded' | 'collapsed';
 
 export function discloseOf(ctrl: AnalysisCtrl, node: TreeNode | undefined, isMainline: boolean): DiscloseState {
   if (!node) return undefined;
-  return isCollapsible(ctrl, node, isMainline) ? 'expanded' : undefined;
+  return isCollapsible(ctrl, node, isMainline)
+    ? ctrl.settings.disclosureMode && node.collapsed
+      ? 'collapsed'
+      : 'expanded'
+    : undefined;
 }
 
 function isCollapsible(ctrl: AnalysisCtrl, node: TreeNode, isMainline: boolean): boolean {
@@ -130,7 +136,7 @@ export class InlineView {
     return (!isMainline || this.inline) && args.parenthetical
       ? hl('inline', this.sidelineNodes(lines, lineArgs))
       : hl('lines', { class: { anchor } }, [
-          // Trim: lila draws a line to the fold button here in disclosure mode.
+          parentDisclose === 'expanded' && this.disclosureConnector(parentPath),
           lines.map(line => hl('line', [parentDisclose && hl('branch'), this.sidelineNodes([line], lineArgs)])),
         ]);
   }
@@ -138,16 +144,18 @@ export class InlineView {
   private sidelineNodes([child, ...siblings]: TreeNode[], args: Args): LooseVNodes {
     if (!child) return undefined;
     const childArgs = this.childArgs(child, args, false);
-    // Trim: lila's disclosure mode (off by default) lists every variation separately.
-    return [
+    const sideline = [
       this.moveNode(child, args),
       this.commentNodes(child),
       args.parenthetical && this.lines(siblings, args),
-      child.children.length < 2 || childArgs.parenthetical
+      this.ctrl.settings.disclosureMode || child.children.length < 2 || childArgs.parenthetical
         ? this.sidelineNodes(child.children, childArgs)
         : this.lines(child.children, childArgs),
       !args.parenthetical && this.lines(siblings, args),
     ];
+    return this.ctrl.settings.disclosureMode && args.parentDisclose === 'expanded'
+      ? hl('interrupt', sideline)
+      : sideline;
   }
 
   private childArgs(child: TreeNode, args: Args, isMainline = false): Args {
@@ -166,7 +174,10 @@ export class InlineView {
     return !third && !!second && !hasBranching(second, 6);
   }
 
-  protected moveNode(node: TreeNode, { isMainline, parentPath, parentNode, parenthetical }: Args): LooseVNodes {
+  protected moveNode(
+    node: TreeNode,
+    { isMainline, parentPath, parentNode, parentDisclose, parenthetical }: Args,
+  ): LooseVNodes {
     const { ctrl } = this;
     const path = parentPath + node.id;
     // The move to highlight as "current": the position of the mistake you're solving.
@@ -193,9 +204,74 @@ export class InlineView {
         .forEach(cls => (classes[cls] = true));
     }
     return hl('move', { attrs: { p: path }, class: classes }, [
-      // Trim: lila puts a fold button here in disclosure mode.
+      parentDisclose && this.disclosureBtn(parentNode, parentPath),
       withIndex && renderIndex(node.ply, true),
       renderMoveNodes(node, isMainline && !this.inline, ctrl.showMoveGlyphs(), ctrl.allowedEval(node) || false, glyphs),
     ]);
+  }
+
+  // In variation hiding, the line drawn from a move's fold button down to its variations.
+  protected disclosureConnector(parentPath: string): LooseVNodes {
+    const callback = (vnode: VNode) => this.connectToDisclosureBtn(vnode, parentPath);
+    return (
+      this.ctrl.settings.disclosureMode &&
+      hl(
+        'div.disclosure-connector',
+        { hook: { insert: callback, update: v => setTimeout(() => callback(v)) } },
+        hl('div.disclosure-connector.riser'),
+      )
+    );
+  }
+
+  // The button that folds a move's variations away or shows them again (lila's
+  // idbTree.setCollapsed). Trim: lila also saves which ones are folded.
+  private disclosureBtn(node: TreeNode, path: string): LooseVNodes {
+    return (
+      this.ctrl.settings.disclosureMode &&
+      hl('a.disclosure', {
+        class: { expanded: !node.collapsed },
+        attrs: { 'data-path': path },
+        on: {
+          click: () => {
+            node.collapsed = !node.collapsed;
+            this.ctrl.redraw();
+          },
+        },
+      })
+    );
+  }
+
+  // Trim: lila skips this on Safari older than 16.
+  private connectToDisclosureBtn(v: VNode, path: string): void {
+    const [el, btn] = [v.elm as HTMLElement, this.findDisclosureBtn(v.elm, path)];
+    if (!el || !btn) return;
+
+    const btnRect = btn.getBoundingClientRect();
+    const anchorRect = el.closest('.anchor')!.getBoundingClientRect();
+    const isFirstOnRow = btnRect.left < anchorRect.left + 8;
+    const distanceMinusRiser = anchorRect.top - btnRect.bottom + btnRect.height / 2;
+    const baseHeight = Math.max(0, distanceMinusRiser - (isFirstOnRow ? 0 : 12));
+    const btnCenter = btnRect.width / 2;
+    const width = isFirstOnRow
+      ? 3
+      : document.documentElement.dir === 'rtl'
+        ? anchorRect.right - btnRect.left - btnCenter
+        : btnRect.right - anchorRect.left - btnCenter;
+
+    el.style.width = `${width}px`;
+    el.style.height = `${baseHeight}px`;
+    el.style.top = `-${baseHeight}px`;
+    (el.firstElementChild as HTMLElement).style.display = isFirstOnRow ? 'none' : 'block';
+  }
+
+  private findDisclosureBtn(el: Node | null | undefined, path: string): HTMLElement | undefined {
+    while (el && (el.nodeName !== 'A' || (el as HTMLElement).dataset.path !== path)) {
+      if (!el.previousSibling) el = el.parentNode;
+      else {
+        el = el.previousSibling;
+        while (el.lastChild) el = el.lastChild;
+      }
+    }
+    return el as HTMLElement;
   }
 }

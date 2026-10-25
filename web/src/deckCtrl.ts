@@ -54,6 +54,29 @@ function rememberedCard(): string | null {
   }
 }
 
+// A card you got right on your first move but haven't rated yet, and the move you played,
+// remembered by the browser (localStorage) until you rate it: if you leave the page first, e.g. for
+// Training settings, or close it, the card comes back next time as you left it, waiting for your
+// rating (DeckCtrl.resume), and the review isn't lost.
+interface Pending {
+  cardId: string;
+  uci: string;
+}
+const PENDING_KEY = 'mistakeTrainer.pending';
+function rememberPending(pending: Pending | undefined): void {
+  try {
+    if (pending) localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
+    else localStorage.removeItem(PENDING_KEY);
+  } catch {}
+}
+function rememberedPending(): Pending | undefined {
+  try {
+    return JSON.parse(localStorage.getItem(PENDING_KEY) ?? 'null') ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 // E.g. "now", "in 8 minutes", or "on Thu, Oct 2, 2:05 PM".
 function describeTime(t: Date, now = new Date()): string {
   const minutes = Math.ceil((t.getTime() - now.getTime()) / 60_000);
@@ -79,9 +102,11 @@ export class DeckCtrl {
     private readonly redraw: () => void,
   ) {
     this.cards = orderNewCards(shuffle(deck.cards), settings); // random among cards the order ties
-    // The card you left, if you hadn't answered it and it can still come up; else the next one.
-    // (Once answered, it isn't due again for days, so it can't.)
-    const left = rememberedCard();
+    // A card waiting for your rating, then the card you left, if you hadn't answered it and it can
+    // still come up (once answered, it isn't due again for days, so it can't); else the next one.
+    const pending = rememberedPending();
+    if (pending && !canComeUp(this.cards, history, new Date(), settings, pending.cardId)) rememberPending(undefined);
+    const left = rememberedPending()?.cardId ?? rememberedCard();
     const first =
       (left && canComeUp(this.cards, history, new Date(), settings, left) && this.cards.find(c => c.id === left)) ||
       pickNext(this.cards, history, new Date(), settings);
@@ -109,6 +134,7 @@ export class DeckCtrl {
       ratingChoices: this.ratingChoices,
       suspend: this.suspend,
       openingUcis: this.card.masterMoves ?? [],
+      bestMoveOnly: this.settings.bestMoveOnly,
     };
   }
 
@@ -119,6 +145,7 @@ export class DeckCtrl {
     (this.history.suspended ??= {})[this.card.id] = at;
     saveSuspension(this.card.id, at).catch(e => alert(e.message));
     this.awaitingRating = false;
+    rememberPending(undefined);
     if (!this.next()) this.showEnd();
   };
 
@@ -138,8 +165,23 @@ export class DeckCtrl {
   // you to choose how it went (ratingChoices).
   private onResult = (result: CardResult): void => {
     if (this.graded || this.awaitingRating) return;
-    if (result === 'win') this.awaitingRating = true;
-    else this.record(result, gradeOf(result));
+    if (result === 'win') {
+      this.awaitingRating = true;
+      rememberPending({ cardId: this.card.id, uci: this.analysis.node.uci! }); // the move you played
+    } else this.record(result, gradeOf(result));
+  };
+
+  // After the page opens (main.ts): if the card on screen was waiting for your rating when you
+  // left, play your move again, so it's as you left it: solved, with the rating buttons. A move
+  // the engine had to check is checked again.
+  resume = (): void => {
+    const pending = rememberedPending();
+    if (!pending || pending.cardId !== this.card.id || this.graded) return;
+    try {
+      this.analysis.playUci(pending.uci);
+    } catch {
+      rememberPending(undefined); // e.g. the deck was rebuilt differently
+    }
   };
 
   private ratingChoices = (): { label: string; rate: () => void }[] | undefined =>
@@ -157,6 +199,7 @@ export class DeckCtrl {
   private record(result: CardResult, grade: Grade): void {
     this.graded = true;
     this.awaitingRating = false;
+    rememberPending(undefined);
     this.reviewed++;
     const now = new Date();
     const schedule = this.history.cards[this.card.id] ?? createEmptyCard(now); // a new card's is empty
@@ -181,13 +224,6 @@ export class DeckCtrl {
     this.analysis.toggleRetro(); // jumps to the card's mistake
     this.redraw();
     return true;
-  };
-
-  // When you leave the page (main.ts: pagehide) after the right first move without saying how it
-  // went: record it as Good, as Next does, rather than lose the review. saveReview sends it so
-  // that it arrives even as the page goes (keepalive).
-  leave = (): void => {
-    if (this.awaitingRating) this.record('win', gradeOf('win'));
   };
 
   // For the button at the end: deals a card if one has come due since.

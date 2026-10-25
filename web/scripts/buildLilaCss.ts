@@ -11,7 +11,7 @@
 // (from the folder that contains lichess_project):
 //   git init lila; cd lila
 //   git remote add origin https://github.com/lichess-org/lila.git
-//   git sparse-checkout set --no-cone /ui/ /public/font/*.woff2 /public/piece/cburnett/ /public/piece/mono/ /public/images/board/brown.png
+//   git sparse-checkout set --no-cone /ui/ /public/font/*.woff2 /public/piece/cburnett/ /public/piece/mono/ /public/video/ /public/images/board/brown.png
 //   git fetch --depth 1 --filter=blob:none origin 27ffc8b5f296d180e7a648d6bfdad27eef3f86a2
 //   git checkout FETCH_HEAD
 // (In Git Bash, put MSYS_NO_PATHCONV=1 before the sparse-checkout command, or it turns /ui/ into a Windows path.)
@@ -67,13 +67,15 @@ for (const source of sources) {
 // piece images, which lila's page adds in the <head> rather than in the CSS (see index.html).
 // Only lila's default board (brown) and piece set (cburnett); the CSS names the other boards too,
 // but the browser only downloads the one it uses. Also the small one-color pieces (mono) that show
-// the material each side is up, beside the clocks. All of these have free licences (lila's
-// COPYING.md). Not the loading spinner's images: COPYING.md lists the other artwork in
+// the material each side is up, beside the clocks, and the short videos that show what each
+// analysis setting does. All of these have free licences (lila's COPYING.md: the videos are lila's
+// own, AGPL). Not the loading spinner's images: COPYING.md lists the other artwork in
 // public/images as non-free, and this page doesn't show the spinner.
 const assets = [
   'font', // text fonts, the lichess icon font, and the chess-figurine font
   'piece/cburnett',
   'piece/mono',
+  'video',
   'images/board/brown.png',
 ];
 for (const asset of assets) {

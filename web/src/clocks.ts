@@ -20,6 +20,9 @@ const plyColor = (ply: number) => (ply % 2 === 0 ? 'white' : 'black');
 // A node only has the clock of the player who just moved, so the other player's clock comes
 // from the node before it.
 export default function renderClocks(ctrl: AnalysisCtrl, path: string): [VNode, VNode] | undefined {
+  // Not in lila: no clocks while you solve a card (AnalysisCtrl.hidingHints). The time left can
+  // bring the game back to mind, and with it the answer.
+  if (ctrl.hidingHints()) return undefined;
   const node = ctrl.tree.nodeAtPath(path),
     whitePov = ctrl.bottomColor() === 'white', // lila's ctrl.bottomIsWhite()
     // lila's tree.getParentClock

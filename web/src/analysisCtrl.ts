@@ -98,9 +98,10 @@ export class AnalysisCtrl implements RetroRoot {
     this.redraw();
   });
   settingsOpen = false; // Not in lila, which opens its dialog itself: whether the dialog is showing
-  // Not in lila: lila always draws the move you played in the game as a pale red arrow while you
-  // look for a better one. Off here; set it to true to bring the arrow back.
-  readonly showBadMoveArrow = false;
+  // Not in lila, which always draws the move you played in the game as a pale red arrow while
+  // you look for a better one: here, only when you ask ("Show my move" in the panel), and the
+  // browser remembers your choice.
+  readonly showBadMoveArrow = storedBooleanProp('mistakeTrainer.showMyMove', false);
   // From lila: whether you've switched the engine on (the switch above the move list, or l). As in
   // lila, the browser remembers it, and it's off to begin with.
   private readonly cevalEnabledProp = storedBooleanProp('engine.enabled', false);
@@ -228,6 +229,7 @@ export class AnalysisCtrl implements RetroRoot {
     this.node = this.tree.nodeAtPath(path);
     this.path = path;
     this.nodeList = this.tree.getNodeList(path); // Step 7: like lila's setPath
+    this.revealNode(); // like lila's setPath
     this.onMainline = this.tree.pathIsMainline(path);
     if (pathChanged) this.retro?.onJump();
     this.cg?.set(this.cgConfig()); // Step 3a: `?.` skips this when there is no board
@@ -290,6 +292,23 @@ export class AnalysisCtrl implements RetroRoot {
     const piece = this.cg?.state.pieces.get(dest); // the board has already moved the piece
     const promotes = piece?.role === 'pawn' && (dest[1] === '1' || dest[1] === '8');
     this.playUci(orig + dest + (promotes ? 'q' : ''));
+  };
+
+  // From lila's idbTree.revealNode: unfold the variations on the way to the position shown, so
+  // that its move is never folded away in the move list. Trim: lila also saves the change.
+  private revealNode(): void {
+    const nodes = this.nodeList;
+    for (let i = 0; i < nodes.length; i++) {
+      const kid = nodes[i].children[0];
+      if (nodes[i].collapsed && kid && nodes[i + 1] && kid !== nodes[i + 1]) nodes[i].collapsed = false;
+    }
+  }
+
+  // Not in lila: "Show my move" / "Hide my move" in the panel.
+  toggleBadMoveArrow = (): void => {
+    this.showBadMoveArrow(!this.showBadMoveArrow());
+    this.setAutoShapes();
+    this.redraw();
   };
 
   // Like lila's setAutoShapes: the arrows and annotations the board draws by itself (autoShape.ts).

@@ -19,6 +19,7 @@ import type { ReviewHistory } from './reviews';
 import type { EngineEval } from './engine';
 import { defaultSettings, type Settings } from './settings';
 import { renderSide } from './side';
+import renderClocks from './clocks';
 import type { LichessGameJson } from './tree';
 
 // The stand-in for Stockfish (engine.ts). A move check reports each of `byFen[fen]` (or else
@@ -348,16 +349,32 @@ test('coming back to the page shows the card you left, unless you had answered i
   expect(cardOn(open())).not.toBe(left.id);
 });
 
-test('leaving the page after the right first move, without rating it, records it as Good', () => {
-  const { history, ctrl, deckCtrl } = start();
-  deckCtrl.leave(); // nothing to record yet
-  expect(history.log).toEqual([]);
-  playSolution(ctrl);
-  deckCtrl.leave();
-  expect(history.log.map(e => [e.result, e.log.rating])).toEqual([['win', Rating.Good]]);
-  expect(saved).toHaveLength(1);
-  deckCtrl.leave(); // only once
-  expect(history.log).toHaveLength(1);
+test('coming back after the right first move, before rating it, shows the card solved, with the rating buttons', () => {
+  const standIn = (stored: Record<string, string>) => ({
+    getItem: (key: string) => stored[key] ?? null,
+    setItem: (key: string, value: string) => (stored[key] = value),
+    removeItem: (key: string) => delete stored[key],
+  });
+  vi.stubGlobal('localStorage', standIn({}));
+  vi.stubGlobal('sessionStorage', standIn({}));
+  const history: ReviewHistory = { cards: {}, log: [] };
+  const open = () => {
+    const deckCtrl = new DeckCtrl(deck, history, defaultSettings, () => {});
+    deckCtrl.analysis.toggleRetro();
+    deckCtrl.resume(); // as main.ts does
+    return deckCtrl.analysis;
+  };
+  const first = open();
+  const card = `${first.game.id}/${first.retro!.card!.ply}`;
+  playSolution(first); // right, and the rating buttons show...
+  const back = open(); // ...but you left, e.g. for Training settings, and came back
+  expect(`${back.game.id}/${back.retro!.card!.ply}`).toBe(card);
+  expect(back.retro!.feedback()).toBe('win');
+  expect(history.log).toEqual([]); // nothing recorded yet
+  back.retro!.card!.ratingChoices()![2].rate(); // "Knew it instantly"
+  expect(history.log.map(e => [e.cardId, e.result, e.log.rating])).toEqual([[card, 'win', Rating.Easy]]);
+  const later = open(); // rated: the card doesn't come back
+  expect(later.retro!.current()?.fault.node.ply).not.toBe(first.retro!.card!.ply);
 });
 
 test("once a card is done, the game's other mistakes, other cards, keep their analysis hidden, and say so", () => {
@@ -378,4 +395,63 @@ test("a move is compared with our engine's eval of the position before, not Lich
   await afterTheEngine();
   expect(feedback()).toBe('win'); // against Lichess's forced mate, it would be wrong
   expect(engine.asked).toEqual([before, ctrl.node.fen]); // the position before, then after the move
+});
+
+test("with 'only Lichess's best move' on, any other move is wrong at once, without the engine", () => {
+  const [card] = deck.cards;
+  const deckCtrl = new DeckCtrl({ ...deck, cards: [card] }, { cards: {}, log: [] }, { ...defaultSettings, bestMoveOnly: true }, () => {});
+  const ctrl = deckCtrl.analysis;
+  ctrl.toggleRetro();
+  ctrl.playUci(otherMove(card));
+  expect(ctrl.retro!.feedback()).toBe('fail');
+  expect(engine.asked).toEqual([]);
+});
+
+test("while solving, no clocks; once done, the game's clock times", () => {
+  const { ctrl } = start();
+  expect(renderClocks(ctrl, ctrl.path)).toBeUndefined();
+  playSolution(ctrl);
+  ctrl.userJump(ctrl.retro!.current()!.prev.path);
+  expect(renderClocks(ctrl, ctrl.path)).toHaveLength(2);
+});
+
+test('"Show my move": the move you played as a red arrow, alone while solving, beside the others once done', () => {
+  const [card] = deck.cards; // you played 20.Qh4 (h6h4)
+  const { ctrl } = startOn(card);
+  const arrows = () => autoShapes(ctrl).filter(s => s.dest).map(s => [s.brush, s.orig + s.dest]);
+  expect(arrows()).toEqual([]); // off unless you ask
+  ctrl.toggleBadMoveArrow();
+  expect(arrows()).toEqual([['paleRed', 'h6h4']]);
+  playSolution(ctrl);
+  ctrl.userJump(ctrl.retro!.current()!.prev.path); // back at the position, now that it's solved
+  expect(arrows()).toEqual([
+    ['paleRed', 'h6h4'],
+    ['paleGreen', 'd6f4'],
+    ['paleBlue', 'h6g7'],
+  ]);
+  ctrl.toggleBadMoveArrow();
+  expect(arrows()).not.toContainEqual(['paleRed', 'h6h4']);
+});
+
+test('variation hiding: moves with variations get a fold button, which folds them away', () => {
+  const { ctrl } = start();
+  playSolution(ctrl);
+  const shows = (path: string): boolean => {
+    const find = (v: VNode | string | undefined): boolean =>
+      typeof v === 'object' && !!v && (v.data?.attrs?.p === path || (v.children ?? []).some(c => find(c as VNode)));
+    return find(ctrl.treeView.render());
+  };
+  // Black's blunder at ply 62 has Lichess's line beside it: a variation of the move before.
+  const parent = ctrl.mainline.find(n => n.ply === 61)!;
+  const line = parent.children.find(c => c.comp)!;
+  const linePath = ctrl.mainlinePlyToPath(61) + line.id;
+  expect(has(ctrl.treeView.render(), 'a.disclosure')).toBe(false); // off by default, as in lila
+  ctrl.settings.set('disclosureMode', true);
+  expect(has(ctrl.treeView.render(), 'a.disclosure')).toBe(true);
+  expect(shows(linePath)).toBe(true);
+  parent.collapsed = true; // what its button does
+  expect(shows(linePath)).toBe(false);
+  ctrl.userJump(linePath); // going to a move in a folded line unfolds it
+  expect(parent.collapsed).toBe(false);
+  ctrl.settings.set('disclosureMode', false);
 });

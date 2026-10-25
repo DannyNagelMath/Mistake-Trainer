@@ -7,8 +7,9 @@ div.site-title:hover {
   color: var(--c-font);
 }
 
-/* A card's panel has no title in its bar (retroView.ts), only "Suspend card": on the right, as
-   lila's close button is, and the bar keeps its height when even that isn't there. */
+/* A card's panel has no title in its bar (retroView.ts), only "Show my move" on the left and
+   "Suspend card" on the right, where lila's close button is. The bar keeps its height when
+   neither is there. */
 .retro-box .title {
   min-height: 1.9em;
 }

@@ -87,7 +87,8 @@ you must offer them its source code.
   [COPYING.md](https://github.com/lichess-org/lila/blob/27ffc8b5f296d180e7a648d6bfdad27eef3f86a2/COPYING.md).
   The script only copies ones with free licences: the brown board (AGPL-3.0+), the cburnett pieces
   (GPL-2.0+, Colin M.L. Burnett), the mono pieces (GPL-2.0+, Thibault Duplessis and Colin M.L.
-  Burnett), Noto Sans and Roboto (Apache 2.0), and the icon and chess fonts
+  Burnett), lila's help videos for the analysis settings (AGPL-3.0+), Noto Sans and Roboto
+  (Apache 2.0), and the icon and chess fonts
   (OFL, MIT, CC BY 3.0, GPL-2.0+, and AGPL-3.0+). If you change the board or pieces, check their
   entry in COPYING.md: some of lila's are non-free or non-commercial.
 - Mistake Trainer doesn't use the Lichess name or logo as its own; lila's COPYING.md reserves the

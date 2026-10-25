@@ -17,15 +17,17 @@ interface Setting {
   label: string;
   group: string;
   shortcut?: string[]; // its keyboard shortcuts, e.g. ['shift+i'] (see keys below)
+  video?: string; // lila's short video of what it does, in public/lila/video (buildLilaCss.ts)
 }
 
-// Trim: lila's settings also have help videos, which play when you point at a setting, and lila
-// has more settings (see analysisSettings.ts).
+// Trim: lila has more settings (see analysisSettings.ts). Its help for the gauge is a picture,
+// which COPYING.md lists as non-free, so that one has none here.
 const settings: Record<SettingKey, Setting> = {
   showStaticAnalysis: {
     label: i18n.preferences.showMainlineAnalysis,
     shortcut: ['z'],
     group: i18n.preferences.generalSettings,
+    video: 'info-static-analysis',
   },
   showGauge: {
     label: i18n.preferences.showGauge,
@@ -35,17 +37,53 @@ const settings: Record<SettingKey, Setting> = {
     label: i18n.preferences.inlineNotation,
     shortcut: ['shift+i'],
     group: i18n.preferences.moveListSettings,
+    video: 'info-inline-notation',
+  },
+  disclosureMode: {
+    label: i18n.preferences.disclosureMode,
+    group: i18n.preferences.moveListSettings,
+    video: 'info-disclosure-mode',
   },
   showBestMoveArrows: {
     label: i18n.preferences.showBestMoveArrows,
     shortcut: ['a'],
     group: i18n.preferences.boardSettings,
+    video: 'info-best-move-arrows',
   },
   showMoveAnnotationsOnBoard: {
     label: i18n.preferences.showMoveAnnotationsOnBoard,
     group: i18n.preferences.boardSettings,
+    video: 'info-move-annotations-on-board',
   },
 };
+
+// lila's hover help (setupHoverHelp): pointing at a setting shows its video where the keyboard
+// shortcuts are; leaving it brings them back after 300 ms, unless you've pointed at another.
+// Trim: lila preloads each video before showing it, and on touch screens shows them in a popup.
+let pointedAt: SettingKey | undefined;
+let resetTimeout: ReturnType<typeof setTimeout> | undefined;
+function pointAt(ctrl: AnalysisCtrl, key: SettingKey | undefined): void {
+  clearTimeout(resetTimeout);
+  if (key) {
+    pointedAt = key;
+    ctrl.redraw();
+  } else
+    resetTimeout = setTimeout(() => {
+      pointedAt = undefined;
+      ctrl.redraw();
+    }, 300);
+}
+
+// lila's flexTamer: once the dialog is open, its size stays as its first contents made it, so
+// that a shorter video doesn't shrink it and move the settings away from under the pointer.
+// Trim: lila sizes it again when the window is resized, and not at all on touch screens.
+function freezeSize(dialog: HTMLElement): void {
+  const content = dialog.querySelector<HTMLElement>('.analysis-settings-dialog');
+  if (!content) return;
+  const { width, height } = content.getBoundingClientRect();
+  content.style.width = `${width}px`;
+  content.style.height = `${height}px`;
+}
 
 // Like lila's dialog with easyClose 'clickOutside': a click outside the dialog closes it. With
 // the dialog open (showModal), a click on the dimmed page around it lands on the dialog itself.
@@ -59,7 +97,11 @@ export function view(ctrl: AnalysisCtrl): VNode {
   return hl(
     'dialog',
     {
-      hook: onInsert<HTMLDialogElement>(el => el.showModal()),
+      hook: onInsert<HTMLDialogElement>(el => {
+        pointedAt = undefined;
+        el.showModal();
+        freezeSize(el);
+      }),
       on: {
         close: ctrl.closeSettings, // also after Escape, which closes an open dialog by itself
         click: e => clickedOutside(e) && close(e),
@@ -96,17 +138,26 @@ function settingsView(ctrl: AnalysisCtrl): VNode {
 // lila's defaultToggleHtml and defaultToggleListener: a label, and lila's on/off switch, which is
 // a checkbox styled by its CSS.
 function toggle(ctrl: AnalysisCtrl, key: SettingKey): VNode {
-  return hl('span.setting', { attrs: { 'data-key': key } }, [
-    hl('span', settings[key].label),
-    hl('span.form-check__input', [
-      hl('input', {
-        attrs: { 'data-key': key, id: key, type: 'checkbox' },
-        props: { checked: ctrl.settings[key] },
-        on: { change: e => ctrl.settings.set(key, (e.target as HTMLInputElement).checked) },
-      }),
-      hl('label.form-check__label', { attrs: { for: key } }),
-    ]),
-  ]);
+  const video = settings[key].video;
+  return hl(
+    'span.setting',
+    {
+      class: { 'hover-help': !!video },
+      attrs: { 'data-key': key },
+      on: video ? { mouseenter: () => pointAt(ctrl, key), mouseleave: () => pointAt(ctrl, undefined) } : {},
+    },
+    [
+      hl('span', settings[key].label),
+      hl('span.form-check__input', [
+        hl('input', {
+          attrs: { 'data-key': key, id: key, type: 'checkbox' },
+          props: { checked: ctrl.settings[key] },
+          on: { change: e => ctrl.settings.set(key, (e.target as HTMLInputElement).checked) },
+        }),
+        hl('label.form-check__label', { attrs: { for: key } }),
+      ]),
+    ],
+  );
 }
 
 // Keyboard shortcuts, each a key or keys pressed together, e.g. ['shift+i'] or ['←', '→'],
@@ -119,14 +170,32 @@ const keys = (shortcuts: string[]): (VNode | string)[] =>
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
-// lila's helpHtml: the keyboard shortcuts.
+// lila's helpHtml: the keyboard shortcuts, or the video of the setting you're pointing at.
 // Trim: lila has a "More" button for its full list of shortcuts. Not in lila: instead, ours are
 // all here.
 function helpView(): VNode {
   const shortcut = (label: string, shortcuts: string[]) => hl('div.setting.inert', [label, hl('span', keys(shortcuts))]);
+  const video = pointedAt && settings[pointedAt].video;
+  if (pointedAt && video)
+    return hl(
+      'div.help-container',
+      hl('fieldset.help-pane', { key: pointedAt, attrs: { 'data-key': pointedAt } }, [
+        hl('legend', settings[pointedAt].label),
+        hl(
+          'video',
+          {
+            attrs: { autoplay: true, loop: true, muted: true, playsinline: true, preload: 'auto' },
+            props: { muted: true }, // the browser only plays it by itself if it's silent
+            hook: onInsert<HTMLVideoElement>(el => el.play().catch(() => {})),
+          },
+          hl('source', { attrs: { src: `/lila/video/${video}.webm`, type: 'video/webm' } }),
+        ),
+        hl('br'),
+      ]),
+    );
   return hl(
     'div.help-container',
-    hl('fieldset.help-pane', { attrs: { 'data-key': 'keyboardShortcuts' } }, [
+    hl('fieldset.help-pane', { key: 'keyboardShortcuts', attrs: { 'data-key': 'keyboardShortcuts' } }, [
       hl('legend', i18n.site.keyboardShortcuts),
       shortcut(i18n.site.flipBoard, ['f']),
       shortcut(i18n.site.toggleLocalEngine, ['l']),

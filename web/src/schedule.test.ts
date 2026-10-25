@@ -305,3 +305,13 @@ test('canComeUp: a card you left can come back if it could be dealt now', () => 
   const fullDay = Array.from({ length: LIMIT }, (_, i) => reviewed(`x${i}/1`, minutes(-60), State.New));
   expect(canComeUp(cards, history({}, fullDay), now, limited, 'd/7')).toBe(false); // the new-card limit is reached
 });
+
+test("how long a game's other cards wait follows the settings: here 3 days, and 0 for no wait", () => {
+  const h = history({ 'g/3': scheduled(State.Review, minutes(-10)) }, [reviewed('g/1', minutes(-60 * 30))]); // 30 hours ago
+  const cards = [card('g/3')];
+  expect(pickNext(cards, h, now, s)?.id).toBe('g/3'); // a day's wait is over
+  expect(pickNext(cards, h, now, { ...s, gameRestDays: 3 })).toBeUndefined(); // three days' isn't
+  expect(nextAvailable(cards, h, now, { ...s, gameRestDays: 3 })).toEqual(minutes(-60 * 30 + 3 * 24 * 60));
+  const justNow = history({ 'g/3': scheduled(State.Review, minutes(-10)) }, [reviewed('g/1', minutes(-1))]);
+  expect(pickNext(cards, justNow, now, { ...s, gameRestDays: 0 })?.id).toBe('g/3');
+});

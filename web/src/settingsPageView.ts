@@ -9,7 +9,7 @@ import type { VNode } from 'snabbdom';
 import type { SettingsPageCtrl } from './settingsPage';
 import type { Card } from './deck';
 import { isAlreadyWon, isCollapse, isOpening, progress } from './schedule';
-import { fixProblems, newCardOrders, problems, ranges, type NewCardOrder, type Settings } from './settings';
+import { fixProblems, newCardOrders, problems, ranges, type NewCardOrder, type NumberKey, type Settings } from './settings';
 import { hl, onInsert, type LooseVNodes } from './snabbdom';
 import { buildTree, mainline, type LichessGameJson } from './tree';
 
@@ -61,6 +61,8 @@ function readForm(form: HTMLFormElement): Settings {
     openingMoves: num('openingMoves'),
     desiredRetention: num('desiredRetention'),
     minGapDays: num('minGapDays'),
+    gameRestDays: num('gameRestDays'),
+    bestMoveOnly: input('bestMoveOnly').checked,
   };
 }
 
@@ -72,7 +74,7 @@ function renderSettings(ctrl: SettingsPageCtrl): VNode {
   // attribute), and the browser keeps what you type. They're only replaced, with new values, when
   // the form's key changes (resetToDefaults). Setting their current value on every redraw would
   // fight your typing: "-" on its way to "-2" reads as no number at all.
-  const numberInput = (key: Exclude<keyof Settings, 'newCardOrder'>, step: number, placeholder?: string): VNode => {
+  const numberInput = (key: NumberKey, step: number, placeholder?: string): VNode => {
     const scale = scales[key] ?? 1;
     const value = shown[key];
     return hl('input', {
@@ -171,6 +173,27 @@ function renderSettings(ctrl: SettingsPageCtrl): VNode {
         [numberInput('minGapDays', 1), ' days'],
         'No card comes back sooner than this after you review it, so you work it out rather than ' +
           'recognise it. It applies to your reviews from now on: cards already scheduled keep their dates.',
+      ),
+      row(
+        'Same game',
+        ['gameRestDays'],
+        ['wait ', numberInput('gameRestDays', 1), ' days before another card from it'],
+        'After you review a card, the other cards from its game wait this long, so you don’t see two ' +
+          'positions from one game too close together. 0 means no wait. They only wait in the queue: ' +
+          'their schedules don’t change.',
+      ),
+
+      hl('h2', 'Answers'),
+      row(
+        'Right answers',
+        ['bestMoveOnly'],
+        [
+          hl('input', { attrs: { type: 'checkbox', id: 'bestMoveOnly', name: 'bestMoveOnly', checked: shown.bestMoveOnly } }),
+          ' only Lichess’s best move',
+        ],
+        'Off, as on Lichess: a move nearly as good as the best counts too, as Stockfish judges it on ' +
+          'your computer. On: only the best move in Lichess’s analysis counts (and moves masters have ' +
+          'played, and checkmates), so the verdict is the same on any computer, and needs no engine.',
       ),
 
       hl('div.mt-settings__actions', [

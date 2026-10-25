@@ -38,6 +38,8 @@ test('problems: numbers out of range, not whole, or not numbers', () => {
   expect(problems(with_({ desiredRetention: NaN }))).toEqual({ desiredRetention: 'A number from 0.7 to 0.97' });
   expect(problems(with_({ newCardsPerDay: 0 }))).toEqual({ newCardsPerDay: 'A whole number from 1 to 1000' });
   expect(problems(with_({ newCardsPerDay: null }))).toEqual({});
+  expect(problems(with_({ gameRestDays: 31 }))).toEqual({ gameRestDays: 'A whole number from 0 to 30' });
+  expect(problems({ ...defaultSettings, bestMoveOnly: 'yes' as unknown as boolean })).toEqual({ bestMoveOnly: 'On or off' });
 });
 
 test('problems: a collapse must end lower than it starts', () => {

@@ -26,6 +26,7 @@ test("lila's defaults, until you change one; the browser remembers the change", 
     showGauge: true,
     inline: false,
     showStaticAnalysis: true,
+    disclosureMode: false,
     showBestMoveArrows: true,
     showMoveAnnotationsOnBoard: true,
   });

@@ -59,9 +59,8 @@ keyboard.bind(deckCtrl.analysis);
 // Not in lila: load Stockfish in the background now, rather than when it's first needed.
 preload();
 
-// Not in lila: leaving the page with a right first move still to rate records it (DeckCtrl.leave).
-// pagehide also fires when the browser keeps the page to come back to, which leave handles too.
-window.addEventListener('pagehide', deckCtrl.leave);
+// Not in lila: a card you'd got right but not yet rated when you left comes back as you left it.
+deckCtrl.resume();
 
 // For testing from the browser console; remove later.
 (window as any).ctrl = deckCtrl.analysis;

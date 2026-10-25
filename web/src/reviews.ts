@@ -57,7 +57,7 @@ export async function saveUnsuspension(cardId: string): Promise<void> {
 }
 
 // Saves one review: the card's new schedule, and the log entry. keepalive lets the request finish
-// even if the page is closing (DeckCtrl.leave).
+// even if you leave the page straight after.
 export async function saveReview(card: CardInput, entry: ReviewEntry): Promise<void> {
   const response = await fetch('/api/reviews', {
     method: 'POST',

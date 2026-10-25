@@ -141,6 +141,7 @@ export const i18n = {
   // From lila's translation/source/preferences.xml.
   preferences: {
     boardSettings: 'Board',
+    disclosureMode: 'Enable variation hiding',
     generalSettings: 'General',
     inlineNotation: 'Inline notation',
     moveListSettings: 'Move list',
