@@ -5,7 +5,7 @@
 //
 // This is where engine lines stay hidden while you solve: the list only shows the moves that
 // ctrl.visibleChildren returns, and commentNodes swaps "Mistake. Nf3 was best." for
-// "Learn from this mistake".
+// "Learn from this mistake" (for a card: "Another card: its analysis stays hidden").
 
 import type { Classes, VNode } from 'snabbdom';
 
@@ -94,7 +94,8 @@ export class InlineView {
     return node.comments
       .map(comment =>
         this.ctrl.retro?.hideComputerLine(node) && this.isLichessComment(comment)
-          ? hl('comment', i18n.site.learnFromThisMistake)
+          ? // Not in lila: a card's game's other mistakes are other cards, whose answers stay hidden.
+            hl('comment', this.ctrl.card ? 'Another card: its analysis stays hidden' : i18n.site.learnFromThisMistake)
           : (!this.isLichessComment(comment) || this.ctrl.settings.showStaticAnalysis) &&
             hl(
               'comment',

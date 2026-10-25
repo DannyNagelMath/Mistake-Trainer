@@ -352,3 +352,11 @@ test('leaving the page after the right first move, without rating it, records it
   deckCtrl.leave(); // only once
   expect(history.log).toHaveLength(1);
 });
+
+test("once a card is done, the game's other mistakes, other cards, keep their analysis hidden, and say so", () => {
+  const { ctrl } = start();
+  playSolution(ctrl);
+  const moveList = textOf(ctrl.treeView.render());
+  expect(moveList).toContain('Another card: its analysis stays hidden');
+  expect(moveList).not.toContain('Learn from this mistake'); // lila's words, for a whole game
+});

@@ -23,7 +23,7 @@ interface Setting {
 // has more settings (see analysisSettings.ts).
 const settings: Record<SettingKey, Setting> = {
   showStaticAnalysis: {
-    label: i18n.preferences.showServerAnalysis,
+    label: i18n.preferences.showMainlineAnalysis,
     shortcut: ['z'],
     group: i18n.preferences.generalSettings,
   },

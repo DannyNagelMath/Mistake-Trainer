@@ -161,6 +161,21 @@ export interface Progress {
   notStarted: number;
   suspended: number;
   dueNow: number; // due, and its game not waiting
+  nextDue?: { at: number; count: number }; // see nextDue
+}
+
+// When the next of the cards you've started come up, after now: the first time one can (it's
+// due, and its game isn't waiting), in milliseconds, and how many come up that same day.
+function nextDue(deck: Card[], history: ReviewHistory, now: Date): Progress['nextDue'] {
+  const restEnds = gameRestEnds(history);
+  const times = activeCards(deck, history)
+    .filter(c => history.cards[c.id])
+    .map(c => Math.max(dueTime(history, c), restEnds.get(c.gameId) ?? 0))
+    .filter(t => t > now.getTime());
+  if (!times.length) return undefined;
+  const at = Math.min(...times);
+  const day = new Date(at).toDateString();
+  return { at, count: times.filter(t => new Date(t).toDateString() === day).length };
 }
 
 export function progress(deck: Card[], history: ReviewHistory, now: Date, s: Settings): Progress {
@@ -171,6 +186,7 @@ export function progress(deck: Card[], history: ReviewHistory, now: Date, s: Set
     notStarted: active.length - started,
     suspended: deck.length - active.length,
     dueNow: queues(deck, history, now, s).due.length,
+    nextDue: nextDue(deck, history, now),
   };
 }
 

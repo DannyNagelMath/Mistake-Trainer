@@ -215,7 +215,18 @@ test('the progress box counts started, not started, and suspended cards, and tho
     'b/3': scheduled(State.Review, minutes(-10)), // started, and due
   });
   h.suspended = { 'd/7': now.toISOString() };
-  expect(progress(deck, h, now, s)).toEqual({ started: 2, notStarted: 1, suspended: 1, dueNow: 1 });
+  expect(progress(deck, h, now, s)).toMatchObject({ started: 2, notStarted: 1, suspended: 1, dueNow: 1 });
+});
+
+test('the progress box says when the next started cards come up, and how many that day', () => {
+  const inTenDays = minutes(60 * 24 * 10);
+  const h = history({
+    'a/1': scheduled(State.Review, inTenDays),
+    'b/3': scheduled(State.Review, minutes(60 * 24 * 10 + 30)), // the same day, half an hour later
+    'c/5': scheduled(State.Review, minutes(60 * 24 * 12)), // two days later
+  });
+  expect(progress(deck, h, now, s)).toMatchObject({ dueNow: 0, nextDue: { at: inTenDays.getTime(), count: 2 } });
+  expect(progress(deck, history(), now, s).nextDue).toBeUndefined(); // nothing started yet
 });
 
 test('no card comes back within 7 days of a review, whatever the answer; FSRS keeps its own interval', () => {

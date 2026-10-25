@@ -146,7 +146,9 @@ export const i18n = {
     moveListSettings: 'Move list',
     showBestMoveArrows: 'Show best move arrows',
     showGauge: 'Show evaluation gauge',
+    // Not from 27ffc8b: lila renamed showServerAnalysis ('Show server analysis') after it, in
+    // commit 23a3ae6 (Oct 10, 2026). This is the name Lichess shows now.
+    showMainlineAnalysis: 'Show mainline analysis',
     showMoveAnnotationsOnBoard: 'Show move annotations',
-    showServerAnalysis: 'Show server analysis',
   },
 };
