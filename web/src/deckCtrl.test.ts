@@ -21,12 +21,14 @@ import { defaultSettings, type Settings } from './settings';
 import { renderSide } from './side';
 import type { LichessGameJson } from './tree';
 
-// The stand-in for Stockfish (engine.ts). A move check reports each of `updates` as the search
-// goes deeper, the last one as its final answer. Live analysis is noted in `analyses`, for the
-// test to report on. vi.mock replaces the module for everything this file uses.
+// The stand-in for Stockfish (engine.ts). A move check reports each of `byFen[fen]` (or else
+// `updates`) as the search goes deeper, the last one as its final answer. Live analysis is noted
+// in `analyses`, for the test to report on. vi.mock replaces the module for everything this file
+// uses.
 type Analysis = { fen: string; onInfo: (e: EngineEval) => void };
 const engine = vi.hoisted(() => ({
   updates: [] as EngineEval[],
+  byFen: {} as Record<string, EngineEval[]>,
   asked: [] as string[],
   analyses: [] as Analysis[],
   stops: 0,
@@ -34,8 +36,9 @@ const engine = vi.hoisted(() => ({
 vi.mock('./engine', () => ({
   evaluate: async (fen: string, onInfo: (e: EngineEval) => void) => {
     engine.asked.push(fen);
-    engine.updates.slice(0, -1).forEach(onInfo);
-    return engine.updates.at(-1)!;
+    const updates = engine.byFen[fen] ?? engine.updates;
+    updates.slice(0, -1).forEach(onInfo);
+    return updates.at(-1)!;
   },
   analyse: (fen: string, onInfo: (e: EngineEval) => void) => engine.analyses.push({ fen, onInfo }),
   stopAnalysis: () => engine.stops++,
@@ -51,6 +54,7 @@ let saved: unknown[]; // what the page sent to save
 beforeEach(() => {
   saved = [];
   engine.updates = [];
+  engine.byFen = {};
   engine.asked = [];
   engine.analyses = [];
   engine.stops = 0;
@@ -233,8 +237,9 @@ test("a move masters have played counts as a right answer at once, like the engi
   expect(engine.asked).toEqual([]); // no need for Stockfish
 });
 
-test('any other move goes to Stockfish: right if within 0.08 winning chances of the best, as in lila', async () => {
+test("any other move goes to Stockfish: right if within 0.08 winning chances of its eval of the position before", async () => {
   const [card] = deck.cards;
+  engine.byFen[mistakeOf(game, card).fen] = [evaluation({ mate: 3 })]; // the position you faced
   const tryMove = async (answer: EngineEval) => {
     engine.updates = [answer];
     const session = startOn(card);
@@ -253,6 +258,7 @@ test('any other move goes to Stockfish: right if within 0.08 winning chances of 
 
 test('the move is judged once Stockfish has searched enough: 1,000,000 positions, 3 seconds, or done', async () => {
   const [card] = deck.cards;
+  engine.byFen[mistakeOf(game, card).fen] = [evaluation({ mate: 3 })];
   engine.updates = [
     evaluation({ cp: 0 }, 300_000), // early in the search it looks bad, but that's too soon to say...
     evaluation({ mate: 4 }), // ...and after 1,000,000 positions it's fine
@@ -359,4 +365,16 @@ test("once a card is done, the game's other mistakes, other cards, keep their an
   const moveList = textOf(ctrl.treeView.render());
   expect(moveList).toContain('Another card: its analysis stays hidden');
   expect(moveList).not.toContain('Learn from this mistake'); // lila's words, for a whole game
+});
+
+test("a move is compared with our engine's eval of the position before, not Lichess's (not in lila)", async () => {
+  const [card] = deck.cards; // Lichess's analysis: a forced mate before 20.Qh4??
+  const before = mistakeOf(game, card).fen;
+  engine.byFen[before] = [evaluation({ cp: 150 })]; // our engine sees much less in the position...
+  engine.updates = [evaluation({ cp: 120 })]; // ...and the move keeps most of it
+  const { ctrl, feedback } = startOn(card);
+  ctrl.playUci(otherMove(card));
+  await afterTheEngine();
+  expect(feedback()).toBe('win'); // against Lichess's forced mate, it would be wrong
+  expect(engine.asked).toEqual([before, ctrl.node.fen]); // the position before, then after the move
 });

@@ -200,7 +200,11 @@ export function make(root: RetroRoot, color: Color): RetroCtrl {
         onFail(); // the move that was played in the game
       else {
         feedback('eval');
-        root.evaluateNode(node); // Not in lila: there, the engine is already on it
+        // Not in lila: there, the engine is already on the move. And here, the position before it
+        // too, as the move is compared with that (checkCeval); once per card, as the engine
+        // remembers the positions it has checked.
+        root.evaluateNode(cur.prev.node);
+        root.evaluateNode(node);
         checkCeval();
       }
     } else if (isSolving() && cur.prev.path !== root.path) feedback('offTrack');
@@ -217,8 +221,13 @@ export function make(root: RetroRoot, color: Color): RetroCtrl {
     const node = root.node,
       cur = current();
     if (!cur || feedback() !== 'eval' || cur.fault.node.ply !== node.ply) return;
-    if (isCevalReady(node)) {
-      const diff = winningChances.povDiff(color, node.ceval!, cur.prev.node.eval!);
+    // Not in lila, which compares the move with Lichess's analysis of the position before it
+    // (prev.node.eval): here, with our engine's evaluation of that position, searched as far as
+    // the move. Our engine, a small build of Stockfish, doesn't always agree with Lichess's
+    // analysis, and the difference alone could decide whether a move counts; with the same engine
+    // on both sides, it can't.
+    if (isCevalReady(node) && isCevalReady(cur.prev.node)) {
+      const diff = winningChances.povDiff(color, node.ceval!, cur.prev.node.ceval!);
       if (diff > -0.04) onWin();
       else onFail();
     }
