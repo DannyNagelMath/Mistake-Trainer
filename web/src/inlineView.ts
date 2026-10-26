@@ -195,9 +195,12 @@ export class InlineView {
   }
 
   // The button that folds a move's variations away or shows them again (idbTree.ts).
+  // Not in lila: none while you solve a card. The list hides Lichess's lines and comments then
+  // (AnalysisCtrl.hidingHints), so the buttons would have nothing to fold.
   private disclosureBtn(node: TreeNode, path: string): LooseVNodes {
     return (
       this.ctrl.settings.disclosureMode &&
+      !this.ctrl.hidingHints() &&
       hl('a.disclosure', {
         class: { expanded: !node.collapsed },
         attrs: { 'data-path': path },

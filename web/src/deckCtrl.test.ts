@@ -467,10 +467,15 @@ test('"Show my move": the move you played as a red arrow, alone while solving, b
   expect(arrows()).not.toContainEqual(['paleRed', 'h6h4']);
 });
 
-test('variation hiding: moves with variations get a fold button, which folds them away, for next time too', () => {
+test('variation hiding: once the card is done, moves with variations get a fold button, which folds them away, for next time too', () => {
   vi.stubGlobal('localStorage', standIn({})); // where the browser keeps the folds
   const { ctrl } = start();
+  const buttons = () => has(ctrl.treeView.render(), 'a.disclosure');
+  expect(buttons()).toBe(false); // off by default, as in lila
+  ctrl.settings.set('disclosureMode', true);
+  expect(buttons()).toBe(false); // not while you solve: the list hides the lines and comments they'd fold
   playSolution(ctrl);
+  expect(buttons()).toBe(true);
   const shows = (path: string): boolean => {
     const find = (v: VNode | string | undefined): boolean =>
       typeof v === 'object' && !!v && (v.data?.attrs?.p === path || (v.children ?? []).some(c => find(c as VNode)));
@@ -480,9 +485,6 @@ test('variation hiding: moves with variations get a fold button, which folds the
   const parentPath = ctrl.mainlinePlyToPath(61);
   const linePath = parentPath + ctrl.tree.nodeAtPath(parentPath).children.find(c => c.comp)!.id;
   const folded = () => !!ctrl.tree.nodeAtPath(parentPath).collapsed;
-  expect(has(ctrl.treeView.render(), 'a.disclosure')).toBe(false); // off by default, as in lila
-  ctrl.settings.set('disclosureMode', true);
-  expect(has(ctrl.treeView.render(), 'a.disclosure')).toBe(true);
   expect(shows(linePath)).toBe(true);
   ctrl.idbTree.setCollapsed(parentPath, true); // what its button does
   expect(shows(linePath)).toBe(false);
