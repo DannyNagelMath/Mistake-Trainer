@@ -1,16 +1,13 @@
-// settingsPage.ts: Not in lila. The settings page (settings.html): your settings, and your
-// suspended cards. SettingsPageCtrl keeps the page's state, and settingsPageView.ts draws it with
-// snabbdom, the way main.ts, deckCtrl.ts, and view.ts run the trainer.
-// The settings are saved in data/settings.json (settings.ts); the trainer reads them when it
-// loads, so going back to it after saving uses them.
+// settingsPage.ts: Not in lila. Training settings: your settings, and your suspended cards.
+// SettingsPageCtrl keeps its state, and settingsPageView.ts draws it with snabbdom. It shows in
+// the trainer's page, over the trainer, which waits hidden as you left it (main.ts makes a new
+// SettingsPageCtrl each time it opens).
+// The settings are saved in data/settings.json (settings.ts), and passed on to the trainer, which
+// uses them from then on (DeckCtrl.useSettings).
 
-import './mistakeTrainer.css';
-import { init, attributesModule, classModule, eventListenersModule, propsModule } from 'snabbdom';
-
-import { view } from './settingsPageView';
-import { loadDeck, type Deck } from './deck';
-import { loadHistory, saveUnsuspension, type ReviewHistory } from './reviews';
-import { defaultSettings, loadSettings, problems, saveSettings, type Settings } from './settings';
+import type { Deck } from './deck';
+import { saveUnsuspension, type ReviewHistory } from './reviews';
+import { defaultSettings, problems, saveSettings, type Settings } from './settings';
 
 export class SettingsPageCtrl {
   saved: Settings; // what's in data/settings.json, or the defaults
@@ -20,10 +17,11 @@ export class SettingsPageCtrl {
   message = ''; // after saving
 
   constructor(
-    readonly deck: Deck | undefined, // undefined before you've built one
-    readonly history: ReviewHistory,
+    readonly deck: Deck,
+    readonly history: ReviewHistory, // the trainer's, so a card you unsuspend can come up at once
     settings: Settings,
     private readonly redraw: () => void,
+    private readonly onSave: (settings: Settings) => void, // the trainer takes them up
   ) {
     this.saved = this.filledIn = this.draft = settings;
   }
@@ -45,7 +43,8 @@ export class SettingsPageCtrl {
     try {
       await saveSettings(settings);
       this.saved = settings;
-      this.message = 'Saved. The trainer uses them from the next time it loads.';
+      this.onSave(settings);
+      this.message = 'Saved.';
     } catch (e) {
       this.message = (e as Error).message;
     }
@@ -71,22 +70,4 @@ export class SettingsPageCtrl {
     }
     this.redraw();
   };
-}
-
-const element = document.querySelector('main.mt-settings-page') as HTMLElement;
-
-const [deck, history, settings] = await Promise.all([loadDeck(), loadHistory(), loadSettings()]).catch(
-  (e: Error) => {
-    element.textContent = e.message;
-    throw e;
-  },
-);
-
-// As in main.ts: render into the page's <main>, then re-render the whole view on every redraw.
-const patch = init([classModule, attributesModule, propsModule, eventListenersModule]);
-const ctrl = new SettingsPageCtrl(deck, history, settings, redraw);
-let vnode = patch(element, view(ctrl));
-
-function redraw(): void {
-  vnode = patch(vnode, view(ctrl));
 }

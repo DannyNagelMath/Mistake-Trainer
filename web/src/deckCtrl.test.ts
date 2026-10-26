@@ -18,6 +18,7 @@ import { getBestEval } from './evalGauge';
 import type { ReviewHistory } from './reviews';
 import type { EngineEval } from './engine';
 import { defaultSettings, type Settings } from './settings';
+import { SettingsPageCtrl } from './settingsPage';
 import { renderSide } from './side';
 import renderClocks from './clocks';
 import type { LichessGameJson } from './tree';
@@ -70,6 +71,13 @@ beforeEach(() => {
   vi.stubGlobal('alert', vi.fn());
 });
 afterEach(() => vi.unstubAllGlobals());
+
+// A stand-in for the browser's localStorage or sessionStorage, keeping what's stored in `stored`.
+const standIn = (stored: Record<string, string>) => ({
+  getItem: (key: string) => stored[key] ?? null,
+  setItem: (key: string, value: string) => (stored[key] = value),
+  removeItem: (key: string) => delete stored[key],
+});
 
 // A session on an empty history, with the panel open on the first card, as main.ts does it.
 function start(settings: Settings = defaultSettings) {
@@ -350,11 +358,6 @@ test('coming back to the page shows the card you left, unless you had answered i
 });
 
 test('coming back after the right first move, before rating it, shows the card solved, with the rating buttons', () => {
-  const standIn = (stored: Record<string, string>) => ({
-    getItem: (key: string) => stored[key] ?? null,
-    setItem: (key: string, value: string) => (stored[key] = value),
-    removeItem: (key: string) => delete stored[key],
-  });
   vi.stubGlobal('localStorage', standIn({}));
   vi.stubGlobal('sessionStorage', standIn({}));
   const history: ReviewHistory = { cards: {}, log: [] };
@@ -367,7 +370,7 @@ test('coming back after the right first move, before rating it, shows the card s
   const first = open();
   const card = `${first.game.id}/${first.retro!.card!.ply}`;
   playSolution(first); // right, and the rating buttons show...
-  const back = open(); // ...but you left, e.g. for Training settings, and came back
+  const back = open(); // ...but you reloaded the page, or closed it and came back
   expect(`${back.game.id}/${back.retro!.card!.ply}`).toBe(card);
   expect(back.retro!.feedback()).toBe('win');
   expect(history.log).toEqual([]); // nothing recorded yet
@@ -375,6 +378,37 @@ test('coming back after the right first move, before rating it, shows the card s
   expect(history.log.map(e => [e.cardId, e.result, e.log.rating])).toEqual([[card, 'win', Rating.Easy]]);
   const later = open(); // rated: the card doesn't come back
   expect(later.retro!.current()?.fault.node.ply).not.toBe(first.retro!.card!.ply);
+});
+
+// Training settings shows over the trainer (main.ts), with the trainer's history, and passes on
+// the settings you save.
+const trainingSettings = (deckCtrl: DeckCtrl, history: ReviewHistory) =>
+  new SettingsPageCtrl(deck, history, deckCtrl.settings, () => {}, deckCtrl.useSettings);
+
+test('saving Training settings in the middle of a card leaves it as it was, and "Right answers" applies to your next move', async () => {
+  const { history, ctrl, deckCtrl } = start();
+  const card = deck.cards.find(c => c.ply === ctrl.retro!.card!.ply)!;
+  const onScreen = () => [card.id, ctrl.path, ctrl.retro!.feedback()];
+  const before = onScreen();
+  const page = trainingSettings(deckCtrl, history);
+  page.update({ ...page.draft, bestMoveOnly: true });
+  await page.save();
+  expect(saved).toEqual([{ ...defaultSettings, bestMoveOnly: true }]); // to data/settings.json
+  expect(onScreen()).toEqual(before);
+  ctrl.playUci(otherMove(card));
+  expect(ctrl.retro!.feedback()).toBe('fail'); // only Lichess's best move counts now...
+  expect(engine.asked).toEqual([]); // ...so the engine isn't asked
+});
+
+test('saving Training settings after a card: the next card is dealt with them', async () => {
+  const { history, ctrl, deckCtrl } = start();
+  playGameMove(ctrl); // wrong: the card is done
+  // All the deck's cards are from one game, so with the default settings the others wait a day.
+  expect(deckCtrl.next()).toBe(false);
+  const page = trainingSettings(deckCtrl, history);
+  page.update({ ...page.draft, gameRestDays: 0 });
+  await page.save();
+  expect(deckCtrl.next()).toBe(true);
 });
 
 test("once a card is done, the game's other mistakes, other cards, keep their analysis hidden, and say so", () => {
@@ -433,7 +467,8 @@ test('"Show my move": the move you played as a red arrow, alone while solving, b
   expect(arrows()).not.toContainEqual(['paleRed', 'h6h4']);
 });
 
-test('variation hiding: moves with variations get a fold button, which folds them away', () => {
+test('variation hiding: moves with variations get a fold button, which folds them away, for next time too', () => {
+  vi.stubGlobal('localStorage', standIn({})); // where the browser keeps the folds
   const { ctrl } = start();
   playSolution(ctrl);
   const shows = (path: string): boolean => {
@@ -442,16 +477,20 @@ test('variation hiding: moves with variations get a fold button, which folds the
     return find(ctrl.treeView.render());
   };
   // Black's blunder at ply 62 has Lichess's line beside it: a variation of the move before.
-  const parent = ctrl.mainline.find(n => n.ply === 61)!;
-  const line = parent.children.find(c => c.comp)!;
-  const linePath = ctrl.mainlinePlyToPath(61) + line.id;
+  const parentPath = ctrl.mainlinePlyToPath(61);
+  const linePath = parentPath + ctrl.tree.nodeAtPath(parentPath).children.find(c => c.comp)!.id;
+  const folded = () => !!ctrl.tree.nodeAtPath(parentPath).collapsed;
   expect(has(ctrl.treeView.render(), 'a.disclosure')).toBe(false); // off by default, as in lila
   ctrl.settings.set('disclosureMode', true);
   expect(has(ctrl.treeView.render(), 'a.disclosure')).toBe(true);
   expect(shows(linePath)).toBe(true);
-  parent.collapsed = true; // what its button does
+  ctrl.idbTree.setCollapsed(parentPath, true); // what its button does
   expect(shows(linePath)).toBe(false);
-  ctrl.userJump(linePath); // going to a move in a folded line unfolds it
-  expect(parent.collapsed).toBe(false);
+  ctrl.loadGame(game, 'white'); // the game again, for another of its cards, or after a reload
+  expect(folded()).toBe(true); // as in lila, still folded
+  ctrl.userJump(linePath); // going to a move in a folded line unfolds it...
+  expect(folded()).toBe(false);
+  ctrl.loadGame(game, 'white');
+  expect(folded()).toBe(false); // ...for next time too
   ctrl.settings.set('disclosureMode', false);
 });

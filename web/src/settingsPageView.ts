@@ -1,4 +1,4 @@
-// settingsPageView.ts: Not in lila. Draws the settings page (see settingsPage.ts): how your cards
+// settingsPageView.ts: Not in lila. Draws Training settings (see settingsPage.ts): how your cards
 // stand, the settings form, and your suspended cards, each on a small board.
 
 import { Chessground } from '@lichess-org/chessground';
@@ -28,8 +28,6 @@ const preview = (ctrl: SettingsPageCtrl): Settings => fixProblems(ctrl.draft, ct
 
 // The same counts as the trainer's progress box.
 function renderCounts(ctrl: SettingsPageCtrl): VNode {
-  if (!ctrl.deck)
-    return hl('p', 'No deck yet. Build one from web with: npx tsx scripts/buildDeck.ts <your Lichess username>');
   const p = progress(ctrl.deck.cards, ctrl.history, new Date(), preview(ctrl));
   return hl('p.mt-settings-page__counts', [
     `Your ${ctrl.deck.cards.length} cards: `,
@@ -210,10 +208,9 @@ function renderSettings(ctrl: SettingsPageCtrl): VNode {
 }
 
 // How many cards each kind of new-card order puts first, with the form's settings.
-function renderCategoryCounts(ctrl: SettingsPageCtrl): VNode | undefined {
-  if (!ctrl.deck) return;
+function renderCategoryCounts(ctrl: SettingsPageCtrl): VNode {
   const s = preview(ctrl);
-  const count = (f: (c: Card) => boolean) => ctrl.deck!.cards.filter(f).length;
+  const count = (f: (c: Card) => boolean) => ctrl.deck.cards.filter(f).length;
   return hl(
     'p.mt-settings__counts',
     `Of your ${ctrl.deck.cards.length} cards, ${count(c => isCollapse(c, s))} are collapses, ` +
@@ -242,8 +239,8 @@ const date = (t: number | string): string =>
 // Each card has its own key, so that when one is unsuspended, snabbdom removes its element
 // rather than reusing it, and its board, for the next card.
 function renderSuspendedCard(ctrl: SettingsPageCtrl, id: string, at: string): VNode {
-  const card = ctrl.deck?.cards.find(c => c.id === id);
-  const game = card && ctrl.deck!.games[card.gameId];
+  const card = ctrl.deck.cards.find(c => c.id === id);
+  const game = card && ctrl.deck.games[card.gameId];
   const opponent = card && game?.players?.[opposite(card.color)].user?.name;
   return hl('div.mt-suspended__card', { key: id }, [
     card && game ? renderMiniBoard(game, card) : hl('div.mt-suspended__missing', `${id}: not in the deck`),

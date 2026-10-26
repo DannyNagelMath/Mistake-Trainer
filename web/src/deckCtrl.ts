@@ -1,6 +1,7 @@
 // deckCtrl.ts: Step 9. Deals the deck's cards into the analysis page in spaced-repetition order
-// (schedule.ts), and records how you did on each one (reviews.ts). Your settings (settings.ts)
-// are read once, when the page loads: change them on the settings page, then come back.
+// (schedule.ts), and records how you did on each one (reviews.ts), with your settings
+// (settings.ts). Training settings, which shows in the same page, passes on any you save
+// (useSettings).
 //
 // There's one AnalysisCtrl for the whole session. Each card loads its game into it
 // (loadGame, like lila changing a study chapter), then opens "Learn from your mistakes" in card
@@ -38,8 +39,8 @@ function shuffle<T>(items: T[]): T[] {
 }
 
 // The card on screen, remembered for this browser tab (sessionStorage), so that reloading the
-// page, e.g. coming back from Training settings, shows it again rather than dealing another. Where
-// there's no storage (the tests), nothing is remembered.
+// page shows it again rather than dealing another. Where there's no storage (the tests), nothing is
+// remembered.
 const CARD_KEY = 'mistakeTrainer.card';
 function rememberCard(cardId: string): void {
   try {
@@ -55,9 +56,9 @@ function rememberedCard(): string | null {
 }
 
 // A card you got right on your first move but haven't rated yet, and the move you played,
-// remembered by the browser (localStorage) until you rate it: if you leave the page first, e.g. for
-// Training settings, or close it, the card comes back next time as you left it, waiting for your
-// rating (DeckCtrl.resume), and the review isn't lost.
+// remembered by the browser (localStorage) until you rate it: if you reload the page or close it
+// first, the card comes back next time as you left it, waiting for your rating (DeckCtrl.resume),
+// and the review isn't lost.
 interface Pending {
   cardId: string;
   uci: string;
@@ -87,7 +88,8 @@ function describeTime(t: Date, now = new Date()): string {
 
 export class DeckCtrl {
   readonly analysis: AnalysisCtrl;
-  private readonly cards: Card[]; // the deck in the order new cards are introduced in (settings.newCardOrder)
+  private readonly shuffled: Card[]; // the deck in a random order, which `cards` sorts
+  private cards: Card[]; // the deck in the order new cards are introduced in (settings.newCardOrder)
   private card: Card; // the card being shown
   private graded = false; // whether the card's review has been recorded; only the first attempt counts
   private awaitingRating = false; // right first time, and the panel is asking how it went
@@ -98,10 +100,11 @@ export class DeckCtrl {
   constructor(
     readonly deck: Deck,
     private readonly history: ReviewHistory,
-    readonly settings: Settings,
+    public settings: Settings, // changed only by useSettings
     private readonly redraw: () => void,
   ) {
-    this.cards = orderNewCards(shuffle(deck.cards), settings); // random among cards the order ties
+    this.shuffled = shuffle(deck.cards);
+    this.cards = orderNewCards(this.shuffled, settings); // random among cards the order ties
     // A card waiting for your rating, then the card you left, if you hadn't answered it and it can
     // still come up (once answered, it isn't due again for days, so it can't); else the next one.
     const pending = rememberedPending();
@@ -134,9 +137,18 @@ export class DeckCtrl {
       ratingChoices: this.ratingChoices,
       suspend: this.suspend,
       openingUcis: this.card.masterMoves ?? [],
-      bestMoveOnly: this.settings.bestMoveOnly,
+      bestMoveOnly: () => this.settings.bestMoveOnly, // the setting as it is when you move
     };
   }
+
+  // Training settings you've just saved apply from now on. The card on screen stays as it is; the
+  // next one is dealt with them, a rating is scheduled with them, and "Right answers" applies to
+  // your next move. The order of new cards is sorted again from the same random order, so
+  // switching it back gives the order you had.
+  useSettings = (settings: Settings): void => {
+    this.settings = settings;
+    this.cards = orderNewCards(this.shuffled, settings);
+  };
 
   // "Suspend card": the card never comes up again. No review is recorded, not even a pending
   // rating. Then the next card, or, with none left, the end screen.

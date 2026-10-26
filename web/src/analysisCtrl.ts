@@ -15,6 +15,7 @@ import { AnalysisSettingsCtrl } from './analysisSettings';
 import { compute as computeAutoShapes } from './autoShape';
 import { displayColumns, storedBooleanProp, toggle, type Toggle } from './common';
 import { ForkCtrl } from './fork';
+import { IdbTree } from './idbTree';
 import Navigate from './navigate';
 import { nextGlyphSymbol } from './nodeFinder';
 import { analyse, evaluate, stopAnalysis, type EngineEval } from './engine';
@@ -30,6 +31,7 @@ export interface GameTree {
   getNodeList(path: string): TreeNode[]; // Step 7
   pathIsMainline(path: string): boolean;
   deleteNodeAt(path: string): void;
+  updateAt(path: string, update: (node: TreeNode) => void): void; // for idbTree
 }
 
 function makeGameTree(root: TreeNode): GameTree {
@@ -61,6 +63,13 @@ function makeGameTree(root: TreeNode): GameTree {
       const id = path.slice(-2);
       parent.children = parent.children.filter(c => c.id !== id);
     },
+
+    // Changes the node at `path`, if there is one.
+    updateAt(path, update) {
+      let node: TreeNode | undefined = root;
+      for (let i = 0; node && i < path.length; i += 2) node = node.children.find(c => c.id === path.slice(i, i + 2));
+      if (node) update(node);
+    },
   };
 }
 
@@ -90,6 +99,7 @@ export class AnalysisCtrl implements RetroRoot {
   game!: LichessGameJson; // lila keeps the game's details in ctrl.data.game
   gamePath!: string; // the path of the game's last move
   readonly treeView: TreeView;
+  readonly idbTree: IdbTree = new IdbTree(this); // which variations are folded away, for each game
   showComments = true;
   // The analysis board's settings, which "Settings" in the menu changes (analysisSettings.ts).
   // As in lila, a change redraws the board's arrows and annotations, and the page.
@@ -146,6 +156,9 @@ export class AnalysisCtrl implements RetroRoot {
     this.path = '';
     this.nodeList = [this.tree.root];
     this.onMainline = true;
+    // like lila's asyncLoadThenShow, from initialize
+    this.idbTree.load();
+    this.idbTree.revealNode();
   }
 
   // Step 9: show another game, like lila's reloadData, which studies use to change chapter.
@@ -229,7 +242,7 @@ export class AnalysisCtrl implements RetroRoot {
     this.node = this.tree.nodeAtPath(path);
     this.path = path;
     this.nodeList = this.tree.getNodeList(path); // Step 7: like lila's setPath
-    this.revealNode(); // like lila's setPath
+    this.idbTree.revealNode(); // like lila's setPath
     this.onMainline = this.tree.pathIsMainline(path);
     if (pathChanged) this.retro?.onJump();
     this.cg?.set(this.cgConfig()); // Step 3a: `?.` skips this when there is no board
@@ -293,16 +306,6 @@ export class AnalysisCtrl implements RetroRoot {
     const promotes = piece?.role === 'pawn' && (dest[1] === '1' || dest[1] === '8');
     this.playUci(orig + dest + (promotes ? 'q' : ''));
   };
-
-  // From lila's idbTree.revealNode: unfold the variations on the way to the position shown, so
-  // that its move is never folded away in the move list. Trim: lila also saves the change.
-  private revealNode(): void {
-    const nodes = this.nodeList;
-    for (let i = 0; i < nodes.length; i++) {
-      const kid = nodes[i].children[0];
-      if (nodes[i].collapsed && kid && nodes[i + 1] && kid !== nodes[i + 1]) nodes[i].collapsed = false;
-    }
-  }
 
   // Not in lila: "Show my move" / "Hide my move" in the panel.
   toggleBadMoveArrow = (): void => {

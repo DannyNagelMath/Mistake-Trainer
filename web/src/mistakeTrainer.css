@@ -7,6 +7,14 @@ div.site-title:hover {
   color: var(--c-font);
 }
 
+/* Training settings and the trainer are in the same page, each in its own <main> (index.html).
+   While Training settings shows, main.ts adds this class to the page: the trainer is only hidden,
+   so coming back finds it exactly as you left it. */
+body.mt-settings-shown main.analyse,
+body:not(.mt-settings-shown) main.mt-settings-page {
+  display: none;
+}
+
 /* A card's panel has no title in its bar (retroView.ts), only "Show my move" on the left and
    "Suspend card" on the right, where lila's close button is. The bar keeps its height when
    neither is there. */
@@ -18,10 +26,23 @@ div.site-title:hover {
 }
 
 /* The analysis board's Settings dialog (analysisSettingsView.ts). lila caps its help pane at
-   300px: it lists a few shortcuts, and swaps in a help video when you point at a setting. Ours has
-   all the shortcuts, and no videos, so it takes the room they need. */
+   300px: it lists a few shortcuts, and swaps in a help video when you point at a setting. Ours
+   lists all the shortcuts, so that list takes the room it needs. */
 .analysis-settings-view .help-pane[data-key='keyboardShortcuts'] {
   max-height: none;
+}
+
+/* The buttons that fold variations away in the move list ("Enable variation hiding"). lila's CSS
+   gives each button a colour and cuts it to shape with an image: a rounded square with a + (folded)
+   or − (unfolded) cut out of it. Those images are among the artwork lila's COPYING.md lists as
+   non-free, so buildLilaCss doesn't copy them, and without them the buttons were plain squares.
+   These are our own drawings of the same shapes: in each, the second part of the path is the sign,
+   which fill-rule='evenodd' turns into a hole. */
+.tview2 .disclosure {
+  mask-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path fill-rule='evenodd' d='M2.5 0h11A2.5 2.5 0 0 1 16 2.5v11a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 0 13.5v-11A2.5 2.5 0 0 1 2.5 0ZM6.75 3v3.75H3v2.5h3.75V13h2.5V9.25H13v-2.5H9.25V3Z'/></svg>");
+}
+.tview2 .disclosure.expanded {
+  mask-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path fill-rule='evenodd' d='M2.5 0h11A2.5 2.5 0 0 1 16 2.5v11a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 0 13.5v-11A2.5 2.5 0 0 1 2.5 0ZM3 6.75h10v2.5H3Z'/></svg>");
 }
 
 /* The buttons for how a correct answer went (renderRatingChoices in retroView.ts). They take the

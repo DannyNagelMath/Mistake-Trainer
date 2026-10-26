@@ -7,7 +7,7 @@ import type { VNode } from 'snabbdom';
 
 import type { AnalysisCtrl } from './analysisCtrl';
 import { renderIndex } from './components';
-import { discloseOf, InlineView, type Args } from './inlineView';
+import { InlineView, type Args } from './inlineView';
 import { hl, type LooseVNodes } from './snabbdom';
 import type { TreeNode } from './tree';
 
@@ -23,7 +23,7 @@ export function renderColumnView(ctrl: AnalysisCtrl): VNode {
     blackStarts && [renderIndex(node.ply, false), hl('move.empty', '...')],
     renderer.renderNodes(ctrl.visibleChildren(node), {
       parentPath: '',
-      parentDisclose: discloseOf(ctrl, node, true),
+      parentDisclose: ctrl.idbTree.discloseOf(node, true),
       parentNode: node,
       isMainline: true,
     }),
@@ -59,7 +59,7 @@ class ColumnView extends InlineView {
       this.renderNodes(this.ctrl.visibleChildren(child), {
         parentPath: childPath,
         parentNode: child,
-        parentDisclose: discloseOf(this.ctrl, child, true),
+        parentDisclose: this.ctrl.idbTree.discloseOf(child, true),
         isMainline: true,
       }),
     ];

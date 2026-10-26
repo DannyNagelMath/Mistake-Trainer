@@ -70,7 +70,8 @@ for (const source of sources) {
 // the material each side is up, beside the clocks, and the short videos that show what each
 // analysis setting does. All of these have free licences (lila's COPYING.md: the videos are lila's
 // own, AGPL). Not the loading spinner's images: COPYING.md lists the other artwork in
-// public/images as non-free, and this page doesn't show the spinner.
+// public/images as non-free, and this page doesn't show the spinner. Nor the two images that shape
+// the fold buttons in the move list (images/buttons): mistakeTrainer.css draws its own.
 const assets = [
   'font', // text fonts, the lichess icon font, and the chess-figurine font
   'piece/cburnett',

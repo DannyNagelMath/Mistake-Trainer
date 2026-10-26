@@ -249,9 +249,10 @@ export default function (root: AnalysisCtrl): VNode | undefined {
         hl(
           'a.suspend',
           {
-            attrs: { title: 'Never show this card again (you can bring it back in Training settings)' },
+            attrs: { title: 'Take this card out of your training. You can bring it back in Training settings.' },
             hook: bind('click', () => {
-              if (confirm("Suspend this card? It won't come up again.")) ctrl.card!.suspend();
+              if (confirm("Suspend this card? It won't come up until you bring it back in Training settings."))
+                ctrl.card!.suspend();
             }),
           },
           'Suspend card',

@@ -137,6 +137,9 @@ const getKeyInfo = (combination: string, action?: Action): KeyInfo => {
 
 export default class Mousetrap {
   private readonly bindings: Record<string, Binding[]> = {};
+  // Not in lila: while paused, keys do nothing here, and do what they normally do in the page.
+  // main.ts pauses the trainer's while Training settings shows over it.
+  paused = false;
 
   // Trim: lila's also accepts an HTMLElement. Our TypeScript then can't tell that the events will be
   // KeyboardEvents, and we only ever listen on the document.
@@ -177,6 +180,7 @@ export default class Mousetrap {
 
   // Runs the matching bindings, unless you're typing in a text box.
   private readonly handleKeyEvent = (e: KeyboardEvent) => {
+    if (this.paused) return;
     const el = e.target as HTMLElement;
     for (const binding of this.getMatches(e)) {
       if (

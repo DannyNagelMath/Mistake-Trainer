@@ -64,14 +64,18 @@
           <div class="site-name">Mistake Trainer</div>
         </div>
       </div>
-      <!-- Not in lila: the link to your training settings (settings.html), styled like lila's
-           header links. The analysis board's own settings are in its menu. -->
+      <!-- Not in lila: the link to your training settings, styled like lila's header links. While
+           they show, it says "Back to training" (main.ts). The analysis board's own settings are in
+           its menu. -->
       <div class="site-buttons">
-        <a class="link" href="/settings.html">Training settings</a>
+        <a class="link" href="#settings">Training settings</a>
       </div>
     </header>
+    <!-- Not in lila: Training settings (settingsPage.ts) has its own <main>, which shows instead of
+         the trainer's while you're there (main.ts). Its classes are lila's for a small boxed page. -->
     <div id="main-wrap" class="is2d">
       <main class="analyse"></main>
+      <main class="page-small box box-pad mt-settings-page"></main>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

@@ -13,8 +13,8 @@
 import type { AnalysisCtrl } from './analysisCtrl';
 import Mousetrap from './mousetrap';
 
-// Trim: lila binds these on its global site.mousetrap; this makes one for the page.
-export const bind = (ctrl: AnalysisCtrl) => {
+// Trim: lila binds these on its global site.mousetrap; this makes one for the page, and returns it.
+export const bind = (ctrl: AnalysisCtrl): Mousetrap => {
   // Trim: lila also listens for a tap of shift (select the next continuation) or ctrl
   // (fold variations) on its own (addModifierKeyListeners).
   const kbd = new Mousetrap();
@@ -68,4 +68,5 @@ export const bind = (ctrl: AnalysisCtrl) => {
     });
   // Trim: lila's shift+up / shift+down step between sibling variations, and shift+space plays the
   // opening explorer's first move.
+  return kbd;
 };

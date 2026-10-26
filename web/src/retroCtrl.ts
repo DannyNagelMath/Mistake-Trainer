@@ -74,7 +74,7 @@ export interface RetroCardOpts {
   ratingChoices(): { label: string; rate: () => void }[] | undefined;
   suspend(): void; // "Suspend card": it never comes up again; the next card is dealt
   openingUcis: Uci[]; // moves masters have played from the position, accepted as right answers
-  bestMoveOnly: boolean; // only Lichess's best move counts, not any move nearly as good
+  bestMoveOnly(): boolean; // only Lichess's best move counts, not any move nearly as good
 }
 
 export type CardResult = 'win' | 'fail' | 'view' | 'skip'; // Step 9
@@ -199,7 +199,7 @@ export function make(root: RetroRoot, color: Color): RetroCtrl {
         onWin(); // found in opening explorer, checkmate ends the game, or comp solution line
       else if (node.eval)
         onFail(); // the move that was played in the game
-      else if (card?.bestMoveOnly)
+      else if (card?.bestMoveOnly())
         onFail(); // Not in lila: only Lichess's best move counts (your training settings)
       else {
         feedback('eval');

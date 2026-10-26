@@ -13,42 +13,13 @@ import type { AnalysisCtrl } from './analysisCtrl';
 import { renderMoveNodes, renderIndex } from './components';
 import { i18n } from './i18n';
 import { hl, type LooseVNodes } from './snabbdom';
+import type { DiscloseState } from './idbTree';
 import { hasBranching, type TreeComment, type TreeNode } from './tree';
-
-// ---------- Stand-in for lila's idbTree.discloseOf (ui/analyse/src/idbTree.ts) ----------
-
-// 'expanded' means a node's variations or comments break up the list, and 'collapsed' that you
-// folded them away with its button, which only shows with "Enable variation hiding" on (lila's
-// disclosure mode, in the analysis settings).
-// Trim: lila remembers folded variations in IndexedDB; here they stay folded until the next card,
-// whose game gets a new tree.
-export type DiscloseState = undefined | 'expanded' | 'collapsed';
-
-export function discloseOf(ctrl: AnalysisCtrl, node: TreeNode | undefined, isMainline: boolean): DiscloseState {
-  if (!node) return undefined;
-  return isCollapsible(ctrl, node, isMainline)
-    ? ctrl.settings.disclosureMode && node.collapsed
-      ? 'collapsed'
-      : 'expanded'
-    : undefined;
-}
-
-function isCollapsible(ctrl: AnalysisCtrl, node: TreeNode, isMainline: boolean): boolean {
-  const [first, second, third] = node.children.filter(n => ctrl.settings.showStaticAnalysis || !n.comp);
-  return Boolean(
-    // Trim: lila also checks first?.forceVariation, a study feature.
-    third ||
-      (second && hasBranching(second, 6)) ||
-      (isMainline && ctrl.treeView.mode === 'column' && (second || first?.comments?.filter(Boolean).length)),
-  );
-}
-
-// ---------- Everything below is lila's code except where marked ----------
 
 export function renderInlineView(ctrl: AnalysisCtrl): VNode {
   const renderer = new InlineView(ctrl);
   const parentNode = ctrl.tree.root;
-  const parentDisclose = discloseOf(ctrl, parentNode, true);
+  const parentDisclose = ctrl.idbTree.discloseOf(parentNode, true);
   return hl(
     'div.tview2.tview2-inline',
     { class: { anchor: !!parentDisclose } }, // Trim: lila hides the list until IndexedDB has loaded.
@@ -163,7 +134,7 @@ export class InlineView {
       isMainline,
       parentPath: args.parentPath + child.id,
       parentNode: child,
-      parentDisclose: discloseOf(this.ctrl, child, false),
+      parentDisclose: this.ctrl.idbTree.discloseOf(child, false),
       parenthetical: this.parenthetical(child),
     };
   }
@@ -223,20 +194,14 @@ export class InlineView {
     );
   }
 
-  // The button that folds a move's variations away or shows them again (lila's
-  // idbTree.setCollapsed). Trim: lila also saves which ones are folded.
+  // The button that folds a move's variations away or shows them again (idbTree.ts).
   private disclosureBtn(node: TreeNode, path: string): LooseVNodes {
     return (
       this.ctrl.settings.disclosureMode &&
       hl('a.disclosure', {
         class: { expanded: !node.collapsed },
         attrs: { 'data-path': path },
-        on: {
-          click: () => {
-            node.collapsed = !node.collapsed;
-            this.ctrl.redraw();
-          },
-        },
+        on: { click: () => this.ctrl.idbTree.setCollapsed(path, !node.collapsed) },
       })
     );
   }
