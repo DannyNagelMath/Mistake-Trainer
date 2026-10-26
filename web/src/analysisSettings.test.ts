@@ -28,7 +28,11 @@ test("lila's defaults, until you change one; the browser remembers the change", 
     showStaticAnalysis: true,
     disclosureMode: false,
     showBestMoveArrows: true,
+    showVariationArrows: true,
     showMoveAnnotationsOnBoard: true,
+    showUndefendedPieces: false,
+    showPinnedPieces: false,
+    showCheckableKing: false,
   });
   settings.set('inline', true);
   expect(redraw).toHaveBeenCalledOnce();

@@ -89,6 +89,7 @@ export const i18n = {
     inaccuracy: 'Inaccuracy',
     inLocalBrowser: 'in local browser',
     keyboardShortcuts: 'Keyboard shortcuts',
+    keyCycleSelectedVariation: 'Cycle selected variation',
     keyGoToStartOrEnd: 'go to start/end',
     keyMoveBackwardOrForward: 'move backward/forward',
     keyNextBranch: 'Next branch',
@@ -146,10 +147,14 @@ export const i18n = {
     inlineNotation: 'Inline notation',
     moveListSettings: 'Move list',
     showBestMoveArrows: 'Show best move arrows',
+    showCheckableKing: 'Show checkable king',
     showGauge: 'Show evaluation gauge',
     // Not from 27ffc8b: lila renamed showServerAnalysis ('Show server analysis') after it, in
     // commit 23a3ae6 (Oct 10, 2026). This is the name Lichess shows now.
     showMainlineAnalysis: 'Show mainline analysis',
     showMoveAnnotationsOnBoard: 'Show move annotations',
+    showPinnedPieces: 'Show pinned pieces',
+    showUndefendedPieces: 'Show undefended pieces',
+    showVariationArrows: 'Show variation arrows',
   },
 };

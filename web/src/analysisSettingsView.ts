@@ -18,6 +18,7 @@ interface Setting {
   group: string;
   shortcut?: string[]; // its keyboard shortcuts, e.g. ['shift+i'] (see keys below)
   video?: string; // lila's short video of what it does, in public/lila/video (buildLilaCss.ts)
+  note?: (VNode | string)[]; // a line under the video
 }
 
 // Trim: lila has more settings (see analysisSettings.ts). Its help for the gauge is a picture,
@@ -50,10 +51,32 @@ const settings: Record<SettingKey, Setting> = {
     group: i18n.preferences.boardSettings,
     video: 'info-best-move-arrows',
   },
+  showVariationArrows: {
+    label: i18n.preferences.showVariationArrows,
+    shortcut: ['v'],
+    group: i18n.preferences.boardSettings,
+    video: 'info-variation-arrows',
+    note: [i18n.site.keyCycleSelectedVariation, ' ', hl('kbd', 'shift')],
+  },
   showMoveAnnotationsOnBoard: {
     label: i18n.preferences.showMoveAnnotationsOnBoard,
     group: i18n.preferences.boardSettings,
     video: 'info-move-annotations-on-board',
+  },
+  showUndefendedPieces: {
+    label: i18n.preferences.showUndefendedPieces,
+    group: i18n.preferences.boardSettings,
+    video: 'info-undefended-pieces',
+  },
+  showPinnedPieces: {
+    label: i18n.preferences.showPinnedPieces,
+    group: i18n.preferences.boardSettings,
+    video: 'info-pinned-pieces',
+  },
+  showCheckableKing: {
+    label: i18n.preferences.showCheckableKing,
+    group: i18n.preferences.boardSettings,
+    video: 'info-checkable-king',
   },
 };
 
@@ -191,6 +214,7 @@ function helpView(): VNode {
           hl('source', { attrs: { src: `/lila/video/${video}.webm`, type: 'video/webm' } }),
         ),
         hl('br'),
+        settings[pointedAt].note && hl('span', settings[pointedAt].note),
       ]),
     );
   return hl(
@@ -206,6 +230,7 @@ function helpView(): VNode {
       shortcut(capitalize(i18n.site.keyGoToStartOrEnd), ['↑', '↓']),
       shortcut(i18n.site.keyPreviousBranch, ['shift+←']),
       shortcut(i18n.site.keyNextBranch, ['shift+→']),
+      shortcut(i18n.site.keyCycleSelectedVariation, ['shift']),
       shortcut(capitalize(i18n.site.keyShowOrHideComments), ['shift+c']),
       shortcut(i18n.site.menu, ['h']),
     ]),

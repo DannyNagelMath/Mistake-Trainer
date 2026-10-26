@@ -3,10 +3,12 @@
 // Every change from lila's version is marked with a comment starting "Trim:".
 
 import type { DrawModifiers, DrawShape } from '@lichess-org/chessground/draw';
+import type { Key } from '@lichess-org/chessground/types';
+import { parseFen } from 'chessops/fen';
 import { makeSquare, parseUci } from 'chessops/util';
 
 import type { AnalysisCtrl } from './analysisCtrl';
-import { annotationShapes } from './glyphs';
+import { analysisGlyphs, annotationShapes } from './glyphs';
 
 // An arrow for a move.
 // Trim: lila also draws drops and promotions (the piece on the square), for which it needs the
@@ -19,7 +21,7 @@ export function makeShapesFromUci(uci: string | undefined, brush: string, modifi
 }
 
 // Trim: lila also draws icons for how the game ended, arrows for the opening explorer, the
-// engine's other lines, threats, and variations, and the engine's analysis glyphs.
+// engine's other lines and threats, and maneuver arrows.
 export function compute(ctrl: AnalysisCtrl): DrawShape[] {
   let shapes: DrawShape[] = [];
   // Step 3c: the move you played in the game, as lila's pale red arrow. While you're solving, it's
@@ -42,5 +44,52 @@ export function compute(ctrl: AnalysisCtrl): DrawShape[] {
     if (nextBest) shapes = shapes.concat(makeShapesFromUci(nextBest, 'paleBlue'));
   }
   if (ctrl.showMoveAnnotations()) shapes = shapes.concat(annotationShapes(ctrl.node));
+  if (ctrl.showVariationArrows()) hiliteVariations(ctrl, shapes);
+
+  // The board marks you can switch on (motif.ts), each in a corner of its square.
+  if (ctrl.isCevalAllowed()) {
+    const parsed = parseFen(ctrl.node.fen);
+    if ('error' in parsed) return shapes;
+    const { board, epSquare, castlingRights } = parsed.value;
+
+    const addAnalysis = (orig: Key, type: keyof typeof analysisGlyphs) => {
+      const idx = shapes.filter(s => s.orig === orig && s.customSvg).length;
+      shapes.push({
+        orig,
+        customSvg: { html: analysisGlyphs[type](idx) },
+      });
+    };
+
+    if (ctrl.motifEnabled()) {
+      ctrl.motif.detectPins(board).forEach(p => addAnalysis(makeSquare(p.pinned), 'pin'));
+      ctrl.motif
+        .detectUndefended(board, epSquare)
+        .forEach(u => addAnalysis(makeSquare(u.square), 'undefended'));
+      ctrl.motif
+        .detectCheckable(board, epSquare, castlingRights)
+        .forEach(s => addAnalysis(makeSquare(s.king), 'checkable'));
+    }
+  }
+
   return shapes;
+}
+
+// From lila: where there's more than one move from here, an arrow for each, under the pieces, with
+// the selected one (fork.ts: the up and down keys, or a tap of shift) outlined in blue. A move that
+// already has an arrow, such as the best move, gets the outline on that arrow instead.
+// Trim: lila colours them as right and wrong in the study editor, and adds the piece for a drop.
+function hiliteVariations(ctrl: AnalysisCtrl, autoShapes: DrawShape[]) {
+  const visible = ctrl.visibleChildren();
+  if (visible.length < 2) return;
+
+  for (const [i, node] of visible.entries()) {
+    const existing = autoShapes.find(s => s.orig + s.dest === node.uci);
+    // Not in lila: the arrow keeps its other modifiers, such as the width of "Show my move".
+    if (existing) existing.modifiers = { ...existing.modifiers, hilite: i === ctrl.fork.selectedIndex ? 'white' : undefined };
+    else {
+      const hilite = i === ctrl.fork.selectedIndex ? '#3291ff' : '#aaa';
+      const shapes = makeShapesFromUci(node.uci, 'variation', { hilite }).map(s => ({ ...s, below: true }));
+      autoShapes.push(...shapes);
+    }
+  }
 }

@@ -6,9 +6,7 @@
 // port starts again from the defaults.
 
 // lila's defaults, in lila's order.
-// Trim: lila also has showLiveAnnotations, showManeuverMoveArrows,
-// showVariationArrows, showUndefendedPieces, showPinnedPieces, and showCheckableKing, for things
-// we don't have.
+// Trim: lila also has showLiveAnnotations and showManeuverMoveArrows, for things we don't have.
 export class AnalysisSettings {
   constructor(
     public readonly showGauge = true, // the evaluation bar beside the board
@@ -16,7 +14,11 @@ export class AnalysisSettings {
     public readonly showStaticAnalysis = true, // Lichess's analysis: evals, ?? marks, comments, engine lines
     public readonly disclosureMode = false, // buttons in the move list to fold variations away
     public readonly showBestMoveArrows = true, // the better move instead, and the best move from here
+    public readonly showVariationArrows = true, // an arrow for each continuation, where there's a choice
     public readonly showMoveAnnotationsOnBoard = true, // the move's ?? or ?! on its square
+    public readonly showUndefendedPieces = false, // marks on pieces the other side can win (motif.ts)
+    public readonly showPinnedPieces = false, // marks on pinned pieces
+    public readonly showCheckableKing = false, // a mark on a king that can be checked
   ) {}
 }
 

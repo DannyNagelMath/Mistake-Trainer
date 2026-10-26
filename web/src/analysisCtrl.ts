@@ -16,6 +16,7 @@ import { compute as computeAutoShapes } from './autoShape';
 import { displayColumns, storedBooleanProp, toggle, type Toggle } from './common';
 import { ForkCtrl } from './fork';
 import { IdbTree } from './idbTree';
+import MotifCtrl from './motif';
 import Navigate from './navigate';
 import { nextGlyphSymbol } from './nodeFinder';
 import { analyse, evaluate, stopAnalysis, type EngineEval } from './engine';
@@ -107,6 +108,7 @@ export class AnalysisCtrl implements RetroRoot {
     this.setAutoShapes();
     this.redraw();
   });
+  readonly motif = new MotifCtrl(this.settings); // the board marks you can switch on (motif.ts)
   settingsOpen = false; // Not in lila, which opens its dialog itself: whether the dialog is showing
   // Not in lila, which always draws the move you played in the game as a pale red arrow while
   // you look for a better one: here, only when you ask ("Show my move" in the panel), and the
@@ -389,6 +391,22 @@ export class AnalysisCtrl implements RetroRoot {
   // (showMoveGlyphs is false then too: AnalysisCtrl.hidingHints).
   showMoveAnnotations = (): boolean =>
     this.settings.showMoveAnnotationsOnBoard && !this.retro?.isSolving() && this.showMoveGlyphs();
+
+  // From lila: the variation arrows (autoShape.ts), when the setting is on and there's a move from
+  // here. Only the moves the move list shows get one, so not an engine line it hides.
+  showVariationArrows = (): boolean => {
+    if (!this.allowLines() || !this.settings.showVariationArrows) return false;
+    return Boolean(this.node.children.filter(x => !x.comp || this.settings.showStaticAnalysis).length);
+  };
+
+  // From lila: whether the board may show lines of moves: not while you're solving.
+  // Trim: lila also checks studies' rules.
+  allowLines = (): boolean => !this.retro?.isSolving();
+
+  // From lila: whether the board marks (motif.ts) may show: not while you're solving. autoShape.ts
+  // also only draws them where the engine is allowed (isCevalAllowed), which covers every moment a
+  // card is unsolved. Trim: lila also checks studies' rules, and that the variant has them.
+  motifEnabled = (): boolean => !this.retro?.isSolving();
 
   // redraw removed in step 4a-2
   // redraw = (): void => {}; // Step 4: re-render the page.

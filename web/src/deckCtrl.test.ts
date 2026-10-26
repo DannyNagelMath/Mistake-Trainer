@@ -5,6 +5,7 @@
 import { makeUci } from 'chessops';
 import { Chess } from 'chessops/chess';
 import { parseFen } from 'chessops/fen';
+import { makeSquare } from 'chessops/util';
 import type { VNode } from 'snabbdom';
 import { Rating } from 'ts-fsrs';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
@@ -15,6 +16,7 @@ import { compute as autoShapes } from './autoShape';
 import { cardsOfGame, mistakeOf, type Card, type Deck } from './deck';
 import { DeckCtrl } from './deckCtrl';
 import { getBestEval } from './evalGauge';
+import { detectCheckable, detectPins, detectUndefended } from './motif';
 import type { ReviewHistory } from './reviews';
 import type { EngineEval } from './engine';
 import { defaultSettings, type Settings } from './settings';
@@ -307,6 +309,7 @@ test("while solving, no evaluation and no best move arrows; once done, Lichess's
   expect(arrows()).toEqual([
     ['paleGreen', 'd6f4'], // what Black should have played instead of 19...Bg7??, the move that led here
     ['paleBlue', 'h6g7'], // the best move from here, 20.Qxg7#
+    ['variation', 'h6h4'], // and with two moves from here now, an arrow for the game's (variation arrows)
   ]);
   ctrl.userJump(fault.path); // after 20.Qh4
   expect(arrows()).toContainEqual(['paleGreen', 'h6g7']); // what should have been played instead
@@ -465,6 +468,51 @@ test('"Show my move": the move you played as a red arrow, alone while solving, b
   ]);
   ctrl.toggleBadMoveArrow();
   expect(arrows()).not.toContainEqual(['paleRed', 'h6h4']);
+});
+
+test('the board marks, switched on: none while you solve a card; once done, on the pieces they describe', () => {
+  vi.stubGlobal('localStorage', standIn({})); // where the browser keeps the analysis settings
+  const [card] = deck.cards; // 20.Qh4?? when 20.Qxg7# was mate
+  const { ctrl } = startOn(card);
+  ctrl.settings.set('showMoveAnnotationsOnBoard', false); // so the marks are the only pictures
+  for (const key of ['showUndefendedPieces', 'showPinnedPieces', 'showCheckableKing'] as const) ctrl.settings.set(key, true);
+  const marks = () => autoShapes(ctrl).filter(s => s.customSvg).map(s => s.orig).sort();
+  expect(marks()).toEqual([]); // while solving, they could give the answer away
+  playSolution(ctrl);
+  ctrl.userJump(ctrl.retro!.current()!.prev.path); // the position you faced
+  const { board, epSquare, castlingRights } = parseFen(ctrl.node.fen).unwrap();
+  const described = [
+    ...detectPins(board).map(p => p.pinned),
+    ...detectUndefended(board, epSquare).map(u => u.square),
+    ...detectCheckable(board, epSquare, castlingRights).map(c => c.king),
+  ]
+    .map(makeSquare)
+    .sort();
+  expect(described.length).toBeGreaterThan(0);
+  expect(marks()).toEqual(described);
+});
+
+test('variation arrows: once a card is done, an arrow for each move from its position, the selected one outlined', () => {
+  vi.stubGlobal('localStorage', standIn({}));
+  const [card] = deck.cards; // 20.Qh4?? (h6h4) when 20.Qxg7# (h6g7) was mate
+  const { ctrl } = startOn(card);
+  const arrows = () => autoShapes(ctrl).filter(s => s.dest).map(s => [s.brush, s.orig + s.dest, s.modifiers?.hilite]);
+  expect(arrows()).toEqual([]); // while solving, none: the move list shows no moves from here
+  playSolution(ctrl);
+  ctrl.userJump(ctrl.retro!.current()!.prev.path);
+  expect(arrows()).toEqual([
+    ['paleGreen', 'd6f4', undefined],
+    ['paleBlue', 'h6g7', undefined], // Lichess's move has an arrow already, outlined when it's selected
+    ['variation', 'h6h4', '#3291ff'], // the game's move, selected: "next" follows it
+  ]);
+  ctrl.fork.select('next'); // what a tap of shift does, or the down key
+  expect(arrows()).toEqual([
+    ['paleGreen', 'd6f4', undefined],
+    ['paleBlue', 'h6g7', 'white'],
+    ['variation', 'h6h4', '#aaa'],
+  ]);
+  ctrl.settings.set('showVariationArrows', false); // the setting, or v
+  expect(arrows().map(([brush]) => brush)).toEqual(['paleGreen', 'paleBlue']);
 });
 
 test('variation hiding: once the card is done, moves with variations get a fold button, which folds them away, for next time too', () => {

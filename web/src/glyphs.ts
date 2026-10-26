@@ -1,6 +1,6 @@
 // glyphs.ts: draws a move's annotations (??, ?!, ...) on the square it went to, from lila's
-// ui/lib/src/game/glyphs.ts (master, commit 27ffc8b), only annotationShapes. The pictures come
-// with chessground.
+// ui/lib/src/game/glyphs.ts (master, commit 27ffc8b): annotationShapes, and the pictures for the
+// board marks (analysisGlyphs, motif.ts). The pictures come with chessground.
 
 import type { DrawShape } from '@lichess-org/chessground/draw';
 import * as cgGlyphs from '@lichess-org/chessground/glyph';
@@ -45,3 +45,6 @@ export function annotationShapes(node: TreeNode): DrawShape[] {
 }
 
 export const glyphToSvg: Record<string, (stackedNumber: number) => string> = cgGlyphs.glyphToSvg(maxGlyphs);
+
+export const analysisGlyphs: Record<string, (stackedNumber: number) => string> =
+  cgGlyphs.analysisGlyphs(maxGlyphs);

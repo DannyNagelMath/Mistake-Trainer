@@ -4,9 +4,11 @@
 //   left or k: previous move         right or j: next move
 //   up, 0, or home: first move       down, $, or end: last move
 //   up / down when there's a choice of continuations: change which one "next" follows
+//   shift, tapped on its own: the same as down there
 //   shift+left / shift+right (or shift+k / shift+j): previous / next variation
 //   shift+c: show or hide comments   shift+i: inline or two-column move list
 //   z: show or hide Lichess's analysis   a: show or hide the best move arrows
+//   v: show or hide the variation arrows
 //   l: switch the engine on or off
 //   h: open or close the menu        f: flip the board
 
@@ -15,9 +17,8 @@ import Mousetrap from './mousetrap';
 
 // Trim: lila binds these on its global site.mousetrap; this makes one for the page, and returns it.
 export const bind = (ctrl: AnalysisCtrl): Mousetrap => {
-  // Trim: lila also listens for a tap of shift (select the next continuation) or ctrl
-  // (fold variations) on its own (addModifierKeyListeners).
   const kbd = new Mousetrap();
+  addModifierKeyListeners(ctrl, kbd);
   kbd
     .bind(['left', 'k'], () => {
       ctrl.navigate.prev();
@@ -53,9 +54,9 @@ export const bind = (ctrl: AnalysisCtrl): Mousetrap => {
     .bind('f', ctrl.flip)
     .bind('z', () => ctrl.settings.set('showStaticAnalysis', !ctrl.settings.showStaticAnalysis))
     .bind('a', () => ctrl.settings.set('showBestMoveArrows', !ctrl.settings.showBestMoveArrows))
+    .bind('v', () => ctrl.settings.set('showVariationArrows', !ctrl.settings.showVariationArrows))
     .bind('l', () => ctrl.cevalEnabled(!ctrl.cevalEnabled()));
-  // Trim: lila also has b (board editor), ? (keyboard help), v (variation arrows), x (threat),
-  // and e (opening explorer).
+  // Trim: lila also has b (board editor), ? (keyboard help), x (threat), and e (opening explorer).
 
   kbd
     .bind(['shift+left', 'shift+k'], () => {
@@ -70,3 +71,27 @@ export const bind = (ctrl: AnalysisCtrl): Mousetrap => {
   // opening explorer's first move.
   return kbd;
 };
+
+// A tap of shift on its own, with no other key or click while it's down, selects the next
+// continuation, as the down key does (fork.ts); the variation arrows show which one.
+// Trim: lila's also folds variations on a tap of ctrl, and skips shift while you type in the chat.
+// Not in lila: nothing while kbd is paused (main.ts), as these listen on the page outside it.
+function addModifierKeyListeners(ctrl: AnalysisCtrl, kbd: Mousetrap) {
+  let modifierOnly = false;
+
+  window.addEventListener('mousedown', () => (modifierOnly = false), { capture: true });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Shift') modifierOnly = !modifierOnly;
+    else modifierOnly = false;
+  });
+
+  document.addEventListener('keyup', e => {
+    if (!modifierOnly) return;
+    modifierOnly = false;
+    if (kbd.paused) return;
+
+    if (e.key === 'Shift' && ctrl.fork.select('next')) ctrl.setAutoShapes();
+    ctrl.redraw();
+  });
+}
