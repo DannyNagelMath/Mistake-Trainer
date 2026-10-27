@@ -1,26 +1,11 @@
-// compare.test.ts: checks the comparison page's sums (compare.ts), and its run, with stand-ins for
-// the analysis (which needs Stockfish, so a browser) and for saving.
-import { expect, test, vi } from 'vitest';
+// compare.test.ts: checks the comparison page's sums (compare.ts). (analysisRun.test.ts checks its
+// run of analyses.)
+import { expect, test } from 'vitest';
 
 import real1 from '../fixtures/real1.json';
 import { compareGame, CompareCtrl, totals } from './compare';
 import { cardsOfGame, mistakeOf, type MasterMove } from './deck';
 import type { LichessGameJson } from './tree';
-
-// The stand-in analysis gives the game's own analysis back, after telling the test which game it's
-// on (to pause there, say), as a run of two positions.
-const run = vi.hoisted(() => ({ onGame: (_id: string) => {} }));
-vi.mock('./localAnalysis', () => ({
-  analyseGame: async (game: LichessGameJson, onProgress: (done: number, total: number) => void, signal?: AbortSignal) => {
-    onProgress(1, 2);
-    run.onGame(game.id);
-    signal?.throwIfAborted();
-    onProgress(2, 2);
-    return game.analysis;
-  },
-}));
-const saveAnalysis = vi.hoisted(() => vi.fn(async (_gameId: string, _saved: unknown) => {}));
-vi.mock('./analyses', () => ({ saveAnalysis }));
 
 const game = real1 as unknown as LichessGameJson; // your cards: 20.Qh4 (ply 39), and plies 41 and 63
 const masterMove = (uci: string, games: number): MasterMove => ({ uci, white: games, draws: 0, black: 0 });
@@ -53,18 +38,10 @@ test("a card only one analysis gives, and the masters database's say in the open
   expect(totals([c]).cards).toEqual({ same: 1, lichessOnly: 1, localOnly: 0, book: 1, unknown: 1 });
 });
 
-test('a run analyses each game not analysed yet and saves it; pausing stops it, unsaved, until it carries on', async () => {
-  const games = ['a', 'b'].map(id => ({ ...game, id }));
-  const ctrl = new CompareCtrl('mugglesman1982', games, {}, {}, () => {});
-  run.onGame = id => id === 'a' && ctrl.pause(); // pause during the first game
-  await ctrl.start();
-  expect([ctrl.running, Object.keys(ctrl.saved), saveAnalysis.mock.calls.length]).toEqual([false, [], 0]);
-  expect(ctrl.waiting().map(g => g.id)).toEqual(['a', 'b']); // the first game starts again from scratch
-
-  run.onGame = () => {};
-  await ctrl.start();
-  expect(Object.keys(ctrl.saved)).toEqual(['a', 'b']);
-  expect(saveAnalysis.mock.calls.map(([id]) => id)).toEqual(['a', 'b']);
-  expect(ctrl.saved.a).toMatchObject({ analysis: game.analysis, engine: 'Stockfish 19', nodes: 1_000_000 });
-  expect(ctrl.comparisons().map(c => totals([c]).cards.same)).toEqual([3, 3]);
+test('the page compares each game analysed here so far', () => {
+  const games = ['a', 'b', 'c'].map(id => ({ ...game, id }));
+  const saved = { a: { analysis: game.analysis!, engine: 'Stockfish 19', nodes: 1_000_000, at: '' } };
+  const ctrl = new CompareCtrl('mugglesman1982', games, saved, {}, () => {});
+  expect(ctrl.comparisons().map(c => [c.game.id, totals([c]).cards.same])).toEqual([['a', 3]]);
+  expect(ctrl.waiting().map(g => g.id)).toEqual(['b', 'c']);
 });

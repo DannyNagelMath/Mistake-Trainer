@@ -11,7 +11,8 @@ import { init, attributesModule, classModule, eventListenersModule, propsModule,
 import { blurIfPrimaryClick } from './common';
 import { loadDeck } from './deck';
 import { DeckCtrl } from './deckCtrl';
-import { preload } from './engine';
+import { onSearching, preload } from './engine';
+import { holdEngines, releaseEngines } from './fishnet';
 import * as keyboard from './keyboard';
 import { loadHistory } from './reviews';
 import { loadSettings } from './settings';
@@ -19,6 +20,7 @@ import { SettingsPageCtrl } from './settingsPage';
 import { view as settingsView } from './settingsPageView';
 import { hl } from './snabbdom';
 import { view } from './view';
+import { YourGamesCtrl } from './yourGames';
 
 // Step 4a: the same snabbdom setup as lila's (ui/analyse/src/view/util.ts).
 const patch = init([classModule, attributesModule, propsModule, eventListenersModule]);
@@ -69,6 +71,12 @@ const keys = keyboard.bind(deckCtrl.analysis);
 // Not in lila: load Stockfish in the background now, rather than when it's first needed.
 preload();
 
+// Not in lila: the computer analysis of your games, from Training settings, which goes on while you
+// train. The trainer's engine comes first: while it searches, the engines analysing your games
+// wait (fishnet.ts holdEngines).
+const yourGames = new YourGamesCtrl(deck.username, redraw);
+onSearching(searching => (searching ? holdEngines() : releaseEngines()));
+
 // Not in lila: a card you'd got right but not yet rated when you left comes back as you left it.
 deckCtrl.resume();
 
@@ -87,7 +95,8 @@ function route(): void {
     trainerScroll = window.scrollY;
     // The board's Settings dialog, if it's open, would keep you from using the rest of the page.
     if (deckCtrl.analysis.settingsOpen) deckCtrl.analysis.closeSettings();
-    settingsCtrl = new SettingsPageCtrl(deckCtrl.deck, history, deckCtrl.settings, redraw, deckCtrl.useSettings);
+    settingsCtrl = new SettingsPageCtrl(deckCtrl.deck, history, deckCtrl.settings, redraw, deckCtrl.useSettings, yourGames);
+    yourGames.load(); // the first time
   } else {
     settingsCtrl = undefined;
     settingsVnode = patch(settingsVnode, hl('main.page-small.box.box-pad.mt-settings-page')); // emptied until next time

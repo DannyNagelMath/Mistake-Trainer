@@ -208,13 +208,14 @@ body:not(.mt-settings-shown) main.mt-settings-page {
   gap: 0.6em;
   margin-top: 1.2em;
 }
-/* The comparison page (compare.html): the run, then Lichess's analysis and ours, game by game. */
-.mt-compare__run {
+/* A run of analyses (analysisRunView.ts), in Training settings and on the comparison page. */
+.mt-run {
   margin: 1.5em 0 2em;
 }
-.mt-compare__error {
+.mt-run__error {
   color: var(--c-bad);
 }
+/* The comparison page (compare.html): Lichess's analysis and ours, game by game. */
 .mt-compare-page table {
   width: 100%;
   border-collapse: collapse;

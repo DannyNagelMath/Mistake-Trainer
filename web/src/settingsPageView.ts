@@ -1,6 +1,6 @@
 // settingsPageView.ts: Not in lila. Draws Training settings (see settingsPage.ts): how your cards
-// stand, the settings form, and your suspended cards, each on a small board you can click to look
-// at it up close.
+// stand, the computer analysis of your games, the settings form, and your suspended cards, each on
+// a small board you can click to look at it up close.
 
 import { Chessground } from '@lichess-org/chessground';
 import type { DrawShape } from '@lichess-org/chessground/draw';
@@ -8,6 +8,7 @@ import { uciToMove } from '@lichess-org/chessground/util';
 import { opposite, type Color } from 'chessops';
 import type { VNode } from 'snabbdom';
 
+import { renderRun } from './analysisRunView';
 import { clickedOutside } from './analysisSettingsView';
 import { makeShapesFromUci } from './autoShape';
 import { renderEval, renderIndex } from './components';
@@ -24,6 +25,7 @@ export function view(ctrl: SettingsPageCtrl): VNode {
   return hl('main.page-small.box.box-pad.mt-settings-page', [
     hl('h1.box__top', 'Training settings'),
     renderCounts(ctrl),
+    renderComputerAnalysis(ctrl),
     renderSettings(ctrl),
     renderSuspended(ctrl),
     ctrl.looking && renderLook(ctrl, ctrl.looking),
@@ -40,6 +42,28 @@ function renderCounts(ctrl: SettingsPageCtrl): VNode {
   return hl('p.mt-settings-page__counts', [
     `Your ${ctrl.deck.cards.length} cards: `,
     [`${p.started} started`, `${p.notStarted} not started`, `${p.suspended} suspended`].join(' · '),
+  ]);
+}
+
+// Your games (yourGames.ts): how many Lichess has analysed, and the run on the others, here.
+function renderComputerAnalysis(ctrl: SettingsPageCtrl): VNode {
+  const { loaded, error } = ctrl.yourGames;
+  const count = (n: number) => n.toLocaleString('en');
+  return hl('section.mt-computer-analysis', [
+    hl('h2', 'Computer analysis'),
+    loaded
+      ? [
+          hl(
+            'p',
+            `Your cards come from the computer analysis Lichess made of ${count(loaded.byLichess)} of your ` +
+              `${count(loaded.all)} games. The other ${count(loaded.run.games.length)} can be analysed here, on ` +
+              'your computer, the way Lichess’s servers do it, newest first. Each game is saved as soon as it’s ' +
+              'done, so you can pause, or close the page, and carry on later. It goes on while you train, stopping ' +
+              'whenever the trainer’s own engine is thinking.',
+          ),
+          renderRun(loaded.run),
+        ]
+      : hl('p', error || 'Loading your games…'),
   ]);
 }
 

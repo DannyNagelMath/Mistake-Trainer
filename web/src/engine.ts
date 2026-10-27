@@ -16,7 +16,8 @@
 //
 // There's one engine, so one search at a time. Move checks come first, and wait their turn. Live
 // analysis only ever needs the latest position: asking for another stops the one running ("stop",
-// which makes Stockfish answer at once), and a move check stops it too.
+// which makes Stockfish answer at once), and a move check stops it too. While it searches, the
+// engines analysing your games wait (onSearching).
 
 // An evaluation, from White's side like all of lila's: cp in centipawns, or mate in moves
 // (negative when Black mates). depth, nodes, and millis say how far the search got; pv is the
@@ -60,6 +61,21 @@ let stopping = false; // "stop" was sent to the running search
 const checks: Search[] = []; // waiting move checks, oldest first
 let nextAnalysis: Search | undefined; // the latest analysis asked for, waiting
 const checked = new Map<string, EngineEval>(); // move checks by FEN, so a position is only checked once
+let searching = false;
+let searchingListener: (searching: boolean) => void = () => {};
+
+// Tells `listener` when the engine starts searching (true), and when it has nothing left to search
+// (false). main.ts holds the engines analysing your games meanwhile (fishnet.ts), so that they
+// don't slow down a move check, or change what it finds in its 3 seconds.
+export function onSearching(listener: (searching: boolean) => void): void {
+  searchingListener = listener;
+}
+
+function setSearching(now: boolean): void {
+  if (now === searching) return;
+  searching = now;
+  searchingListener(now);
+}
 
 // Checks the position after a move you tried: reports as the search goes deeper, and resolves
 // with the final evaluation.
@@ -110,14 +126,19 @@ function stop(): void {
 async function next(): Promise<void> {
   if (running) return;
   const search = checks.shift() ?? nextAnalysis;
-  if (!search) return;
+  if (!search) {
+    setSearching(false);
+    return;
+  }
   if (search === nextAnalysis) nextAnalysis = undefined;
   running = search;
   stopping = false;
+  setSearching(true);
   try {
     await (started ??= start());
   } catch (e) {
     running = undefined;
+    setSearching(false);
     throw e;
   }
   if (stopping) {

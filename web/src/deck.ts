@@ -52,6 +52,19 @@ export function colorOf(game: LichessGameJson, username: string): Color | undefi
   return undefined;
 }
 
+// The games you played, as the deck takes them (scripts/buildDeck.ts): standard chess, and each
+// game once. Your downloaded games can have one twice: then the one with Lichess's analysis, if
+// either has it.
+export function yourGames(games: LichessGameJson[], username: string): LichessGameJson[] {
+  const yours = new Map<string, LichessGameJson>();
+  for (const game of games) {
+    if (!colorOf(game, username) || (game.variant ?? 'standard') !== 'standard') continue;
+    const kept = yours.get(game.id);
+    if (!kept || (!kept.analysis && game.analysis)) yours.set(game.id, game);
+  }
+  return [...yours.values()];
+}
+
 // Your mistakes in one game, in order. Like retroCtrl's findNextNode: every move of your color
 // where the eval swung by more than 10% winning chances, and the analysis has a better move.
 // The game needs analysis and must be standard chess (buildTree only knows standard chess).

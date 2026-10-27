@@ -74,6 +74,8 @@ interface Job {
   batch: Batch;
   signal: AbortSignal; // aborted if the game's search ends early
   found: (index: number, e: EngineEval | undefined) => void; // as each position of the batch is done
+  reported: Set<number>; // the positions given to `found`, so a batch searched again gives them only once
+  interrupted: boolean; // stopped by holdEngines, to be searched again in full
   done: () => void;
   fail: (e: unknown) => void;
 }
@@ -88,6 +90,8 @@ interface Engine {
 
 const engines: Engine[] = [];
 const waiting: Job[] = []; // batches waiting for an engine, oldest first
+let held = false; // see holdEngines
+const interrupted = new Error('Stopped, to be searched again'); // what a batch held up throws
 
 // Searches each position of a game, as fishnet does, and resolves with what Stockfish found in each,
 // numbered from 0 for the position before the first move: its final evaluation, from White's side,
@@ -119,6 +123,8 @@ export function searchGame(
         results[index] = e;
         onProgress(++done, total);
       },
+      reported: new Set(),
+      interrupted: false,
       done: () => {
         if (--left === 0) finish();
       },
@@ -152,9 +158,30 @@ export function stopEngines(): void {
   }
 }
 
+// Not in fishnet: the trainer's own engine comes first, as it checks your moves (main.ts holds
+// these engines while engine.ts searches). They stop at once ("stop"), and the batches they were
+// searching wait, with the others, until releaseEngines. A batch that was stopped is searched again
+// in full, from an empty memory, so it comes out just as it would have.
+export function holdEngines(): void {
+  if (held) return;
+  held = true;
+  for (const engine of engines)
+    if (engine.job) {
+      engine.job.interrupted = true;
+      engine.worker.postMessage('stop');
+    }
+}
+
+export function releaseEngines(): void {
+  if (!held) return;
+  held = false;
+  next();
+}
+
 // Gives each free engine the next waiting batch, starting the engines the first time (and one in
-// place of any that broke).
+// place of any that broke), unless they're held.
 function next(): void {
+  if (held) return;
   if (waiting.length) while (engines.length < engineCount()) engines.push(startEngine());
   for (const engine of engines) {
     if (engine.job) continue;
@@ -171,7 +198,11 @@ async function run(engine: Engine, job: Job): Promise<void> {
     await searchBatch(engine, job);
     job.done();
   } catch (e) {
-    job.fail(e);
+    if (e !== interrupted) job.fail(e);
+    else {
+      job.interrupted = false;
+      waiting.unshift(job); // first in line again
+    }
   }
   engine.job = undefined;
   next();
@@ -211,20 +242,31 @@ function startEngine(): Engine {
 // Searches a batch as fishnet's go_multiple does: from an empty memory, and with fishnet's options
 // for analysis, which are also Stockfish's own defaults (fishnet sets them for each batch, as its
 // engines also play games, at lower levels); then the positions, the warm-up first.
-async function searchBatch(engine: Engine, { game, batch, signal, found }: Job): Promise<void> {
-  signal.throwIfAborted();
+async function searchBatch(engine: Engine, job: Job): Promise<void> {
+  const { game, batch } = job;
+  // Whether to go on: not if the game's search has ended, or the engines are held.
+  const check = () => {
+    job.signal.throwIfAborted();
+    if (job.interrupted) throw interrupted;
+  };
+  const give = (index: number, e: EngineEval | undefined) => {
+    if (job.reported.has(index)) return;
+    job.reported.add(index);
+    job.found(index, e);
+  };
+  check();
   engine.worker.postMessage('ucinewgame');
   engine.worker.postMessage('setoption name MultiPV value 1');
   engine.worker.postMessage('setoption name Skill Level value 20');
   for (const [i, index] of [batch.warmUp, ...batch.positions].entries()) {
     const warmUp = i === 0;
     if (game.over[index]) {
-      if (!warmUp) found(index, undefined); // fishnet gives it the game's result, without the engine
+      if (!warmUp) give(index, undefined); // fishnet gives it the game's result, without the engine
       continue;
     }
     const e = await search(engine, game, index);
-    signal.throwIfAborted();
-    if (!warmUp) found(index, e);
+    check();
+    if (!warmUp) give(index, e);
   }
 }
 

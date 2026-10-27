@@ -3,6 +3,7 @@
 
 import type { VNode } from 'snabbdom';
 
+import { renderRun } from './analysisRunView';
 import { totals, type CardRow, type CompareCtrl, type GameComparison, type Totals } from './compare';
 import { ENGINE_NAME, engineCount, GAME_NODES } from './fishnet';
 import { hl, type LooseVNodes } from './snabbdom';
@@ -21,32 +22,6 @@ export function view(ctrl: CompareCtrl): VNode {
     renderRun(ctrl),
     comparisons.length > 0 && [renderTotals(totals(comparisons)), renderGames(comparisons)],
   ]);
-}
-
-function renderRun(ctrl: CompareCtrl): VNode {
-  const done = ctrl.games.filter(g => ctrl.saved[g.id]).length;
-  const failed = Object.entries(ctrl.failed);
-  const pace = ctrl.pace();
-  return hl('div.mt-compare__run', [
-    hl('p', [
-      `${done} of ${ctrl.games.length} games analysed here.`,
-      ctrl.current && ` Now game ${done + 1}: position ${ctrl.current.done} of ${ctrl.current.total}.`,
-      pace && ` About ${duration(pace.left)} to go, at ${pace.perPosition.toFixed(1)} seconds a position.`,
-    ]),
-    ctrl.running
-      ? hl('button.button', { attrs: { disabled: ctrl.pausing }, on: { click: ctrl.pause } }, ctrl.pausing ? 'Pausing…' : 'Pause')
-      : ctrl.waiting().length > 0 && hl('button.button', { on: { click: ctrl.start } }, done ? 'Carry on' : 'Start'),
-    ctrl.error && hl('p.mt-compare__error', ctrl.error),
-    failed.length > 0 &&
-      hl('p.mt-compare__error', `Couldn't analyse: ${failed.map(([id, why]) => `${id} (${why})`).join(', ')}`),
-  ]);
-}
-
-// e.g. "1 h 12 min", or "under a minute"
-function duration(seconds: number): string {
-  const minutes = Math.round(seconds / 60);
-  if (minutes < 1) return 'under a minute';
-  return minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)} h ${minutes % 60} min`;
 }
 
 function renderTotals(t: Totals): VNode {

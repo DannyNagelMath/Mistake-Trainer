@@ -67,9 +67,10 @@ async function freshFishnet(cores: number) {
   FakeStockfish.holding = false;
   return import('./fishnet');
 }
-// Waits, a little at a time, until `engine` has been sent `line`.
-async function untilSent(engine: () => FakeStockfish | undefined, line: string) {
-  for (let i = 0; i < 400 && !engine()?.sent.includes(line); i++) await new Promise(r => setTimeout(r, 5));
+// Waits, a little at a time, until `engine` has been sent `line`, `times` times.
+async function untilSent(engine: () => FakeStockfish | undefined, line: string, times = 1) {
+  const sent = () => engine()?.sent.filter(l => l === line).length ?? 0;
+  for (let i = 0; i < 400 && sent() < times; i++) await new Promise(r => setTimeout(r, 5));
 }
 afterEach(() => vi.unstubAllGlobals());
 
@@ -127,6 +128,33 @@ test("stopping a game stops its engine's search and drops its waiting batches; t
   // Of the stopped game, only its warm-up was searched, and none of its second batch.
   const searched = engine().sent.filter(l => l.startsWith('position ')).map(movesIn);
   expect(searched).toEqual([7, 1, 1, 0]);
+});
+
+test("held while the trainer's engine searches: a batch stopped half-way is searched again in full after, giving each position once", async () => {
+  const fishnet = await freshFishnet(2); // one engine
+  FakeStockfish.holding = true;
+  const moves = ['e2e4', 'e7e5', 'g1f3']; // four positions: one batch, 3 to 0, after 3 to warm up
+  const progress: number[] = [];
+  const game = fishnet.searchGame(INITIAL_FEN, moves, Array(4).fill(false), done => progress.push(done));
+  const engine = () => FakeStockfish.all[0];
+  await untilSent(engine, 'go nodes 1000000');
+  engine().answer(); // the warm-up
+  await untilSent(engine, 'go nodes 1000000', 2);
+  engine().answer(); // position 3, which is given
+  await untilSent(engine, 'go nodes 1000000', 3); // position 2
+  fishnet.holdEngines();
+  expect(engine().sent.at(-1)).toBe('stop');
+  await new Promise(r => setTimeout(r, 20));
+  expect(engine().sent.at(-1)).toBe('stop'); // and nothing more while held
+
+  FakeStockfish.holding = false;
+  fishnet.releaseEngines();
+  const found = await game;
+  // Searched again from an empty memory: the warm-up, and every position of the batch.
+  const again = engine().sent.slice(engine().sent.lastIndexOf('ucinewgame'));
+  expect(again.filter(l => l.startsWith('position ')).map(movesIn)).toEqual([3, 3, 2, 1, 0]);
+  expect(found.map(e => e?.cp)).toEqual([0, -1, 2, -3]);
+  expect(progress).toEqual([1, 2, 3, 4]); // position 3 counted once
 });
 
 test('stopping the engines ends them, to give back their memory; the next search starts new ones', async () => {

@@ -5,7 +5,7 @@ import { expect, test } from 'vitest';
 import real1 from '../fixtures/real1.json';
 import real2 from '../fixtures/real2.json';
 import real3 from '../fixtures/real3.json';
-import { cardsOfGame, colorOf, inOpening, mistakeOf, withMasterMoves, type MasterMove } from './deck';
+import { cardsOfGame, colorOf, inOpening, mistakeOf, withMasterMoves, yourGames, type MasterMove } from './deck';
 import type { LichessGameJson } from './tree';
 
 const fixtures: Record<string, unknown> = { real1, real2, real3 };
@@ -17,6 +17,22 @@ test('colorOf finds your color from your username, in any case', () => {
   expect(colorOf(game, 'MugglesMan1982')).toBe('white');
   expect(colorOf(game, 'RealAgentCooper')).toBe('black');
   expect(colorOf(game, 'someone-else')).toBeUndefined();
+});
+
+test('yourGames: the standard games you played, each once, the one with Lichess’s analysis if either has it', () => {
+  const game = fixture('real1'); // you played White
+  const unanalysed = { ...game, analysis: undefined };
+  const games = [
+    unanalysed, // downloaded twice: first without Lichess's analysis...
+    { ...game, id: 'variant', variant: 'chess960' },
+    { ...game, id: 'notYours', players: { white: { user: { id: 'a', name: 'a' } }, black: { user: { id: 'b', name: 'b' } } } },
+    { ...unanalysed, id: 'other' },
+    game, // ...then with it
+  ] as LichessGameJson[];
+  expect(yourGames(games, 'mugglesman1982').map(g => [g.id, !!g.analysis])).toEqual([
+    [game.id, true],
+    ['other', false],
+  ]);
 });
 
 test('cardsOfGame finds the same mistakes as retroCtrl', () => {

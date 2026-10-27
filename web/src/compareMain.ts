@@ -9,8 +9,7 @@ import { init, attributesModule, classModule, eventListenersModule, propsModule,
 import { loadAnalyses } from './analyses';
 import { CompareCtrl } from './compare';
 import { view } from './compareView';
-import { colorOf, loadDeck, loadGames, loadMasters } from './deck';
-import type { LichessGameJson } from './tree';
+import { loadDeck, loadGames, loadMasters, yourGames } from './deck';
 
 const patch = init([classModule, attributesModule, propsModule, eventListenersModule]);
 let vnode: VNode | Element = document.querySelector('main.mt-compare-page')!;
@@ -25,14 +24,10 @@ const [deck, games, masters, saved] = await Promise.all([loadDeck(), loadGames()
 if (!deck) fail('No deck yet. Build one from web with: npx tsx scripts/buildDeck.ts <your Lichess username>');
 const { username } = deck!;
 
-// The games you played that Lichess has analysed, as the deck takes them (scripts/buildDeck.ts):
-// standard chess, each game once.
-const analysed = new Map<string, LichessGameJson>();
-for (const game of games)
-  if (game.analysis && colorOf(game, username) && (game.variant ?? 'standard') === 'standard' && !analysed.has(game.id))
-    analysed.set(game.id, game);
+// The games you played that Lichess has analysed.
+const analysed = yourGames(games, username).filter(g => g.analysis);
 
-const ctrl = new CompareCtrl(username, [...analysed.values()], saved, masters, redraw);
+const ctrl = new CompareCtrl(username, analysed, saved, masters, redraw);
 
 function redraw(): void {
   vnode = patch(vnode, view(ctrl));

@@ -25,6 +25,7 @@ import { view as trainingSettingsView } from './settingsPageView';
 import { renderSide } from './side';
 import renderClocks from './clocks';
 import type { LichessGameJson } from './tree';
+import { YourGamesCtrl } from './yourGames';
 
 // The stand-in for Stockfish (engine.ts). A move check reports each of `byFen[fen]` (or else
 // `updates`) as the search goes deeper, the last one as its final answer. Live analysis is noted
@@ -389,9 +390,11 @@ test('coming back after the right first move, before rating it, shows the card s
 });
 
 // Training settings shows over the trainer (main.ts), with the trainer's history, and passes on
-// the settings you save.
+// the settings you save. Here, the computer analysis of your games hasn't loaded (yourGames.test.ts
+// tries it).
+const notLoaded = () => new YourGamesCtrl(deck.username, () => {});
 const trainingSettings = (deckCtrl: DeckCtrl, history: ReviewHistory) =>
-  new SettingsPageCtrl(deck, history, deckCtrl.settings, () => {}, deckCtrl.useSettings);
+  new SettingsPageCtrl(deck, history, deckCtrl.settings, () => {}, deckCtrl.useSettings, notLoaded());
 
 test('saving Training settings in the middle of a card leaves it as it was, and "Right answers" applies to your next move', async () => {
   const { history, ctrl, deckCtrl } = start();
@@ -422,7 +425,7 @@ test('saving Training settings after a card: the next card is dealt with them', 
 test("a suspended card's board opens a closer look: your move, what Lichess's analysis said, and the game on Lichess", async () => {
   const [card] = deck.cards; // 20.Qh4??, when 20.Qxg7+ led to mate
   const history: ReviewHistory = { cards: {}, log: [], suspended: { [card.id]: new Date().toISOString() } };
-  const page = new SettingsPageCtrl(deck, history, defaultSettings, () => {}, () => {});
+  const page = new SettingsPageCtrl(deck, history, defaultSettings, () => {}, () => {}, notLoaded());
   const look = () => find(trainingSettingsView(page), 'dialog.mt-look');
   expect(look()).toBeUndefined();
   click(find(trainingSettingsView(page), 'button.mt-suspended__look'));

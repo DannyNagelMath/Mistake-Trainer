@@ -1,4 +1,5 @@
-// settingsPage.ts: Not in lila. Training settings: your settings, and your suspended cards.
+// settingsPage.ts: Not in lila. Training settings: your settings, your suspended cards, and the
+// computer analysis of your games (yourGames.ts).
 // SettingsPageCtrl keeps its state, and settingsPageView.ts draws it with snabbdom. It shows in
 // the trainer's page, over the trainer, which waits hidden as you left it (main.ts makes a new
 // SettingsPageCtrl each time it opens).
@@ -8,6 +9,7 @@
 import type { Deck } from './deck';
 import { saveUnsuspension, type ReviewHistory } from './reviews';
 import { defaultSettings, problems, saveSettings, type Settings } from './settings';
+import type { YourGamesCtrl } from './yourGames';
 
 export class SettingsPageCtrl {
   saved: Settings; // what's in data/settings.json, or the defaults
@@ -23,6 +25,7 @@ export class SettingsPageCtrl {
     settings: Settings,
     private readonly redraw: () => void,
     private readonly onSave: (settings: Settings) => void, // the trainer takes them up
+    readonly yourGames: YourGamesCtrl, // the trainer's, so a run goes on after Training settings closes
   ) {
     this.saved = this.filledIn = this.draft = settings;
   }
