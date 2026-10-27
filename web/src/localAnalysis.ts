@@ -38,7 +38,7 @@ const LINE_MAX_PLIES = 12;
 
 // Analyses a game: searches each position, from the last to the first, as fishnet does, so that
 // what Stockfish works out in later positions helps it in earlier ones. onProgress says how many
-// positions are done, of how many.
+// positions are done, of how many. Aborting `signal` stops it before its next search, with an error.
 // Trim: fishnet splits the positions into batches of five, each with an empty memory and an extra
 // position before it to fill that memory a little, so that several engines can share a game. Here
 // one engine searches the whole game, starting with an empty memory.
@@ -46,6 +46,7 @@ const LINE_MAX_PLIES = 12;
 export async function analyseGame(
   game: LichessGameJson,
   onProgress: (done: number, total: number) => void = () => {},
+  signal?: AbortSignal,
 ): Promise<LichessAnalysisEntry[]> {
   const pos = game.initialFen ? Chess.fromSetup(parseFen(game.initialFen).unwrap()).unwrap() : Chess.default();
   const rootFen = makeFen(pos.toSetup());
@@ -68,6 +69,7 @@ export async function analyseGame(
     const outcome = positions[i].outcome();
     if (outcome) evals[i] = { ...(outcome.winner ? { mate: 0 } : { cp: 0 }), pv: [], sans: [] };
     else {
+      signal?.throwIfAborted();
       evals[i] = fromEngine(positions[i], await searchGamePosition(rootFen, forStockfish.slice(0, i), newGame));
       newGame = false;
     }

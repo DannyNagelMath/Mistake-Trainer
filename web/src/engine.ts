@@ -48,7 +48,8 @@ export const ANALYSIS_MILLIS = 8000;
 const ANALYSE = `go movetime ${ANALYSIS_MILLIS}`;
 // Lichess's servers search each position of a game you ask them to analyse for 1,000,000 positions
 // (lila's fishnet Work.Origin.manualRequest).
-const GAME = 'go nodes 1000000';
+export const GAME_NODES = 1_000_000;
+const GAME = `go nodes ${GAME_NODES}`;
 
 interface Search {
   position: string; // what follows "position" in UCI: "fen ...", and "moves ..." for a game's position

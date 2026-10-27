@@ -127,8 +127,9 @@ function playSan(pos: Position, san: string, ply: number): TreeNode {
   const move = parseSan(pos, san);
   if (!move) throw new Error(`Could not parse "${san}" at ply ${ply} in ${makeFen(pos.toSetup())}`);
   const id = scalachessCharPair(move);
-  // Note: castling comes out king-to-rook (e1h1), where Lichess's own data says e1g1.
-  // Retrospect only compares UCIs with the opening explorer, which we've stubbed out.
+  // Note: castling comes out king-to-rook (e1h1), as chessops writes it. Lichess's data writes it
+  // either way; the masters' moves, which retrospect compares with these, are written this way when
+  // the deck is built (deck.ts withMasterMoves).
   const uci = makeUci(move);
   pos.play(move);
   return { id, ply, san, uci, fen: makeFen(pos.toSetup()), children: [] };

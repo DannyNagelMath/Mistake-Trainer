@@ -6,12 +6,18 @@
 //                       { unsuspend } brings it back (see reviews.ts)
 //   GET  /api/settings  returns your settings ({} if you haven't saved any yet)
 //   POST /api/settings  replaces them (see settings.ts, which checks them when a page loads them)
+//   GET  /api/analysis  returns the analyses made on your computer, by game ({} if none yet)
+//   POST /api/analysis  with { gameId, analysis, engine, nodes, at } saves one (see analyses.ts)
+// and two that only read what the scripts in ../pipeline and scripts/ saved (see deck.ts):
+//   GET  /api/games     returns the games you've downloaded (../pipeline/data/games.ndjson)
+//   GET  /api/masters   returns the masters database's answers saved when the deck was built
+//                       (../pipeline/data/masters.json)
 // It also serves Stockfish to the page at /stockfish/ (see stockfishFiles below), and makes the
 // pages "cross-origin isolated" so that it can run on several threads (crossOriginIsolation).
 // They only exist in the dev server (npm run dev), which is how this app runs.
 // To start your review history again, delete data/reviews.json; to go back to the default
 // settings, delete data/settings.json. To use other files, e.g. for testing, set the
-// REVIEWS_FILE and SETTINGS_FILE environment variables to their paths.
+// REVIEWS_FILE, SETTINGS_FILE, and ANALYSIS_FILE environment variables to their paths.
 // Your review history is backed up once a day (backupHistory below).
 
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
@@ -20,11 +26,16 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, type Plugin } from 'vite';
 
+import type { SavedAnalysis } from './src/analyses.ts';
 import type { ReviewEntry, ReviewHistory } from './src/reviews.ts';
 
 const dataFile = (name: string) => fileURLToPath(new URL(`./data/${name}`, import.meta.url));
+const pipelineFile = (name: string) => fileURLToPath(new URL(`../pipeline/data/${name}`, import.meta.url));
 const historyFile = process.env.REVIEWS_FILE ?? dataFile('reviews.json');
 const settingsFile = process.env.SETTINGS_FILE ?? dataFile('settings.json');
+const analysisFile = process.env.ANALYSIS_FILE ?? dataFile('analysis.json');
+const gamesFile = pipelineFile('games.ndjson');
+const mastersFile = pipelineFile('masters.json');
 
 const readJson = <T>(file: string, empty: T): T => (existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : empty);
 
@@ -37,6 +48,15 @@ function writeJson(file: string, data: unknown): void {
 }
 
 const readHistory = (): ReviewHistory => readJson(historyFile, { cards: {}, log: [] });
+
+// NDJSON, as the games are downloaded: one game's JSON per line.
+const readGames = (): unknown[] =>
+  existsSync(gamesFile)
+    ? readFileSync(gamesFile, 'utf8')
+        .split('\n')
+        .filter(line => line.trim())
+        .map(line => JSON.parse(line))
+    : [];
 
 // Backs up your review history once a day: a copy in data/backups, named by the date, made the
 // first time the dev server starts or saves a review that day, before anything changes. The 30
@@ -127,6 +147,26 @@ function dataApi(): Plugin {
             writeJson(settingsFile, body);
           },
         ),
+      );
+      server.middlewares.use(
+        '/api/analysis',
+        handler(
+          () => readJson(analysisFile, {}),
+          body => {
+            const { gameId, ...saved } = body as { gameId?: string } & SavedAnalysis;
+            if (typeof gameId !== 'string' || !Array.isArray(saved.analysis))
+              return 'Expected { gameId, analysis, engine, nodes, at }';
+            const analyses = readJson<Record<string, SavedAnalysis>>(analysisFile, {});
+            analyses[gameId] = saved;
+            writeJson(analysisFile, analyses);
+          },
+        ),
+      );
+      const readOnly = () => 'Only GET';
+      server.middlewares.use('/api/games', handler(readGames, readOnly));
+      server.middlewares.use(
+        '/api/masters',
+        handler(() => readJson(mastersFile, {}), readOnly),
       );
     },
   };

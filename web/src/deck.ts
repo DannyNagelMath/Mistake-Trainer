@@ -5,6 +5,9 @@
 // games.ndjson and saves it as public/data/deck.json, which the page loads.
 
 import type { Color } from 'chessops';
+import { Chess, normalizeMove } from 'chessops/chess';
+import { parseFen } from 'chessops/fen';
+import { makeUci, parseUci } from 'chessops/util';
 
 import { evalSwings } from './nodeFinder';
 import { buildTree, mainline, type LichessGameJson } from './tree';
@@ -89,10 +92,34 @@ export function mistakeOf(game: LichessGameJson, card: Card): { fen: string; uci
 // lila's rule (retroCtrl's jumpToNext), with the moves masters have played from the position:
 // a move played in more than one master game is a book move, not a mistake. So if your move is
 // one, the card goes (undefined); otherwise it keeps the book moves, which count as right answers.
-export function withMasterMoves(card: Card, played: string, moves: MasterMove[]): Card | undefined {
-  const book = moves.filter(m => m.white + m.draws + m.black > 1).map(m => m.uci);
-  if (book.includes(played)) return undefined;
+// Not in lila: the masters' moves are first written as chessops writes moves, as yours is (see
+// mistakeOf): castling as the king taking its own rook (e1h1), where the masters database may write
+// it the usual way (e1g1). Otherwise castling would never match.
+export function withMasterMoves(card: Card, mistake: { fen: string; uci: string }, moves: MasterMove[]): Card | undefined {
+  const pos = Chess.fromSetup(parseFen(mistake.fen).unwrap()).unwrap();
+  const book = moves
+    .filter(m => m.white + m.draws + m.black > 1)
+    .map(m => {
+      const move = parseUci(m.uci);
+      return move ? makeUci(normalizeMove(pos, move)) : m.uci;
+    });
+  if (book.includes(mistake.uci)) return undefined;
   return book.length ? { ...card, masterMoves: book } : card;
+}
+
+// Loads the games you've downloaded (../pipeline/data/games.ndjson), or the masters database's
+// answers saved when the deck was built (../pipeline/data/masters.json, by FEN), from the dev
+// server (vite.config.ts).
+export const loadGames = (): Promise<LichessGameJson[]> => loadData('/api/games', 'your downloaded games');
+export const loadMasters = (): Promise<Record<string, MasterMove[]>> =>
+  loadData('/api/masters', "the masters database's saved answers");
+
+async function loadData<T>(url: string, what: string): Promise<T> {
+  const response = await fetch(url);
+  // A dev server started before these addresses were added answers with the page itself.
+  if (!response.ok || !response.headers.get('content-type')?.includes('json'))
+    throw new Error(`Couldn't load ${what} (${response.status}). Restart the dev server (npm run dev).`);
+  return response.json();
 }
 
 // Loads the deck the page uses. Undefined if it hasn't been built yet.

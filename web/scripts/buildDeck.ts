@@ -65,8 +65,8 @@ const explorer = new MastersExplorer(mastersFile, process.env.LICHESS_TOKEN);
 const opening = deck.cards.filter(c => inOpening(deck.games[c.gameId], c));
 let bookMoves = 0;
 for (const card of opening) {
-  const { fen, uci } = mistakeOf(deck.games[card.gameId], card);
-  const checked = withMasterMoves(card, uci, await explorer.moves(fen));
+  const mistake = mistakeOf(deck.games[card.gameId], card);
+  const checked = withMasterMoves(card, mistake, await explorer.moves(mistake.fen));
   if (!checked) bookMoves++;
   deck.cards.splice(deck.cards.indexOf(card), 1, ...(checked ? [checked] : []));
 }

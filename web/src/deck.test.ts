@@ -59,11 +59,21 @@ test('mistakeOf gives the position before the mistake and the move played', () =
   });
 });
 
+const masterMove = (uci: string, games: number): MasterMove => ({ uci, white: games, draws: 0, black: 0 });
+
 test("a move masters played in more than one game is a book move: the card goes; otherwise it keeps theirs", () => {
   const [card] = cardsOfGame(fixture('real1'), 'white');
-  const move = (uci: string, games: number): MasterMove => ({ uci, white: games, draws: 0, black: 0 });
-  expect(withMasterMoves(card, 'h6h4', [move('h6h4', 2)])).toBeUndefined();
-  const kept = withMasterMoves(card, 'h6h4', [move('h6h4', 1), move('h6g7', 5), move('d4e6', 1)]);
+  const mistake = mistakeOf(fixture('real1'), card); // 20.Qh4, h6h4
+  expect(withMasterMoves(card, mistake, [masterMove('h6h4', 2)])).toBeUndefined();
+  const kept = withMasterMoves(card, mistake, [masterMove('h6h4', 1), masterMove('h6g7', 5), masterMove('d4e6', 1)]);
   expect(kept).toEqual({ ...card, masterMoves: ['h6g7'] }); // one game isn't enough, for either
-  expect(withMasterMoves(card, 'h6h4', [])).toBe(card); // nothing from masters: the card as it was
+  expect(withMasterMoves(card, mistake, [])).toBe(card); // nothing from masters: the card as it was
+});
+
+test('castling matches, however the masters database writes it (not in lila)', () => {
+  const [card] = cardsOfGame(fixture('real1'), 'white'); // any card: only the position and move matter
+  const fen = 'r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4'; // the Italian, White to move
+  const castled = { fen, uci: 'e1h1' }; // 4.O-O, as chessops writes it
+  expect(withMasterMoves(card, castled, [masterMove('e1g1', 9)])).toBeUndefined(); // a book move
+  expect(withMasterMoves(card, { fen, uci: 'd2d3' }, [masterMove('e1g1', 9)])).toEqual({ ...card, masterMoves: ['e1h1'] });
 });

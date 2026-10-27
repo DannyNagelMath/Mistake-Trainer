@@ -68,6 +68,13 @@ test('a game is searched from its last position to its first; the checkmate at t
   ]);
 });
 
+test('aborting stops the analysis before its next search', async () => {
+  const abort = new AbortController();
+  const analysis = analyseGame(game('e4 e5 Nf3'), done => done === 2 && abort.abort(), abort.signal);
+  await expect(analysis).rejects.toThrow();
+  expect(searchGamePosition).toHaveBeenCalledTimes(2); // of its four positions
+});
+
 test('castling goes to Stockfish as it writes it (e1g1), and comes back as chessops writes it (e1h1)', async () => {
   const italian = 'e4 e5 Nf3 Nc6 Bc4 Bc5';
   engine.answers[6] = { cp: 60, pv: ['e1g1', 'g8f6'] }; // White's best: castling

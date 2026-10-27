@@ -45,19 +45,22 @@ class FakeStockfish {
   }
 }
 
-// A fresh engine.ts, which starts the stand-in, and a wait while it answers.
+// A fresh engine.ts, which starts the stand-in.
 async function freshEngine() {
   vi.resetModules();
   vi.stubGlobal('Worker', FakeStockfish);
   return import('./engine');
 }
-const answers = () => new Promise(resolve => setTimeout(resolve, 10));
+// Waits, a little at a time, until the last line sent to the stand-in is `line`.
+async function untilSent(line: string) {
+  for (let i = 0; i < 400 && FakeStockfish.last.sent.at(-1) !== line; i++) await new Promise(r => setTimeout(r, 5));
+}
 afterEach(() => vi.unstubAllGlobals());
 
 test("a game's position is searched as Lichess's servers do: the game's moves, 1,000,000 positions", async () => {
   const engine = await freshEngine();
   const result = engine.searchGamePosition(INITIAL_FEN, ['e2e4'], true);
-  await answers();
+  await untilSent('go nodes 1000000');
   const stockfish = FakeStockfish.last;
   // First, clear what it remembers from earlier searches: a new game.
   expect(stockfish.sent.slice(-3)).toEqual(['ucinewgame', `position fen ${INITIAL_FEN} moves e2e4`, 'go nodes 1000000']);
@@ -69,7 +72,7 @@ test("a game's position is searched as Lichess's servers do: the game's moves, 1
 test("a move check, or live analysis, stops a game's position, which is searched again in full after", async () => {
   const engine = await freshEngine();
   const position = engine.searchGamePosition(INITIAL_FEN, [], false);
-  await answers();
+  await untilSent('go nodes 1000000');
   const stockfish = FakeStockfish.last;
   engine.stopAnalysis(); // switching live analysis off leaves it alone
   expect(stockfish.sent.at(-1)).toBe('go nodes 1000000');
@@ -80,23 +83,23 @@ test("a move check, or live analysis, stops a game's position, which is searched
   expect(stockfish.sent.at(-1)).toBe('stop');
   stockfish.say('info depth 8 score cp 25 nodes 20000 time 30 pv e2e4');
   stockfish.say('bestmove e2e4'); // its answer when stopped, which doesn't count
-  await answers();
-  expect(stockfish.sent.slice(-2)).toEqual([`position fen ${fen}`, 'go nodes 1000000 movetime 3000']);
+  await untilSent('go nodes 1000000 movetime 3000');
+  expect(stockfish.sent.at(-2)).toBe(`position fen ${fen}`);
   stockfish.say('info depth 18 score cp 40 nodes 1000000 time 800 pv g1f3');
   stockfish.say('bestmove g1f3');
   expect(await check).toMatchObject({ cp: 40, bestmove: 'g1f3' });
 
-  await answers();
-  expect(stockfish.sent.slice(-2)).toEqual([`position fen ${INITIAL_FEN}`, 'go nodes 1000000']); // again
+  await untilSent('go nodes 1000000');
+  expect(stockfish.sent.at(-2)).toBe(`position fen ${INITIAL_FEN}`); // again
   engine.analyse(fen, () => {}); // live analysis stops it too
   expect(stockfish.sent.at(-1)).toBe('stop');
   stockfish.say('bestmove e2e4');
-  await answers();
-  expect(stockfish.sent.slice(-2)).toEqual([`position fen ${fen}`, 'go movetime 8000']);
+  await untilSent('go movetime 8000');
+  expect(stockfish.sent.at(-2)).toBe(`position fen ${fen}`);
   stockfish.say('info depth 30 score cp 35 nodes 9000000 time 8000 pv g1f3');
   stockfish.say('bestmove g1f3');
-  await answers();
-  expect(stockfish.sent.slice(-2)).toEqual([`position fen ${INITIAL_FEN}`, 'go nodes 1000000']); // and again
+  await untilSent('go nodes 1000000');
+  expect(stockfish.sent.at(-2)).toBe(`position fen ${INITIAL_FEN}`); // and again
   stockfish.say('info depth 21 score cp 20 nodes 1000000 time 900 pv e2e4 e7e5');
   stockfish.say('bestmove e2e4');
   expect(await position).toMatchObject({ cp: 20, depth: 21, pv: ['e2e4', 'e7e5'], bestmove: 'e2e4' });
