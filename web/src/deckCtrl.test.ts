@@ -422,6 +422,21 @@ test("once a card is done, the game's other mistakes, other cards, keep their an
   expect(moveList).not.toContain('Learn from this mistake'); // lila's words, for a whole game
 });
 
+test("once a card is done, the position before another card's mistake has no blue arrow giving its answer (not in lila)", () => {
+  const { ctrl } = start();
+  playSolution(ctrl);
+  const blueArrows = () => autoShapes(ctrl).filter(s => s.brush === 'paleBlue').map(s => s.orig + s.dest);
+  const done = ctrl.retro!.current()!;
+  const others = deck.cards.filter(c => c.ply !== done.fault.node.ply);
+  expect(others).not.toEqual([]);
+  for (const other of others) {
+    ctrl.userJump(ctrl.mainlinePlyToPath(other.ply - 1));
+    expect(blueArrows()).toEqual([]); // lila's would be Lichess's best move here: that card's answer
+  }
+  ctrl.userJump(done.prev.path); // the card that's done still has its answer's arrow
+  expect(blueArrows()).toEqual([done.solution.node.uci]);
+});
+
 test("a move is compared with our engine's eval of the position before, not Lichess's (not in lila)", async () => {
   const [card] = deck.cards; // Lichess's analysis: a forced mate before 20.Qh4??
   const before = mistakeOf(game, card).fen;
