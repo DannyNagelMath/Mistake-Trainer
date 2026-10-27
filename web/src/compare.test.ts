@@ -65,6 +65,6 @@ test('a run analyses each game not analysed yet and saves it; pausing stops it, 
   await ctrl.start();
   expect(Object.keys(ctrl.saved)).toEqual(['a', 'b']);
   expect(saveAnalysis.mock.calls.map(([id]) => id)).toEqual(['a', 'b']);
-  expect(ctrl.saved.a).toMatchObject({ analysis: game.analysis, engine: 'Stockfish 19 lite', nodes: 1_000_000 });
+  expect(ctrl.saved.a).toMatchObject({ analysis: game.analysis, engine: 'Stockfish 19', nodes: 1_000_000 });
   expect(ctrl.comparisons().map(c => totals([c]).cards.same)).toEqual([3, 3]);
 });

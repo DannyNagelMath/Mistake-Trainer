@@ -10,7 +10,6 @@ import { loadAnalyses } from './analyses';
 import { CompareCtrl } from './compare';
 import { view } from './compareView';
 import { colorOf, loadDeck, loadGames, loadMasters } from './deck';
-import { preload } from './engine';
 import type { LichessGameJson } from './tree';
 
 const patch = init([classModule, attributesModule, propsModule, eventListenersModule]);
@@ -39,4 +38,3 @@ function redraw(): void {
   vnode = patch(vnode, view(ctrl));
 }
 redraw();
-preload(); // load Stockfish in the background now, rather than when the run starts

@@ -4,23 +4,23 @@
 //
 // Lichess's analysis is made in two places, and this does what both do:
 //   - fishnet, the program volunteers run to analyse games for Lichess, searches each position
-//     with Stockfish (github.com/lichess-org/fishnet: src/queue.rs and src/stockfish.rs);
+//     with Stockfish (fishnet.ts);
 //   - lila turns what fishnet found into evaluations, judgments such as "Mistake. Nb5 was best.",
 //     and engine lines (modules/fishnet/src/main/AnalysisBuilder.scala and UciToSan.scala,
 //     modules/tree/src/main/Info.scala, Analysis.scala, and Advice.scala, and
 //     modules/analyse/src/main/JsonView.scala; master, commit 27ffc8b).
 // Every change from theirs is marked with a comment starting "Trim:".
 
-import { Chess, castlingSide, normalizeMove, type Position } from 'chessops/chess';
+import { Chess, type Position } from 'chessops/chess';
 import { makeFen, parseFen } from 'chessops/fen';
 import { makeSanAndPlay, parseSan } from 'chessops/san';
-import type { NormalMove } from 'chessops/types';
-import { makeUci, parseUci, squareFromCoords, squareRank } from 'chessops/util';
+import { makeUci, parseUci } from 'chessops/util';
 
-import { searchGamePosition, type EngineEval } from './engine';
+import type { EngineEval } from './engine';
+import { searchGame } from './fishnet';
 import type { LichessAnalysisEntry, LichessGameJson } from './tree';
 
-// ---------- Searching each position (fishnet) ----------
+// ---------- Searching each position (fishnet.ts) ----------
 
 // What Stockfish found in a position: its evaluation, from White's side, and its line, in UCI as
 // chessops writes it (castling as the king taking its own rook, e1h1, as fishnet has Stockfish
@@ -36,13 +36,9 @@ export interface Evaluation {
 // The longest line lila keeps (Info.LineMaxPlies, used by fishnet's JsonApi cappedPv).
 const LINE_MAX_PLIES = 12;
 
-// Analyses a game: searches each position, from the last to the first, as fishnet does, so that
-// what Stockfish works out in later positions helps it in earlier ones. onProgress says how many
-// positions are done, of how many. Aborting `signal` stops it before its next search, with an error.
-// Trim: fishnet splits the positions into batches of five, each with an empty memory and an extra
-// position before it to fill that memory a little, so that several engines can share a game. Here
-// one engine searches the whole game, starting with an empty memory.
-// Trim: fishnet leaves out positions Lichess already has a deeper evaluation of (skipPositions).
+// Analyses a game: fishnet.ts searches its positions, as fishnet does, and the rest is lila's.
+// onProgress says how many positions are done, of how many. Aborting `signal` stops it, with an
+// error.
 export async function analyseGame(
   game: LichessGameJson,
   onProgress: (done: number, total: number) => void = () => {},
@@ -53,53 +49,34 @@ export async function analyseGame(
   const startPly = (pos.fullmoves - 1) * 2 + (pos.turn === 'white' ? 0 : 1); // as in tree.ts
   const positions: Position[] = [pos.clone()];
   const played: string[] = []; // the game's moves, in chessops' UCI
-  const forStockfish: string[] = []; // the same, in UCI as Stockfish takes it
   for (const san of game.moves.split(' ').filter(san => san !== '')) {
-    const move = parseSan(pos, san) as NormalMove | undefined; // standard chess has no drops
+    const move = parseSan(pos, san);
     if (!move) throw new Error(`Could not parse "${san}" in ${makeFen(pos.toSetup())}`);
     played.push(makeUci(move));
-    forStockfish.push(stockfishUci(pos, move));
     pos.play(move);
     positions.push(pos.clone());
   }
 
-  const evals: Evaluation[] = [];
-  let newGame = true; // the first search starts with an empty memory, as fishnet's do
-  for (let i = positions.length - 1; i >= 0; i--) {
-    const outcome = positions[i].outcome();
-    if (outcome) evals[i] = { ...(outcome.winner ? { mate: 0 } : { cp: 0 }), pv: [], sans: [] };
-    else {
-      signal?.throwIfAborted();
-      evals[i] = fromEngine(positions[i], await searchGamePosition(rootFen, forStockfish.slice(0, i), newGame));
-      newGame = false;
-    }
-    onProgress(positions.length - i, positions.length);
-  }
+  const outcomes = positions.map(p => p.outcome());
+  const found = await searchGame(rootFen, played, outcomes.map(o => !!o), onProgress, signal);
+  const evals = positions.map((p, i): Evaluation => {
+    const outcome = outcomes[i];
+    if (outcome) return { ...(outcome.winner ? { mate: 0 } : { cp: 0 }), pv: [], sans: [] };
+    return fromEngine(p, found[i]!);
+  });
   return toEntries(makeInfos(evals, played, startPly));
 }
 
-// A move in UCI as Stockfish takes it: castling as the king's two-square move (e1g1), where
-// chessops writes the king taking its own rook (e1h1).
-// Trim: fishnet has Stockfish write castling the Chess960 way (UCI_Chess960), as chessops does. Our
-// engine, shared with move checks and live analysis, uses the usual way, so moves are written that
-// way for it here, and its lines are turned back (normalizeMove, in fromEngine).
-function stockfishUci(pos: Position, move: NormalMove): string {
-  const side = castlingSide(pos, move);
-  if (!side) return makeUci(move);
-  return makeUci({ from: move.from, to: squareFromCoords(side === 'h' ? 6 : 2, squareRank(move.from))! });
-}
-
-// Stockfish's answer, with its line cut to LINE_MAX_PLIES and written in chessops' UCI and in SAN.
-// If a move in the line can't be played (it shouldn't happen), there's no line, as lila leaves out
-// a line it can't write in SAN (UciToSan).
+// Stockfish's answer, with its line cut to LINE_MAX_PLIES and written in SAN too. If a move in the
+// line can't be played (it shouldn't happen), there's no line, as lila leaves out a line it can't
+// write in SAN (UciToSan).
 function fromEngine(position: Position, e: EngineEval): Evaluation {
   const evaluation = { cp: e.cp, mate: e.mate };
   const pos = position.clone();
   const pv: string[] = [];
   const sans: string[] = [];
   for (const uci of (e.pv ?? []).slice(0, LINE_MAX_PLIES)) {
-    const parsed = parseUci(uci);
-    const move = parsed && normalizeMove(pos, parsed);
+    const move = parseUci(uci);
     if (!move || !pos.isLegal(move)) return { ...evaluation, pv: [], sans: [] };
     pv.push(makeUci(move));
     sans.push(makeSanAndPlay(pos, move));

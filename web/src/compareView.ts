@@ -4,7 +4,7 @@
 import type { VNode } from 'snabbdom';
 
 import { totals, type CardRow, type CompareCtrl, type GameComparison, type Totals } from './compare';
-import { ENGINE_NAME, GAME_NODES } from './engine';
+import { ENGINE_NAME, engineCount, GAME_NODES } from './fishnet';
 import { hl, type LooseVNodes } from './snabbdom';
 
 export function view(ctrl: CompareCtrl): VNode {
@@ -14,7 +14,8 @@ export function view(ctrl: CompareCtrl): VNode {
     hl(
       'p',
       `Your ${ctrl.games.length} games that Lichess has analysed, analysed again here the way Lichess's servers ` +
-        `do it (${ENGINE_NAME}, ${GAME_NODES.toLocaleString('en')} positions per move), to compare the cards each ` +
+        `do it (${ENGINE_NAME}, ${GAME_NODES.toLocaleString('en')} positions per move, in fishnet's batches, on ` +
+        `${engineCount()} engines side by side, one thread each), to compare the cards each ` +
         'analysis gives. Each game is saved once it’s done, so you can pause, or close this page, and carry on later.',
     ),
     renderRun(ctrl),

@@ -7,7 +7,7 @@ import type { Color } from 'chessops';
 
 import { saveAnalysis, type SavedAnalysis } from './analyses';
 import { cardsOfGame, colorOf, inOpening, mistakeOf, withMasterMoves, type Card, type MasterMove } from './deck';
-import { ENGINE_NAME, GAME_NODES } from './engine';
+import { ENGINE_NAME, GAME_NODES, stopEngines } from './fishnet';
 import { analyseGame } from './localAnalysis';
 import { buildTree, mainline, type LichessAnalysisEntry, type LichessGameJson } from './tree';
 
@@ -116,7 +116,7 @@ const positionsOf = (game: LichessGameJson): number => game.moves.split(' ').fil
 
 export class CompareCtrl {
   running = false;
-  pausing = false; // pause was pressed: the run stops once the position being searched is done
+  pausing = false; // pause was pressed, and the run is stopping
   current?: { game: LichessGameJson; done: number; total: number }; // the game being analysed
   failed: Record<string, string> = {}; // games that couldn't be analysed, with why, this time
   error = ''; // why the run stopped, if not paused or finished
@@ -173,13 +173,14 @@ export class CompareCtrl {
       }
       this.saved[game.id] = saved;
     }
+    stopEngines();
     this.running = this.pausing = false;
     this.current = undefined;
     this.redraw();
   };
 
-  // Stops the run once the position being searched is done. That game's analysis isn't saved, as
-  // it isn't finished: it starts again from its last position next time.
+  // Stops the run: the engines stop searching at once. That game's analysis isn't saved, as it isn't
+  // finished: next time, it's analysed again in full.
   pause = (): void => {
     this.pausing = true;
     this.abort?.abort();
