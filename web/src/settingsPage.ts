@@ -15,6 +15,7 @@ export class SettingsPageCtrl {
   draft: Settings; // what the form says now, which may be wrong (see problems)
   formVersion = 0; // raised to fill the form in again: a new key makes snabbdom make new inputs
   message = ''; // after saving
+  looking?: string; // the suspended card you clicked, shown up close (settingsPageView.ts renderLook)
 
   constructor(
     readonly deck: Deck,
@@ -59,12 +60,19 @@ export class SettingsPageCtrl {
     this.redraw();
   };
 
+  // Shows a suspended card up close, or closes it (undefined).
+  look = (cardId: string | undefined): void => {
+    this.looking = cardId;
+    this.redraw();
+  };
+
   // The card can come up again. Suspending didn't touch its schedule: if it fell due while it
   // was suspended, it's due now, and if you never reviewed it, it's a new card again.
   unsuspend = async (cardId: string): Promise<void> => {
     try {
       await saveUnsuspension(cardId);
       delete this.history.suspended![cardId];
+      if (this.looking === cardId) this.looking = undefined; // it's no longer one to look at
     } catch (e) {
       alert((e as Error).message);
     }

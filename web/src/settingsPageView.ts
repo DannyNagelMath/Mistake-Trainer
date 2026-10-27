@@ -1,17 +1,24 @@
 // settingsPageView.ts: Not in lila. Draws Training settings (see settingsPage.ts): how your cards
-// stand, the settings form, and your suspended cards, each on a small board.
+// stand, the settings form, and your suspended cards, each on a small board you can click to look
+// at it up close.
 
 import { Chessground } from '@lichess-org/chessground';
+import type { DrawShape } from '@lichess-org/chessground/draw';
 import { uciToMove } from '@lichess-org/chessground/util';
-import { opposite } from 'chessops';
+import { opposite, type Color } from 'chessops';
 import type { VNode } from 'snabbdom';
 
+import { clickedOutside } from './analysisSettingsView';
+import { makeShapesFromUci } from './autoShape';
+import { renderEval, renderIndex } from './components';
 import type { SettingsPageCtrl } from './settingsPage';
 import type { Card } from './deck';
+import { i18n } from './i18n';
+import { licon } from './licon';
 import { isAlreadyWon, isCollapse, isOpening, progress } from './schedule';
 import { fixProblems, newCardOrders, problems, ranges, type NewCardOrder, type NumberKey, type Settings } from './settings';
 import { hl, onInsert, type LooseVNodes } from './snabbdom';
-import { buildTree, mainline, type LichessGameJson } from './tree';
+import { buildTree, mainline, type LichessGameJson, type TreeNode } from './tree';
 
 export function view(ctrl: SettingsPageCtrl): VNode {
   return hl('main.page-small.box.box-pad.mt-settings-page', [
@@ -19,6 +26,7 @@ export function view(ctrl: SettingsPageCtrl): VNode {
     renderCounts(ctrl),
     renderSettings(ctrl),
     renderSuspended(ctrl),
+    ctrl.looking && renderLook(ctrl, ctrl.looking),
   ]);
 }
 
@@ -236,35 +244,164 @@ const color = { white: 'White', black: 'Black' };
 const date = (t: number | string): string =>
   new Date(t).toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' });
 
+// e.g. "Move 20 as White against RealAgentCooper"
+function caption(card: Card, game: LichessGameJson): string {
+  const opponent = game.players?.[opposite(card.color)].user?.name;
+  return `Move ${card.moveNumber} as ${color[card.color]}${opponent ? ` against ${opponent}` : ''}`;
+}
+
 // Each card has its own key, so that when one is unsuspended, snabbdom removes its element
 // rather than reusing it, and its board, for the next card.
 function renderSuspendedCard(ctrl: SettingsPageCtrl, id: string, at: string): VNode {
   const card = ctrl.deck.cards.find(c => c.id === id);
   const game = card && ctrl.deck.games[card.gameId];
-  const opponent = card && game?.players?.[opposite(card.color)].user?.name;
   return hl('div.mt-suspended__card', { key: id }, [
-    card && game ? renderMiniBoard(game, card) : hl('div.mt-suspended__missing', `${id}: not in the deck`),
-    card && hl('div', `Move ${card.moveNumber} as ${color[card.color]}${opponent ? ` against ${opponent}` : ''}`),
+    card && game
+      ? hl(
+          'button.mt-suspended__look',
+          { attrs: { type: 'button', title: 'Look at it up close' }, on: { click: () => ctrl.look(id) } },
+          renderMiniBoard(positionBefore(game, card), card.color),
+        )
+      : hl('div.mt-suspended__missing', `${id}: not in the deck`),
+    card && game && hl('div', caption(card, game)),
     game?.createdAt ? hl('div', `Played ${date(game.createdAt)}`) : undefined,
     hl('div', `Suspended ${date(at)}`),
     hl('button.button.button-empty.button-thin', { on: { click: () => ctrl.unsuspend(id) } }, 'Unsuspend'),
   ]);
 }
 
-// The position you faced, before your mistake, with the move before it highlighted. Like lila's
-// mini boards (ui/lib/src/view/miniBoard.ts initMiniBoardWith, master, commit 27ffc8b).
-function renderMiniBoard(game: LichessGameJson, card: Card): VNode {
-  const position = mainline(buildTree(game)).find(n => n.ply === card.ply - 1)!;
+// The position you faced: the game's, before your mistake.
+const positionBefore = (game: LichessGameJson, card: Card): TreeNode =>
+  mainline(buildTree(game)).find(n => n.ply === card.ply - 1)!;
+
+// A position, with the move before it highlighted, and any arrows. Like lila's mini boards
+// (ui/lib/src/view/miniBoard.ts initMiniBoardWith, master, commit 27ffc8b).
+// Chessground draws the arrows for the board's size. In the closer look, the board is put in the
+// page before its dialog opens (snabbdom runs a dialog's insert hook after its contents'), so it
+// has no size yet then, and waits for the next frame.
+function renderMiniBoard(position: TreeNode, orientation: Color, arrows: DrawShape[] = []): VNode {
   return hl('div.mini-board.cg-wrap.is2d', {
-    hook: onInsert(el =>
-      Chessground(el, {
-        coordinates: false,
-        viewOnly: true,
-        drawable: { enabled: false, visible: false },
-        fen: position.fen,
-        orientation: card.color,
-        lastMove: uciToMove(position.uci),
-      }),
-    ),
+    hook: onInsert(el => {
+      const init = () =>
+        Chessground(el, {
+          coordinates: false,
+          viewOnly: true,
+          drawable: { enabled: false, visible: arrows.length > 0, autoShapes: arrows },
+          fen: position.fen,
+          orientation,
+          lastMove: uciToMove(position.uci),
+        });
+      if (el.offsetWidth) init();
+      else requestAnimationFrame(init);
+    }),
   });
+}
+
+// A closer look at a suspended card, to see why you suspended it: the position, with your move as
+// a red arrow and Lichess's best move as a blue one, as the trainer draws them, and what Lichess's
+// analysis said. In lila's dialog, like the board's Settings (analysisSettingsView.ts), so lila's
+// CSS lays it out.
+function renderLook(ctrl: SettingsPageCtrl, id: string): VNode | undefined {
+  const card = ctrl.deck.cards.find(c => c.id === id);
+  const game = card && ctrl.deck.games[card.gameId];
+  if (!card || !game) return undefined;
+  const line = mainline(buildTree(game));
+  const at = line.findIndex(n => n.ply === card.ply);
+  const [played, before] = [line[at], line[at - 1]];
+  const best = before.children.find(c => c.comp); // Lichess's line, beside your move
+  const comment = played.comments?.find(c => c.by === 'lichess')?.text; // e.g. "Blunder. Nb5 was best."
+  const yourTime = line[Math.max(0, at - 2)].clock; // after your move before this one, or at the start
+  const suspended = ctrl.history.suspended?.[id];
+  // The game on Lichess, from your side, at the position you faced: lila's analysis board starts
+  // at the ply after the # (AnalyseCtrl.makeInitialPath).
+  const onLichess = `https://lichess.org/${game.id}/${card.color}#${card.ply - 1}`;
+  const close = (e: Event) => (e.currentTarget as HTMLElement).closest('dialog')!.close();
+  return hl(
+    'dialog.mt-look',
+    {
+      hook: onInsert<HTMLDialogElement>(el => el.showModal()),
+      on: {
+        close: () => ctrl.look(undefined), // also after Escape, which closes an open dialog by itself
+        click: e => clickedOutside(e) && close(e),
+      },
+    },
+    [
+      hl(
+        'div.close-button-anchor',
+        hl('button.close-button', {
+          attrs: { 'data-icon': licon.X, 'aria-label': i18n.site.close },
+          on: { click: close },
+        }),
+      ),
+      hl(
+        'div.scrollable',
+        hl('div.dialog-content', [
+          hl('h2', caption(card, game)),
+          hl('div.mt-look__body', [
+            hl(
+              'div.mt-look__board',
+              renderMiniBoard(before, card.color, [
+                ...makeShapesFromUci(played.uci, 'paleRed', { lineWidth: 8 }),
+                ...makeShapesFromUci(played.eval?.best, 'paleBlue'),
+              ]),
+            ),
+            hl('div.mt-look__info', [
+              hl('p', [
+                'You played ',
+                hl('span.mt-look__moves', [renderIndex(played.ply, true), played.san, played.glyphs?.[0]?.symbol]),
+                ` (${evalText(before.eval)} → ${evalText(played.eval)})`,
+              ]),
+              comment && hl('p', comment),
+              best && hl('p.mt-look__moves', lineMoves(best)),
+              yourTime !== undefined && hl('p', `You had ${clockTime(yourTime)} left on your clock.`),
+              hl(
+                'p.mt-look__dates',
+                [game.createdAt && `Played ${date(game.createdAt)}`, suspended && `Suspended ${date(suspended)}`]
+                  .filter(Boolean)
+                  .join(' · '),
+              ),
+              hl('div.mt-look__actions', [
+                hl('button.button.button-empty', { on: { click: () => ctrl.unsuspend(id) } }, 'Unsuspend'),
+                hl(
+                  'a.button.button-empty',
+                  {
+                    attrs: {
+                      href: onLichess,
+                      target: '_blank',
+                      rel: 'noopener',
+                      title:
+                        'Opens the game on Lichess, at this position, in a new tab. Lichess shows the ' +
+                        'analysis of the whole game, so also the answers to your other cards from it.',
+                    },
+                  },
+                  'Open on Lichess',
+                ),
+              ]),
+            ]),
+          ]),
+        ]),
+      ),
+    ],
+  );
+}
+
+// Lichess's evaluation, as the move list writes it: e.g. "+0.8", "−2.7", or "#3" for mate in 3.
+const evalText = (e: TreeNode['eval']): string =>
+  (e?.cp !== undefined ? renderEval(e.cp) : e?.mate !== undefined ? `#${e.mate}` : '?').replace('-', '−');
+
+// A line of moves from a node on, numbered as the move list does: e.g. "20.Qxg7+ Kxg7 21.Nf5+",
+// or "20...Kxg7 21.Nf5+" from a black move.
+function lineMoves(first: TreeNode): LooseVNodes[] {
+  const moves: LooseVNodes[] = [];
+  for (let node: TreeNode | undefined = first; node; node = node.children[0])
+    moves.push([node !== first && ' ', (node === first || node.ply % 2 === 1) && renderIndex(node.ply, true), node.san]);
+  return moves;
+}
+
+// A clock's time, e.g. "0:39", "4:59", or "1:05:00" over an hour.
+function clockTime(centis: number): string {
+  const seconds = Math.floor(centis / 100);
+  const [h, m, s] = [Math.floor(seconds / 3600), Math.floor(seconds / 60) % 60, seconds % 60];
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return h ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
 }

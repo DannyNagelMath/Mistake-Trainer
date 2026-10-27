@@ -152,12 +152,61 @@ body:not(.mt-settings-shown) main.mt-settings-page {
   flex-direction: column;
   gap: 0.3em;
 }
-.mt-suspended__card .mini-board {
+/* Each board is a button that opens a closer look at the card (renderLook). */
+.mt-suspended__look {
+  display: block;
+  width: 100%;
   margin-bottom: 0.4em;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+.mt-suspended__look:hover .mini-board,
+.mt-suspended__look:focus-visible .mini-board {
+  box-shadow: 0 0 0 3px var(--c-primary);
+  border-radius: 3px;
 }
 .mt-suspended__card .button {
   align-self: flex-start;
   margin-top: 0.4em;
+}
+/* The closer look: the board, and beside it (below it on narrow screens) what Lichess's analysis
+   said about your move. lila's dialog is only as wide as what's in it, and the board would take
+   up none, so this gives it a width. */
+.mt-look .dialog-content {
+  width: min(800px, calc(100vw - 32px));
+}
+.mt-look__body {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1em 1.5em;
+  text-align: start;
+}
+.mt-look__board {
+  flex: 0 0 min(400px, 100%);
+}
+.mt-look__info {
+  flex: 1 1 16em;
+}
+.mt-look__info p {
+  margin: 0 0 0.8em;
+}
+/* lila's font for moves (as in the move list), which draws the piece letters as pieces. Only on
+   moves: it would turn the B of "Blunder" into a bishop too. */
+.mt-look__moves {
+  font-family: 'Noto Chess', 'Noto Sans';
+}
+.mt-look__dates {
+  color: var(--c-font-dim);
+  font-size: 0.9em;
+}
+.mt-look__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6em;
+  margin-top: 1.2em;
 }
 /* On narrow screens, each setting's label goes above it. */
 @media (max-width: 650px) {
@@ -169,5 +218,8 @@ body:not(.mt-settings-shown) main.mt-settings-page {
   }
   .mt-settings__counts {
     margin-inline-start: 0;
+  }
+  .mt-look .dialog-content {
+    padding: 1.5em 1em;
   }
 }

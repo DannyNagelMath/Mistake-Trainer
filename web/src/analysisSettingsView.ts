@@ -110,7 +110,8 @@ function freezeSize(dialog: HTMLElement): void {
 
 // Like lila's dialog with easyClose 'clickOutside': a click outside the dialog closes it. With
 // the dialog open (showModal), a click on the dimmed page around it lands on the dialog itself.
-function clickedOutside(e: MouseEvent): boolean {
+// Also used by Training settings' closer look at a suspended card (settingsPageView.ts).
+export function clickedOutside(e: MouseEvent): boolean {
   const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
   return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
 }

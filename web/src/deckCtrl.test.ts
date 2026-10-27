@@ -21,6 +21,7 @@ import type { ReviewHistory } from './reviews';
 import type { EngineEval } from './engine';
 import { defaultSettings, type Settings } from './settings';
 import { SettingsPageCtrl } from './settingsPage';
+import { view as trainingSettingsView } from './settingsPageView';
 import { renderSide } from './side';
 import renderClocks from './clocks';
 import type { LichessGameJson } from './tree';
@@ -174,6 +175,10 @@ const textOf = (v: VNode | string | undefined): string =>
   typeof v === 'string' ? v : !v ? '' : (v.text ?? '') + (v.children ?? []).map(c => textOf(c as VNode)).join(' ');
 const has = (v: VNode | string | undefined, sel: string): boolean =>
   typeof v === 'object' && !!v && (v.sel === sel || (v.children ?? []).some(c => has(c as VNode, sel)));
+// The first element with the given selector, and a click on it, which returns what its handler does.
+const find = (v: VNode | string | undefined, sel: string): VNode | undefined =>
+  typeof v !== 'object' || !v ? undefined : v.sel === sel ? v : (v.children ?? []).map(c => find(c as VNode, sel)).find(Boolean);
+const click = (v: VNode | undefined): unknown => (v!.data!.on!.click as () => unknown)();
 
 test("while solving, the side panel doesn't show the players or the date; once done, it does", () => {
   const { ctrl } = start();
@@ -412,6 +417,28 @@ test('saving Training settings after a card: the next card is dealt with them', 
   page.update({ ...page.draft, gameRestDays: 0 });
   await page.save();
   expect(deckCtrl.next()).toBe(true);
+});
+
+test("a suspended card's board opens a closer look: your move, what Lichess's analysis said, and the game on Lichess", async () => {
+  const [card] = deck.cards; // 20.Qh4??, when 20.Qxg7+ led to mate
+  const history: ReviewHistory = { cards: {}, log: [], suspended: { [card.id]: new Date().toISOString() } };
+  const page = new SettingsPageCtrl(deck, history, defaultSettings, () => {}, () => {});
+  const look = () => find(trainingSettingsView(page), 'dialog.mt-look');
+  expect(look()).toBeUndefined();
+  click(find(trainingSettingsView(page), 'button.mt-suspended__look'));
+  const text = textOf(look());
+  expect(text).toContain('Qh4');
+  expect(text).toContain('(#3 → −2.1)'); // Lichess's evaluations, before and after it
+  expect(text).toContain('Lost forced checkmate sequence. Qxg7+ was best.');
+  expect(text).toContain('You had 0:39 left on your clock.');
+  expect(find(look(), 'a.button.button-empty')!.data!.attrs!.href).toBe(`https://lichess.org/${game.id}/white#38`);
+  (look()!.data!.on!.close as () => void)(); // Escape, the close button, or a click outside it
+  expect(look()).toBeUndefined();
+  click(find(trainingSettingsView(page), 'button.mt-suspended__look'));
+  await click(find(look(), 'button.button.button-empty')); // Unsuspend
+  expect(saved).toEqual([{ unsuspend: card.id }]);
+  expect(history.suspended).toEqual({});
+  expect(look()).toBeUndefined(); // it's no longer one to look at
 });
 
 test("once a card is done, the game's other mistakes, other cards, keep their analysis hidden, and say so", () => {
