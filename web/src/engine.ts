@@ -1,10 +1,12 @@
-// engine.ts: Not in lila. Stockfish, running in the browser, for two things:
+// engine.ts: Not in lila. Stockfish, running in the browser, for three things:
 //   - checking a move you try that is neither the engine's best nor a master move (evaluate, for
 //     retroCtrl's checkCeval);
 //   - live analysis of the position on the board, once a card is done and you've switched the
-//     engine on (analyse, for the evaluation, the best move arrow, and the engine's line).
-// lila's analysis board has a whole engine module for this (ui/lib/src/ceval); this does what we
-// need of it, reporting as each search goes deeper, as lila's does.
+//     engine on (analyse, for the evaluation, the best move arrow, and the engine's line);
+//   - analysing a game Lichess hasn't analysed, position by position (searchGamePosition, for
+//     localAnalysis.ts).
+// lila's analysis board has a whole engine module for the first two (ui/lib/src/ceval); this does
+// what we need of it, reporting as each search goes deeper, as lila's does.
 //
 // The engine is stockfish.js (the npm package `stockfish`, GPL-3.0): Stockfish 19 compiled to
 // WebAssembly, with its full network, on several threads, like the engine Lichess users usually
@@ -16,7 +18,8 @@
 //
 // There's one engine, so one search at a time. Move checks come first, and wait their turn. Live
 // analysis only ever needs the latest position: asking for another stops the one running ("stop",
-// which makes Stockfish answer at once), and a move check stops it too.
+// which makes Stockfish answer at once), and a move check stops it too. A game's positions come
+// last: a move check or live analysis stops one that's running, and it's searched again after.
 
 // An evaluation, from White's side like all of lila's: cp in centipawns, or mate in moves
 // (negative when Black mates). depth, nodes, and millis say how far the search got; pv is the
@@ -43,11 +46,16 @@ const CHECK = 'go nodes 1000000 movetime 3000';
 // Live analysis searches for 8 seconds, lila's default (CevalCtrl's storedMovetime).
 export const ANALYSIS_MILLIS = 8000;
 const ANALYSE = `go movetime ${ANALYSIS_MILLIS}`;
+// Lichess's servers search each position of a game you ask them to analyse for 1,000,000 positions
+// (lila's fishnet Work.Origin.manualRequest).
+const GAME = 'go nodes 1000000';
 
 interface Search {
-  fen: string;
+  position: string; // what follows "position" in UCI: "fen ...", and "moves ..." for a game's position
+  whiteToMove: boolean; // in the position searched, to turn Stockfish's scores to White's side
   go: string;
-  check: boolean; // a move check, rather than live analysis
+  kind: 'check' | 'live' | 'game'; // a move check, live analysis, or a position of a game to analyse
+  newGame?: boolean; // clear what Stockfish remembers from earlier searches first ("ucinewgame")
   onInfo: (e: EngineEval) => void;
   onDone: (e: EngineEval) => void;
 }
@@ -59,7 +67,10 @@ let running: Search | undefined;
 let stopping = false; // "stop" was sent to the running search
 const checks: Search[] = []; // waiting move checks, oldest first
 let nextAnalysis: Search | undefined; // the latest analysis asked for, waiting
+const gamePositions: Search[] = []; // positions of games to analyse, waiting, in order
 const checked = new Map<string, EngineEval>(); // move checks by FEN, so a position is only checked once
+
+const whiteToMove = (fen: string): boolean => fen.split(' ')[1] === 'w';
 
 // Checks the position after a move you tried: reports as the search goes deeper, and resolves
 // with the final evaluation.
@@ -68,16 +79,17 @@ export function evaluate(fen: string, onInfo: (e: EngineEval) => void = () => {}
   if (done) return Promise.resolve(done);
   return new Promise((resolve, reject) => {
     checks.push({
-      fen,
+      position: `fen ${fen}`,
+      whiteToMove: whiteToMove(fen),
       go: CHECK,
-      check: true,
+      kind: 'check',
       onInfo,
       onDone: result => {
         checked.set(fen, result);
         resolve(result);
       },
     });
-    if (running && !running.check) stop();
+    if (running && running.kind !== 'check') stop();
     next().catch(reject);
   });
 }
@@ -86,19 +98,38 @@ export function evaluate(fen: string, onInfo: (e: EngineEval) => void = () => {}
 // onDone at the end, with bestmove set if the search ran its course. Replaces any analysis asked
 // for before.
 export function analyse(fen: string, onInfo: (e: EngineEval) => void, onDone: (e: EngineEval) => void = onInfo): void {
-  nextAnalysis = { fen, go: ANALYSE, check: false, onInfo, onDone };
-  if (running && !running.check) stop();
+  nextAnalysis = { position: `fen ${fen}`, whiteToMove: whiteToMove(fen), go: ANALYSE, kind: 'live', onInfo, onDone };
+  if (running && running.kind !== 'check') stop();
   next().catch(e => console.error(e));
 }
 
 // Stops live analysis: the engine's switch was turned off, or a new card hides it.
 export function stopAnalysis(): void {
   nextAnalysis = undefined;
-  if (running && !running.check) stop();
+  if (running?.kind === 'live') stop();
 }
 
 // Whether live analysis is searching right now.
-export const isAnalysing = (): boolean => !!running && !running.check && !stopping;
+export const isAnalysing = (): boolean => running?.kind === 'live' && !stopping;
+
+// Searches a position of a game for localAnalysis.ts, as Lichess's servers do: given as the game's
+// start and the moves since, so that Stockfish knows which positions have come up before (a
+// repetition is a draw), as fishnet gives them. Resolves with the search's final evaluation and
+// line. newGame first clears what Stockfish remembers from earlier searches.
+export function searchGamePosition(rootFen: string, moves: string[], newGame: boolean): Promise<EngineEval> {
+  return new Promise((resolve, reject) => {
+    gamePositions.push({
+      position: `fen ${rootFen}` + (moves.length ? ` moves ${moves.join(' ')}` : ''),
+      whiteToMove: whiteToMove(rootFen) === (moves.length % 2 === 0),
+      go: GAME,
+      kind: 'game',
+      newGame,
+      onInfo: () => {},
+      onDone: resolve,
+    });
+    next().catch(reject);
+  });
+}
 
 function stop(): void {
   if (stopping) return;
@@ -106,10 +137,11 @@ function stop(): void {
   worker?.postMessage('stop');
 }
 
-// Starts the next search, if the engine is free: a waiting move check, or else the latest analysis.
+// Starts the next search, if the engine is free: a waiting move check, or else the latest analysis,
+// or else a game's position. A game's position that was stopped goes back to wait again.
 async function next(): Promise<void> {
   if (running) return;
-  const search = checks.shift() ?? nextAnalysis;
+  const search = checks.shift() ?? nextAnalysis ?? gamePositions.shift();
   if (!search) return;
   if (search === nextAnalysis) nextAnalysis = undefined;
   running = search;
@@ -121,25 +153,27 @@ async function next(): Promise<void> {
     throw e;
   }
   if (stopping) {
-    // Analysis replaced or stopped while the engine was loading: on to whatever is next.
+    // Stopped while the engine was loading: on to whatever is next.
     running = undefined;
     stopping = false;
+    if (search.kind === 'game') gamePositions.unshift(search);
     return next();
   }
-  const whiteToMove = search.fen.split(' ')[1] === 'w';
   let last: EngineEval = { depth: 0, nodes: 0, millis: 0 };
   listener = line => {
-    const info = parseInfo(line, whiteToMove);
+    const info = parseInfo(line, search.whiteToMove);
     if (info) search.onInfo((last = info));
     else if (line.startsWith('bestmove ')) {
-      const result = stopping ? last : { ...last, bestmove: line.split(' ')[1] };
+      const stopped = stopping;
       running = undefined;
       stopping = false;
-      search.onDone(result);
+      if (stopped && search.kind === 'game') gamePositions.unshift(search);
+      else search.onDone(stopped ? last : { ...last, bestmove: line.split(' ')[1] });
       next().catch(e => console.error(e));
     }
   };
-  worker!.postMessage(`position fen ${search.fen}`);
+  if (search.newGame) worker!.postMessage('ucinewgame');
+  worker!.postMessage(`position ${search.position}`);
   worker!.postMessage(search.go);
 }
 
