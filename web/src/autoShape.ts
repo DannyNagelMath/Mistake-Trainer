@@ -34,8 +34,8 @@ export function compute(ctrl: AnalysisCtrl): DrawShape[] {
     if (cur && ctrl.path === cur.prev.path)
       shapes = shapes.concat(makeShapesFromUci(cur.fault.node.uci, 'paleRed', { lineWidth: 8 }));
   }
-  // Green: what Lichess's analysis says should have been played instead of the move that led here.
-  // Blue: the best move from here: the engine's, or for the game's moves, Lichess's analysis's.
+  // Green: what the computer analysis says should have been played instead of the move that led here.
+  // Blue: the best move from here: the engine's, or for the game's moves, the computer analysis's.
   // Trim: lila also checks the engine is allowed here (isCevalAllowed), and lets you have several
   // engine lines, with a paler arrow for each of the others.
   if (ctrl.showBestMoveArrows() && ctrl.showEvaluation()) {

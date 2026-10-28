@@ -23,10 +23,16 @@ import type { TreeNode } from './tree';
 
 const positionOf = (node: TreeNode): Position => Chess.fromSetup(parseFen(node.fen).unwrap()).unwrap();
 
+// Until the engine has a result, the evaluation shown is the game's computer analysis, and the
+// status says so. Not in lila, where that analysis is always the server's: for a game analysed on
+// your computer (deck.ts withAnalysis), "computer analysis" instead.
+const usingAnalysis = (ctrl: AnalysisCtrl): string =>
+  ctrl.game.analysedHere ? 'Using computer analysis' : i18n.site.usingServerAnalysis;
+
 // The status under the engine's name. Trim: lila also says when the engine is loading or has
 // failed, and offers to go deeper.
 function localEvalNodes(ctrl: AnalysisCtrl, client?: EngineEval, server?: TreeNode['eval']): string[] {
-  if (!client) return [server && ctrl.nextNodeBest() ? i18n.site.usingServerAnalysis : i18n.site.calculatingMoves];
+  if (!client) return [server && ctrl.nextNodeBest() ? usingAnalysis(ctrl) : i18n.site.calculatingMoves];
   return [client.depth > 0 ? i18n.site.depthX(client.depth) : ''];
 }
 

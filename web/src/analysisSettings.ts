@@ -11,7 +11,7 @@ export class AnalysisSettings {
   constructor(
     public readonly showGauge = true, // the evaluation bar beside the board
     public readonly inline = false, // the move list as a paragraph, rather than in two columns
-    public readonly showStaticAnalysis = true, // Lichess's analysis: evals, ?? marks, comments, engine lines
+    public readonly showStaticAnalysis = true, // the computer analysis: evals, ?? marks, comments, engine lines
     public readonly disclosureMode = false, // buttons in the move list to fold variations away
     public readonly showBestMoveArrows = true, // the better move instead, and the best move from here
     public readonly showVariationArrows = true, // an arrow for each continuation, where there's a choice

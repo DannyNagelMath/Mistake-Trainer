@@ -7,7 +7,7 @@
 //   shift, tapped on its own: the same as down there
 //   shift+left / shift+right (or shift+k / shift+j): previous / next variation
 //   shift+c: show or hide comments   shift+i: inline or two-column move list
-//   z: show or hide Lichess's analysis   a: show or hide the best move arrows
+//   z: show or hide the computer analysis   a: show or hide the best move arrows
 //   v: show or hide the variation arrows
 //   l: switch the engine on or off
 //   h: open or close the menu        f: flip the board

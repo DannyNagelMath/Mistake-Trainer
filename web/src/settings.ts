@@ -29,7 +29,7 @@ export interface Settings {
   minGapDays: number; // no card comes back sooner than this after a review
   gameRestDays: number; // after you review a card, the other cards from its game wait this long
   // Answers
-  bestMoveOnly: boolean; // only Lichess's best move counts as right (and master moves, checkmates)
+  bestMoveOnly: boolean; // only the analysis's best move counts as right (and master moves, checkmates)
 }
 
 export const defaultSettings: Settings = {

@@ -74,7 +74,7 @@ export interface RetroCardOpts {
   ratingChoices(): { label: string; rate: () => void }[] | undefined;
   suspend(): void; // "Suspend card": it never comes up again; the next card is dealt
   openingUcis: Uci[]; // moves masters have played from the position, accepted as right answers
-  bestMoveOnly(): boolean; // only Lichess's best move counts, not any move nearly as good
+  bestMoveOnly(): boolean; // only the analysis's best move counts, not any move nearly as good
 }
 
 export type CardResult = 'win' | 'fail' | 'view' | 'skip'; // Step 9
@@ -200,7 +200,7 @@ export function make(root: RetroRoot, color: Color): RetroCtrl {
       else if (node.eval)
         onFail(); // the move that was played in the game
       else if (card?.bestMoveOnly())
-        onFail(); // Not in lila: only Lichess's best move counts (your training settings)
+        onFail(); // Not in lila: only the analysis's best move counts (your training settings)
       else {
         feedback('eval');
         // Not in lila: there, the engine is already on the move. And here, the position before it
@@ -224,11 +224,11 @@ export function make(root: RetroRoot, color: Color): RetroCtrl {
     const node = root.node,
       cur = current();
     if (!cur || feedback() !== 'eval' || cur.fault.node.ply !== node.ply) return;
-    // Not in lila, which compares the move with Lichess's analysis of the position before it
-    // (prev.node.eval): here, with our engine's evaluation of that position, searched as far as
-    // the move. Our engine, a small build of Stockfish, doesn't always agree with Lichess's
-    // analysis, and the difference alone could decide whether a move counts; with the same engine
-    // on both sides, it can't.
+    // Not in lila, which compares the move with the game's computer analysis of the position before
+    // it (prev.node.eval): here, with our engine's evaluation of that position, searched as far as
+    // the move. Our engine doesn't always agree with the computer analysis, which was another search,
+    // and the difference alone could decide whether a move counts; with the same engine on both
+    // sides, it can't.
     if (isCevalReady(node) && isCevalReady(cur.prev.node)) {
       const diff = winningChances.povDiff(color, node.ceval!, cur.prev.node.ceval!);
       if (diff > -0.04) onWin();

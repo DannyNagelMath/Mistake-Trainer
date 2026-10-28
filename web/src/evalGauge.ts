@@ -8,7 +8,7 @@ import type { AnalysisCtrl } from './analysisCtrl';
 import { hl } from './snabbdom';
 import { povChances, type EvalScore } from './winningChances';
 
-// The engine's evaluation of the position if there is one, else Lichess's analysis.
+// The engine's evaluation of the position if there is one, else the game's computer analysis's.
 export const getBestEval = (ctrl: AnalysisCtrl): EvalScore | undefined => {
   return ctrl.node.ceval ?? (ctrl.showEvaluation() ? ctrl.node.eval : undefined);
 };

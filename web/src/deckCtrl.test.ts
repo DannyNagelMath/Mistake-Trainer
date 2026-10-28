@@ -13,6 +13,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import real1 from '../fixtures/real1.json';
 import type { AnalysisCtrl } from './analysisCtrl';
 import { compute as autoShapes } from './autoShape';
+import { renderCeval } from './cevalView';
 import { cardsOfGame, mistakeOf, type Card, type Deck } from './deck';
 import { DeckCtrl } from './deckCtrl';
 import { getBestEval } from './evalGauge';
@@ -356,6 +357,27 @@ test("the engine stays off while you're solving; once done, it analyses the posi
   expect(engine.stops).toBe(stops + 1);
 });
 
+test("until the engine has a result, its bar says the evaluation is the game's analysis: the server's, or for a game analysed here, the computer analysis", () => {
+  const solved = (g: LichessGameJson) => {
+    const deckCtrl = new DeckCtrl({ ...deck, games: { [game.id]: g }, cards: [deck.cards[0]] }, { cards: {}, log: [] }, defaultSettings, () => {});
+    const ctrl = deckCtrl.analysis;
+    ctrl.toggleRetro();
+    playSolution(ctrl);
+    ctrl.cevalEnabled(true);
+    ctrl.userJump(ctrl.retro!.current()!.prev.path); // the position you faced, which the analysis has a best move for
+    return ctrl;
+  };
+  for (const [g, says] of [
+    [game, 'Using server analysis'],
+    [analysedHere, 'Using computer analysis'],
+  ] as const) {
+    const ctrl = solved(g);
+    expect(ctrl.node.ceval).toBeUndefined(); // the engine hasn't answered yet
+    expect(textOf(renderCeval(ctrl))).toContain(says);
+    ctrl.cevalEnabled(false); // as it was, for the other tests
+  }
+});
+
 test('coming back to the page shows the card you left, unless you had answered it', () => {
   const stored: Record<string, string> = {}; // a stand-in for the browser's sessionStorage
   vi.stubGlobal('sessionStorage', {
@@ -419,7 +441,7 @@ test('saving Training settings in the middle of a card leaves it as it was, and 
   expect(saved).toEqual([{ ...defaultSettings, bestMoveOnly: true }]); // to data/settings.json
   expect(onScreen()).toEqual(before);
   ctrl.playUci(otherMove(card));
-  expect(ctrl.retro!.feedback()).toBe('fail'); // only Lichess's best move counts now...
+  expect(ctrl.retro!.feedback()).toBe('fail'); // only the analysis's best move counts now...
   expect(engine.asked).toEqual([]); // ...so the engine isn't asked
 });
 
@@ -506,7 +528,14 @@ test("a move is compared with our engine's eval of the position before, not Lich
   expect(engine.asked).toEqual([before, ctrl.node.fen]); // the position before, then after the move
 });
 
-test("with 'only Lichess's best move' on, any other move is wrong at once, without the engine", () => {
+test("Training settings' Right answers: only the best move in the computer analysis, whoever made it", () => {
+  const { history, deckCtrl } = start();
+  const text = textOf(trainingSettingsView(trainingSettings(deckCtrl, history)));
+  expect(text).toContain('only the best move in the computer analysis');
+  expect(text).not.toContain('Lichess’s best move');
+});
+
+test("with 'only the best move in the computer analysis' on, any other move is wrong at once, without the engine", () => {
   const [card] = deck.cards;
   const deckCtrl = new DeckCtrl({ ...deck, cards: [card] }, { cards: {}, log: [] }, { ...defaultSettings, bestMoveOnly: true }, () => {});
   const ctrl = deckCtrl.analysis;

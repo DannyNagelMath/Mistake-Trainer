@@ -320,8 +320,8 @@ export class AnalysisCtrl implements RetroRoot {
   // An empty list clears what was drawn.
   setAutoShapes = (): void => this.cg?.setAutoShapes(computeAutoShapes(this));
 
-  // From lila: whether evaluations show (the gauge, the best move arrows): Lichess's analysis, or
-  // the engine's while it's on. Not in lila: never while you're solving a card (hidingHints).
+  // From lila: whether evaluations show (the gauge, the best move arrows): the game's computer
+  // analysis, or the engine's while it's on. Not in lila: never while you're solving a card (hidingHints).
   showEvaluation = (): boolean => !this.hidingHints() && (this.settings.showStaticAnalysis || this.cevalEnabled());
 
   // From lila: whether the engine may run. Not in lila: never while you're solving a card, when it
@@ -383,8 +383,8 @@ export class AnalysisCtrl implements RetroRoot {
   showBestMoveArrows = (): boolean =>
     this.settings.showBestMoveArrows && !this.retro?.hideComputerLine(this.node);
 
-  // From lila: the best move from here according to Lichess's analysis, which it gives on the
-  // judged move that follows in the game (treeOps.withMainlineChild).
+  // From lila: the best move from here according to the game's computer analysis, which gives it on
+  // the judged move that follows in the game (treeOps.withMainlineChild).
   // Not in lila: none if that move is a mistake whose answer "Learn from your mistakes" is hiding.
   // lila's check (showBestMoveArrows) is on the position you're at, not on the move that follows,
   // so once a card was done, the blue arrow before another of the game's cards gave its answer.

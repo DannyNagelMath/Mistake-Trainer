@@ -239,11 +239,11 @@ function renderSettings(ctrl: SettingsPageCtrl): VNode {
         ['bestMoveOnly'],
         [
           hl('input', { attrs: { type: 'checkbox', id: 'bestMoveOnly', name: 'bestMoveOnly', checked: shown.bestMoveOnly } }),
-          ' only Lichess’s best move',
+          ' only the best move in the computer analysis',
         ],
         'Off, as on Lichess: a move nearly as good as the best counts too, as Stockfish judges it on ' +
-          'your computer. On: only the best move in Lichess’s analysis counts (and moves masters have ' +
-          'played, and checkmates), so the verdict is the same on any computer, and needs no engine.',
+          'your computer. On: only the best move in the game’s computer analysis counts (and moves masters ' +
+          'have played, and checkmates), so the verdict is the same on any computer, and needs no engine.',
       ),
 
       hl('div.mt-settings__actions', [
@@ -352,7 +352,7 @@ function renderLook(ctrl: SettingsPageCtrl, id: string): VNode | undefined {
   const line = mainline(buildTree(game));
   const at = line.findIndex(n => n.ply === card.ply);
   const [played, before] = [line[at], line[at - 1]];
-  const best = before.children.find(c => c.comp); // Lichess's line, beside your move
+  const best = before.children.find(c => c.comp); // the analysis's line, beside your move
   const comment = played.comments?.find(c => c.by === 'lichess')?.text; // e.g. "Blunder. Nb5 was best."
   const yourTime = line[Math.max(0, at - 2)].clock; // after your move before this one, or at the start
   const suspended = ctrl.history.suspended?.[id];
@@ -433,7 +433,8 @@ function renderLook(ctrl: SettingsPageCtrl, id: string): VNode | undefined {
   );
 }
 
-// Lichess's evaluation, as the move list writes it: e.g. "+0.8", "−2.7", or "#3" for mate in 3.
+// An evaluation from the computer analysis, as the move list writes it: e.g. "+0.8", "−2.7", or "#3"
+// for mate in 3.
 const evalText = (e: TreeNode['eval']): string =>
   (e?.cp !== undefined ? renderEval(e.cp) : e?.mate !== undefined ? `#${e.mate}` : '?').replace('-', '−');
 
