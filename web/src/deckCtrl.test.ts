@@ -190,6 +190,18 @@ test("while solving, the side panel doesn't show the players or the date; once d
   expect(has(renderSide(ctrl), 'time.timeago')).toBe(true);
 });
 
+// The deck's game, as if Lichess hadn't analysed it and its analysis had been made here instead.
+const analysedHere: LichessGameJson = { ...game, analysedHere: { engine: 'Stockfish 19', nodes: 1_000_000, at: '' } };
+
+test('the side panel says where the computer analysis came from: Lichess, or your computer', () => {
+  expect(textOf(renderSide(start().ctrl))).toContain('Computer analysis by Lichess');
+  const deckCtrl = new DeckCtrl({ ...deck, games: { [game.id]: analysedHere } }, { cards: {}, log: [] }, defaultSettings, () => {});
+  deckCtrl.analysis.toggleRetro();
+  expect(textOf(renderSide(deckCtrl.analysis))).toContain(
+    'Computer analysis made on your computer: Lichess hasn’t analysed this game',
+  );
+});
+
 test('suspending a card records no review, saves the suspension, and deals another card', () => {
   const { history, ctrl, retro } = start();
   const suspended = `${ctrl.game.id}/${retro().card!.ply}`;
@@ -434,6 +446,7 @@ test("a suspended card's board opens a closer look: your move, what Lichess's an
   expect(text).toContain('(#3 → −2.1)'); // Lichess's evaluations, before and after it
   expect(text).toContain('Lost forced checkmate sequence. Qxg7+ was best.');
   expect(text).toContain('You had 0:39 left on your clock.');
+  expect(text).toContain('Computer analysis by Lichess');
   expect(find(look(), 'a.button.button-empty')!.data!.attrs!.href).toBe(`https://lichess.org/${game.id}/white#38`);
   (look()!.data!.on!.close as () => void)(); // Escape, the close button, or a click outside it
   expect(look()).toBeUndefined();
@@ -442,6 +455,20 @@ test("a suspended card's board opens a closer look: your move, what Lichess's an
   expect(saved).toEqual([{ unsuspend: card.id }]);
   expect(history.suspended).toEqual({});
   expect(look()).toBeUndefined(); // it's no longer one to look at
+});
+
+test("for a game analysed here, the closer look says so, and that Lichess hasn't analysed it", () => {
+  const [card] = deck.cards;
+  const history: ReviewHistory = { cards: {}, log: [], suspended: { [card.id]: new Date().toISOString() } };
+  const here: Deck = { ...deck, games: { [game.id]: analysedHere } };
+  const page = new SettingsPageCtrl(here, history, defaultSettings, () => {}, () => {}, notLoaded());
+  click(find(trainingSettingsView(page), 'button.mt-suspended__look'));
+  const look = find(trainingSettingsView(page), 'dialog.mt-look');
+  expect(textOf(look)).toContain('Computer analysis made on your computer: Lichess hasn’t analysed this game');
+  expect(find(look, 'a.button.button-empty')!.data!.attrs!.title).toBe(
+    'Opens the game on Lichess, at this position, in a new tab. Lichess hasn’t analysed this game: this ' +
+      'analysis was made on your computer.',
+  );
 });
 
 test("once a card is done, the game's other mistakes, other cards, keep their analysis hidden, and say so", () => {

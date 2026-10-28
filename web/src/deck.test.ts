@@ -5,7 +5,7 @@ import { expect, test } from 'vitest';
 import real1 from '../fixtures/real1.json';
 import real2 from '../fixtures/real2.json';
 import real3 from '../fixtures/real3.json';
-import { cardsOfGame, colorOf, inOpening, mistakeOf, withMasterMoves, yourGames, type MasterMove } from './deck';
+import { cardsOfGame, colorOf, inOpening, mistakeOf, withAnalysis, withMasterMoves, yourGames, type MasterMove } from './deck';
 import type { LichessGameJson } from './tree';
 
 const fixtures: Record<string, unknown> = { real1, real2, real3 };
@@ -33,6 +33,18 @@ test('yourGames: the standard games you played, each once, the one with Lichessâ
     [game.id, true],
     ['other', false],
   ]);
+});
+
+test("a game's cards come from Lichess's analysis if it has one, otherwise from the one made here, and the game says so", () => {
+  const game = fixture('real1');
+  const unanalysed = { ...game, analysis: undefined };
+  const madeHere = { engine: 'Stockfish 19', nodes: 1_000_000, at: '2026-10-27T15:00:00.000Z' };
+  const saved = { analysis: game.analysis!, ...madeHere }; // here, the same analysis as Lichess's
+  expect(withAnalysis(game, saved)).toBe(game); // Lichess's comes first
+  expect(withAnalysis(unanalysed, undefined)).toBeUndefined(); // no analysis: no cards
+  const analysedHere = withAnalysis(unanalysed, saved)!;
+  expect(analysedHere.analysedHere).toEqual(madeHere);
+  expect(cardsOfGame(analysedHere, 'white')).toEqual(cardsOfGame(game, 'white'));
 });
 
 test('cardsOfGame finds the same mistakes as retroCtrl', () => {

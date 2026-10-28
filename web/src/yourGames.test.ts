@@ -33,7 +33,8 @@ const games = [
   { ...unanalysed('variant', game.createdAt!), variant: 'chess960' }, // not standard chess: left out
 ];
 
-// The dev server: your games, the analyses saved so far (one: 'newer'), and saving.
+// The dev server: your games, the analyses saved so far (one: 'newer', before the deck was built),
+// and saving.
 let saves: string[]; // the games whose analyses were saved
 beforeEach(() => {
   analysed.length = 0;
@@ -47,7 +48,7 @@ beforeEach(() => {
         saves.push(JSON.parse(init.body as string).gameId);
         return new Response(null, { status: 204 });
       }
-      return json({ newer: { analysis: [], engine: 'Stockfish 19', nodes: 1_000_000, at: '' } });
+      return json({ newer: { analysis: [], engine: 'Stockfish 19', nodes: 1_000_000, at: '2026-09-30T12:00:00.000Z' } });
     }),
   );
 });
@@ -58,7 +59,12 @@ const textOf = (v: VNode | string | undefined): string =>
 const find = (v: VNode | string | undefined, sel: string): VNode | undefined =>
   typeof v !== 'object' || !v ? undefined : v.sel === sel ? v : (v.children ?? []).map(c => find(c as VNode, sel)).find(Boolean);
 
-const deck: Deck = { username: 'mugglesman1982', builtAt: '', games: { [game.id]: game }, cards: cardsOfGame(game, 'white') };
+const deck: Deck = {
+  username: 'mugglesman1982',
+  builtAt: '2026-10-01T12:00:00.000Z',
+  games: { [game.id]: game },
+  cards: cardsOfGame(game, 'white'),
+};
 const history: ReviewHistory = { cards: {}, log: [] };
 const section = (yourGames: YourGamesCtrl) =>
   find(view(new SettingsPageCtrl(deck, history, defaultSettings, () => {}, () => {}, yourGames)), 'section.mt-computer-analysis');
@@ -69,8 +75,9 @@ test('it counts your games, and the ones Lichess has analysed; the others are to
   await yourGames.load();
   expect(yourGames.loaded!.run.games.map(g => g.id)).toEqual(['newest', 'newer', 'older']);
   const text = textOf(section(yourGames));
-  expect(text).toContain('the computer analysis Lichess made of 1 of your 4 games. The other 3 can be analysed here');
+  expect(text).toContain('Lichess has analysed 1 of your 4 games. The other 3 can be analysed here');
   expect(text).toContain('1 of 3 games analysed here.'); // 'newer', saved before
+  expect(text).toContain('Your deck has the cards from all the games analysed here so far.');
   expect(textOf(find(section(yourGames), 'button.button'))).toBe('Carry on');
 });
 
@@ -82,6 +89,10 @@ test('carrying on analyses the games not analysed yet, newest first, and saves e
   expect(saves).toEqual(['newest', 'older']);
   expect(textOf(section(yourGames))).toContain('3 of 3 games analysed here.');
   expect(find(section(yourGames), 'button.button')).toBeUndefined(); // nothing left to do
+  expect(textOf(section(yourGames))).toContain(
+    'Games analysed here since your deck was built: 2. To add their cards, run npm run update-deck from web, ' +
+      'then reload this page.',
+  );
 });
 
 test("if your games can't load, it says why, and tries again next time", async () => {
@@ -93,4 +104,5 @@ test("if your games can't load, it says why, and tries again next time", async (
   vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(JSON.stringify(url === '/api/games' ? games : {}), { headers: { 'Content-Type': 'application/json' } })));
   await yourGames.load();
   expect(yourGames.loaded?.all).toBe(4);
+  expect(textOf(section(yourGames))).not.toContain('your deck'); // nothing analysed here yet
 });

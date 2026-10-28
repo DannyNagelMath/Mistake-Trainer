@@ -77,6 +77,13 @@ function playerLink(player: LichessPlayer): VNode {
   ]);
 }
 
+// Not in lila, where every analysis is Lichess's: where the game's computer analysis, which its
+// cards come from, was made (deck.ts withAnalysis).
+export const analysisSource = (game: LichessGameJson): string =>
+  game.analysedHere
+    ? 'Computer analysis made on your computer: Lichess hasn’t analysed this game'
+    : 'Computer analysis by Lichess';
+
 // Not in lila: `extra` goes under the game's details; the trainer puts its progress box there.
 export function renderSide(ctrl: AnalysisCtrl, extra?: VNode): VNode {
   const game = ctrl.game;
@@ -117,6 +124,8 @@ export function renderSide(ctrl: AnalysisCtrl, extra?: VNode): VNode {
       finished &&
         !ctrl.hidingHints() &&
         hl('section.status', statusOf({ winner: game.winner, status: game.status!, ply: lastPly })),
+      // Not in lila: where the computer analysis came from.
+      hl('section', analysisSource(game)),
       // Step 8: not in lila, which is lichess.org itself. The game there, at the move on the board.
       !ctrl.hidingHints() &&
         hl(

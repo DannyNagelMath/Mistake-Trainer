@@ -2,13 +2,15 @@
 // A card is a mistake that lila's "Learn from your mistakes" would show you in that game,
 // found the same way (retroCtrl's findNextNode), including lila's check against the masters
 // database for opening mistakes (see inOpening). scripts/buildDeck.ts builds the deck from
-// games.ndjson and saves it as public/data/deck.json, which the page loads.
+// games.ndjson, with the analyses made here for the games Lichess hasn't analysed (withAnalysis),
+// and saves it as public/data/deck.json, which the page loads.
 
 import type { Color } from 'chessops';
 import { Chess, normalizeMove } from 'chessops/chess';
 import { parseFen } from 'chessops/fen';
 import { makeUci, parseUci } from 'chessops/util';
 
+import type { SavedAnalysis } from './analyses';
 import { evalSwings } from './nodeFinder';
 import { buildTree, mainline, type LichessGameJson } from './tree';
 import { povChances } from './winningChances';
@@ -63,6 +65,16 @@ export function yourGames(games: LichessGameJson[], username: string): LichessGa
     if (!kept || (!kept.analysis && game.analysis)) yours.set(game.id, game);
   }
   return [...yours.values()];
+}
+
+// Not in lila: the game with the computer analysis its cards come from. Lichess's comes first; for
+// a game Lichess hasn't analysed, the one made here, on your computer (localAnalysis.ts), if there
+// is one, and the game says so (analysedHere). Undefined if there's neither.
+export function withAnalysis(game: LichessGameJson, saved: SavedAnalysis | undefined): LichessGameJson | undefined {
+  if (game.analysis) return game;
+  if (!saved) return undefined;
+  const { analysis, ...analysedHere } = saved;
+  return { ...game, analysis, analysedHere };
 }
 
 // Your mistakes in one game, in order. Like retroCtrl's findNextNode: every move of your color

@@ -7,6 +7,7 @@ import { parseSan } from 'chessops/san';
 import { makeUci } from 'chessops/util';
 import { scalachessCharPair } from 'chessops/compat';
 
+import type { SavedAnalysis } from './analyses';
 import type { EngineEval } from './engine';
 
 // ---------- Input: only the fields of the API's game JSON that we use ----------
@@ -43,6 +44,10 @@ export interface LichessGameJson {
   // Step 9: the plies where the middlegame and the endgame start, from lila's analysis. Either is
   // missing if the game never got there.
   division?: { middle?: number; end?: number };
+  // Not in Lichess's export: for a game Lichess hasn't analysed, how and when the analysis in
+  // `analysis` was made instead, on your computer (localAnalysis.ts). The deck adds it (deck.ts
+  // withAnalysis).
+  analysedHere?: Omit<SavedAnalysis, 'analysis'>;
 }
 
 // Step 9: `user` is absent for the computer and anonymous players.

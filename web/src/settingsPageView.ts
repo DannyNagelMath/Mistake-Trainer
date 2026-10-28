@@ -8,6 +8,7 @@ import { uciToMove } from '@lichess-org/chessground/util';
 import { opposite, type Color } from 'chessops';
 import type { VNode } from 'snabbdom';
 
+import type { AnalysisRun } from './analysisRun';
 import { renderRun } from './analysisRunView';
 import { clickedOutside } from './analysisSettingsView';
 import { makeShapesFromUci } from './autoShape';
@@ -18,6 +19,7 @@ import { i18n } from './i18n';
 import { licon } from './licon';
 import { isAlreadyWon, isCollapse, isOpening, progress } from './schedule';
 import { fixProblems, newCardOrders, problems, ranges, type NewCardOrder, type NumberKey, type Settings } from './settings';
+import { analysisSource } from './side';
 import { hl, onInsert, type LooseVNodes } from './snabbdom';
 import { buildTree, mainline, type LichessGameJson, type TreeNode } from './tree';
 
@@ -45,7 +47,8 @@ function renderCounts(ctrl: SettingsPageCtrl): VNode {
   ]);
 }
 
-// Your games (yourGames.ts): how many Lichess has analysed, and the run on the others, here.
+// Your games (yourGames.ts): how many Lichess has analysed, the run on the others, here, and whether
+// the deck has the cards from those analysed here yet.
 function renderComputerAnalysis(ctrl: SettingsPageCtrl): VNode {
   const { loaded, error } = ctrl.yourGames;
   const count = (n: number) => n.toLocaleString('en');
@@ -55,16 +58,33 @@ function renderComputerAnalysis(ctrl: SettingsPageCtrl): VNode {
       ? [
           hl(
             'p',
-            `Your cards come from the computer analysis Lichess made of ${count(loaded.byLichess)} of your ` +
-              `${count(loaded.all)} games. The other ${count(loaded.run.games.length)} can be analysed here, on ` +
-              'your computer, the way Lichess’s servers do it, newest first. Each game is saved as soon as it’s ' +
-              'done, so you can pause, or close the page, and carry on later. It goes on while you train, stopping ' +
-              'whenever the trainer’s own engine is thinking.',
+            `Your cards come from the computer analysis of your games. Lichess has analysed ` +
+              `${count(loaded.byLichess)} of your ${count(loaded.all)} games. The other ` +
+              `${count(loaded.run.games.length)} can be analysed here, on your computer, the way Lichess’s servers ` +
+              'do it, newest first. Each game is saved as soon as it’s done, so you can pause, or close the page, ' +
+              'and carry on later. It goes on while you train, stopping whenever the trainer’s own engine is ' +
+              'thinking.',
           ),
           renderRun(loaded.run),
+          renderNotInDeck(ctrl, loaded.run),
         ]
       : hl('p', error || 'Loading your games…'),
   ]);
+}
+
+// The games analysed here join the deck when it's built again (scripts/buildDeck.ts), so the ones
+// analysed since it was built aren't in it yet.
+function renderNotInDeck(ctrl: SettingsPageCtrl, run: AnalysisRun): VNode | undefined {
+  const analysed = run.games.filter(g => run.saved[g.id]);
+  if (!analysed.length) return undefined;
+  const since = analysed.filter(g => run.saved[g.id].at > ctrl.deck.builtAt).length;
+  return hl(
+    'p',
+    since
+      ? `Games analysed here since your deck was built: ${since.toLocaleString('en')}. To add their cards, ` +
+          'run npm run update-deck from web, then reload this page.'
+      : 'Your deck has the cards from all the games analysed here so far.',
+  );
 }
 
 const orderLabels: Record<NewCardOrder, string> = {
@@ -322,9 +342,9 @@ function renderMiniBoard(position: TreeNode, orientation: Color, arrows: DrawSha
 }
 
 // A closer look at a suspended card, to see why you suspended it: the position, with your move as
-// a red arrow and Lichess's best move as a blue one, as the trainer draws them, and what Lichess's
-// analysis said. In lila's dialog, like the board's Settings (analysisSettingsView.ts), so lila's
-// CSS lays it out.
+// a red arrow and the analysis's best move as a blue one, as the trainer draws them, and what the
+// computer analysis said, and where it was made. In lila's dialog, like the board's Settings
+// (analysisSettingsView.ts), so lila's CSS lays it out.
 function renderLook(ctrl: SettingsPageCtrl, id: string): VNode | undefined {
   const card = ctrl.deck.cards.find(c => c.id === id);
   const game = card && ctrl.deck.games[card.gameId];
@@ -377,6 +397,7 @@ function renderLook(ctrl: SettingsPageCtrl, id: string): VNode | undefined {
               ]),
               comment && hl('p', comment),
               best && hl('p.mt-look__moves', lineMoves(best)),
+              hl('p', analysisSource(game)),
               yourTime !== undefined && hl('p', `You had ${clockTime(yourTime)} left on your clock.`),
               hl(
                 'p.mt-look__dates',
@@ -394,8 +415,11 @@ function renderLook(ctrl: SettingsPageCtrl, id: string): VNode | undefined {
                       target: '_blank',
                       rel: 'noopener',
                       title:
-                        'Opens the game on Lichess, at this position, in a new tab. Lichess shows the ' +
-                        'analysis of the whole game, so also the answers to your other cards from it.',
+                        'Opens the game on Lichess, at this position, in a new tab. ' +
+                        (game.analysedHere
+                          ? 'Lichess hasn’t analysed this game: this analysis was made on your computer.'
+                          : 'Lichess shows the analysis of the whole game, so also the answers to your other ' +
+                            'cards from it.'),
                     },
                   },
                   'Open on Lichess',

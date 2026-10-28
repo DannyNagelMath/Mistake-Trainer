@@ -17,10 +17,11 @@ on Lichess's open-source code, with gratitude: if you find it useful, please con
 - `pipeline/` (Python) downloads your games, with their computer analysis, from the
   [Lichess API](https://lichess.org/api) into an NDJSON file.
 - `web/scripts/buildDeck.ts` finds your mistakes in those games, the same way Lichess's "Learn from
-  your mistakes" does, and saves them as a deck of cards. Like Lichess, it looks opening mistakes up
-  in the [masters database](https://lichess.org/analysis#explorer): a move masters have played isn't
-  a mistake, and their other moves count as right answers. It asks about each position only once,
-  and saves the answers in `pipeline/data/masters.json`.
+  your mistakes" does, and saves them as a deck of cards. For a game Lichess hasn't analysed, it
+  uses the analysis made on your computer, if there is one (see Training settings below). Like
+  Lichess, it looks opening mistakes up in the [masters database](https://lichess.org/analysis#explorer):
+  a move masters have played isn't a mistake, and their other moves count as right answers. It asks
+  about each position only once, and saves the answers in `pipeline/data/masters.json`.
 - `web/` is the review page: Lichess's analysis board and "Learn from your mistakes" panel, ported
   from [lila](https://github.com/lichess-org/lila) (the software behind lichess.org), dealing the
   cards in spaced-repetition order. As on Lichess, a move other than the engine's best is checked by
@@ -29,7 +30,11 @@ on Lichess's open-source code, with gratitude: if you find it useful, please con
   the engine on to analyse any position. Your review history is saved to `web/data/reviews.json`.
   Its Training settings page (the link at the top right) is where you choose, for example, which
   new cards come first and how far apart reviews are (saved to `web/data/settings.json`), and
-  where you can bring back cards you've suspended.
+  where you can bring back cards you've suspended. It's also where your games without Lichess's
+  analysis can be analysed on your computer, the way Lichess's servers do it: Stockfish 19,
+  1,000,000 positions a move, one thread per engine, as in
+  [fishnet](https://github.com/lichess-org/fishnet). Each game's analysis is saved to
+  `web/data/analysis.json`.
 
 ## Running it
 
@@ -46,9 +51,10 @@ You need Node.js, Python 3, git, and a [Lichess API token](https://lichess.org/a
    token from step 3 for the masters database.
 5. Start the page with `npm run dev`, and open the address it prints.
 
-Later, to add the games you've played since, run `npm run update-deck` from `web`: it downloads
-them and builds the deck again. Your review history is backed up once a day, in
-`web/data/backups`; to go back to a backup, stop the page and copy it over `web/data/reviews.json`.
+Later, to add the games you've played since, and the games analysed in Training settings since, run
+`npm run update-deck` from `web`: it downloads the new games and builds the deck again. Your review
+history is backed up once a day, in `web/data/backups`; to go back to a backup, stop the page and
+copy it over `web/data/reviews.json`.
 
 ## Licence
 
