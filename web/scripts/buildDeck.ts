@@ -29,7 +29,7 @@ import {
   type Deck,
 } from '../src/deck';
 import type { LichessGameJson } from '../src/tree';
-import { MastersExplorer } from './mastersExplorer';
+import { GAP, MastersExplorer } from './mastersExplorer';
 
 const envFile = '../pipeline/.env';
 
@@ -91,10 +91,22 @@ games.forEach(g => {
 if (existsSync(envFile)) loadEnvFile(envFile); // LICHESS_TOKEN=...
 const explorer = new MastersExplorer(mastersFile, process.env.LICHESS_TOKEN);
 const opening = deck.cards.filter(c => inOpening(deck.games[c.gameId], c));
+// Asking about new positions takes a while, 3 seconds each, so it says how many there are, and how
+// it's getting on (as Training settings shows when it updates the deck).
+const toAsk = new Set(opening.map(c => mistakeOf(deck.games[c.gameId], c).fen).filter(fen => !explorer.has(fen))).size;
+const seconds = (toAsk * GAP) / 1000;
+if (toAsk)
+  console.log(
+    `Asking the masters database about ${toAsk} new positions, ` +
+      (seconds < 60 ? 'under a minute...' : `about ${Math.round(seconds / 60)} min...`),
+  );
+let asked = 0;
 let bookMoves = 0;
 for (const card of opening) {
   const mistake = mistakeOf(deck.games[card.gameId], card);
+  const isNew = !explorer.has(mistake.fen);
   const checked = withMasterMoves(card, mistake, await explorer.moves(mistake.fen));
+  if (isNew && (++asked % 10 === 0 || asked === toAsk)) console.log(`  ${asked} of ${toAsk}`);
   if (!checked) bookMoves++;
   deck.cards.splice(deck.cards.indexOf(card), 1, ...(checked ? [checked] : []));
 }

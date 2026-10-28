@@ -16,6 +16,7 @@ import { compute as autoShapes } from './autoShape';
 import { renderCeval } from './cevalView';
 import { cardsOfGame, mistakeOf, type Card, type Deck } from './deck';
 import { DeckCtrl } from './deckCtrl';
+import { DeckUpdateCtrl } from './deckUpdate';
 import { getBestEval } from './evalGauge';
 import { detectCheckable, detectPins, detectUndefended } from './motif';
 import type { ReviewHistory } from './reviews';
@@ -425,10 +426,11 @@ test('coming back after the right first move, before rating it, shows the card s
 
 // Training settings shows over the trainer (main.ts), with the trainer's history, and passes on
 // the settings you save. Here, the computer analysis of your games hasn't loaded (yourGames.test.ts
-// tries it).
+// tries it), and the dev server hasn't been asked about "Update deck" (deckUpdate.test.ts does).
 const notLoaded = () => new YourGamesCtrl(deck.username, () => {});
+const noUpdate = () => new DeckUpdateCtrl(deck.builtAt, () => {});
 const trainingSettings = (deckCtrl: DeckCtrl, history: ReviewHistory) =>
-  new SettingsPageCtrl(deck, history, deckCtrl.settings, () => {}, deckCtrl.useSettings, notLoaded());
+  new SettingsPageCtrl(deck, history, deckCtrl.settings, () => {}, deckCtrl.useSettings, notLoaded(), noUpdate());
 
 test('saving Training settings in the middle of a card leaves it as it was, and "Right answers" applies to your next move', async () => {
   const { history, ctrl, deckCtrl } = start();
@@ -459,7 +461,7 @@ test('saving Training settings after a card: the next card is dealt with them', 
 test("a suspended card's board opens a closer look: your move, what Lichess's analysis said, and the game on Lichess", async () => {
   const [card] = deck.cards; // 20.Qh4??, when 20.Qxg7+ led to mate
   const history: ReviewHistory = { cards: {}, log: [], suspended: { [card.id]: new Date().toISOString() } };
-  const page = new SettingsPageCtrl(deck, history, defaultSettings, () => {}, () => {}, notLoaded());
+  const page = new SettingsPageCtrl(deck, history, defaultSettings, () => {}, () => {}, notLoaded(), noUpdate());
   const look = () => find(trainingSettingsView(page), 'dialog.mt-look');
   expect(look()).toBeUndefined();
   click(find(trainingSettingsView(page), 'button.mt-suspended__look'));
@@ -483,7 +485,7 @@ test("for a game analysed here, the closer look says so, and that Lichess hasn't
   const [card] = deck.cards;
   const history: ReviewHistory = { cards: {}, log: [], suspended: { [card.id]: new Date().toISOString() } };
   const here: Deck = { ...deck, games: { [game.id]: analysedHere } };
-  const page = new SettingsPageCtrl(here, history, defaultSettings, () => {}, () => {}, notLoaded());
+  const page = new SettingsPageCtrl(here, history, defaultSettings, () => {}, () => {}, notLoaded(), noUpdate());
   click(find(trainingSettingsView(page), 'button.mt-suspended__look'));
   const look = find(trainingSettingsView(page), 'dialog.mt-look');
   expect(textOf(look)).toContain('Computer analysis made on your computer: Lichess hasn’t analysed this game');

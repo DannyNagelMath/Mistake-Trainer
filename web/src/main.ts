@@ -11,6 +11,7 @@ import { init, attributesModule, classModule, eventListenersModule, propsModule,
 import { blurIfPrimaryClick } from './common';
 import { loadDeck } from './deck';
 import { DeckCtrl } from './deckCtrl';
+import { DeckUpdateCtrl } from './deckUpdate';
 import { onSearching, preload } from './engine';
 import { holdEngines, releaseEngines } from './fishnet';
 import * as keyboard from './keyboard';
@@ -81,6 +82,9 @@ preload();
 const yourGames = new YourGamesCtrl(deck.username, redraw);
 onSearching(searching => (searching ? holdEngines() : releaseEngines()));
 
+// Not in lila: "Update deck", in Training settings, which goes on while you train too.
+const deckUpdate = new DeckUpdateCtrl(deck.builtAt, redraw);
+
 // Not in lila: a card you'd got right but not yet rated when you left comes back as you left it.
 deckCtrl.resume();
 
@@ -99,8 +103,17 @@ function route(): void {
     trainerScroll = window.scrollY;
     // The board's Settings dialog, if it's open, would keep you from using the rest of the page.
     if (deckCtrl.analysis.settingsOpen) deckCtrl.analysis.closeSettings();
-    settingsCtrl = new SettingsPageCtrl(deckCtrl.deck, history, deckCtrl.settings, redraw, deckCtrl.useSettings, yourGames);
+    settingsCtrl = new SettingsPageCtrl(
+      deckCtrl.deck,
+      history,
+      deckCtrl.settings,
+      redraw,
+      deckCtrl.useSettings,
+      yourGames,
+      deckUpdate,
+    );
     yourGames.load(); // the first time
+    deckUpdate.load(); // how it stands now
   } else {
     settingsCtrl = undefined;
     settingsVnode = patch(settingsVnode, hl('main.page-small.box.box-pad.mt-settings-page')); // emptied until next time

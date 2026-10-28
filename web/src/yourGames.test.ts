@@ -6,6 +6,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 import real1 from '../fixtures/real1.json';
 import { cardsOfGame, type Deck } from './deck';
+import { DeckUpdateCtrl } from './deckUpdate';
 import type { ReviewHistory } from './reviews';
 import { defaultSettings } from './settings';
 import { SettingsPageCtrl } from './settingsPage';
@@ -67,7 +68,10 @@ const deck: Deck = {
 };
 const history: ReviewHistory = { cards: {}, log: [] };
 const section = (yourGames: YourGamesCtrl) =>
-  find(view(new SettingsPageCtrl(deck, history, defaultSettings, () => {}, () => {}, yourGames)), 'section.mt-computer-analysis');
+  find(
+    view(new SettingsPageCtrl(deck, history, defaultSettings, () => {}, () => {}, yourGames, new DeckUpdateCtrl(deck.builtAt, () => {}))),
+    'section.mt-computer-analysis',
+  );
 
 test('it counts your games, and the ones Lichess has analysed; the others are to analyse here, newest first', async () => {
   const yourGames = new YourGamesCtrl('mugglesman1982', () => {});
@@ -90,8 +94,7 @@ test('carrying on analyses the games not analysed yet, newest first, and saves e
   expect(textOf(section(yourGames))).toContain('3 of 3 games analysed here.');
   expect(find(section(yourGames), 'button.button')).toBeUndefined(); // nothing left to do
   expect(textOf(section(yourGames))).toContain(
-    'Games analysed here since your deck was built: 2. To add their cards, run npm run update-deck from web, ' +
-      'then reload this page.',
+    'Games analysed here since your deck was built: 2. To add their cards, use “Update deck”, above.',
   );
 });
 

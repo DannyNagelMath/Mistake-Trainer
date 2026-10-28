@@ -1,6 +1,6 @@
 // settingsPageView.ts: Not in lila. Draws Training settings (see settingsPage.ts): how your cards
-// stand, the computer analysis of your games, the settings form, and your suspended cards, each on
-// a small board you can click to look at it up close.
+// stand, updating your deck, the computer analysis of your games, the settings form, and your
+// suspended cards, each on a small board you can click to look at it up close.
 
 import { Chessground } from '@lichess-org/chessground';
 import type { DrawShape } from '@lichess-org/chessground/draw';
@@ -15,6 +15,7 @@ import { makeShapesFromUci } from './autoShape';
 import { renderEval, renderIndex } from './components';
 import type { SettingsPageCtrl } from './settingsPage';
 import type { Card } from './deck';
+import { failureReason } from './deckUpdate';
 import { i18n } from './i18n';
 import { licon } from './licon';
 import { isAlreadyWon, isCollapse, isOpening, progress } from './schedule';
@@ -27,6 +28,7 @@ export function view(ctrl: SettingsPageCtrl): VNode {
   return hl('main.page-small.box.box-pad.mt-settings-page', [
     hl('h1.box__top', 'Training settings'),
     renderCounts(ctrl),
+    renderYourDeck(ctrl),
     renderComputerAnalysis(ctrl),
     renderSettings(ctrl),
     renderSuspended(ctrl),
@@ -45,6 +47,79 @@ function renderCounts(ctrl: SettingsPageCtrl): VNode {
     `Your ${ctrl.deck.cards.length} cards: `,
     [`${p.started} started`, `${p.notStarted} not started`, `${p.suspended} suspended`].join(' · '),
   ]);
+}
+
+// When your deck was built, and "Update deck" (deckUpdate.ts): it downloads the games you've played
+// since and builds the deck again, as npm run update-deck does, showing what it prints as it goes.
+// Once it's done, the page loads again with the new deck when you say so: not by itself, as that
+// would pause the computer analysis, if it's running.
+function renderYourDeck(ctrl: SettingsPageCtrl): VNode {
+  const update = ctrl.deckUpdate;
+  const state = update.status?.state;
+  return hl('section.mt-your-deck', [
+    hl('h2', 'Your deck'),
+    hl(
+      'p',
+      `Built ${date(ctrl.deck.builtAt)}, at ${time(ctrl.deck.builtAt)}. “Update deck” downloads the games you’ve ` +
+        'played since from Lichess, then builds your deck again, with the cards from the new games Lichess has ' +
+        'analysed, and from the games analysed here (Computer analysis, below). Your reviews stay as they are.',
+    ),
+    update.error && hl('p.mt-run__error', update.error),
+    update.newDeck()
+      ? [
+          hl('p', doneText(ctrl)),
+          hl('button.button', { attrs: { type: 'button' }, on: { click: reloadToTrain } }, 'Reload'),
+        ]
+      : [
+          state === 'failed' && renderFailure(update.status!.lines),
+          hl(
+            'button.button',
+            { attrs: { type: 'button', disabled: state === 'running' }, on: { click: update.start } },
+            state === 'running' ? 'Updating…' : 'Update deck',
+          ),
+        ],
+    (state === 'running' || state === 'failed' || update.newDeck()) &&
+      update.status!.lines.length > 0 &&
+      renderLog(update.status!.lines),
+  ]);
+}
+
+// e.g. "Done: your deck now has 3,762 cards, 12 more than before. Reload the page to train with them."
+function doneText(ctrl: SettingsPageCtrl): string {
+  const built = ctrl.deckUpdate.built;
+  if (!built) return 'Done. Reload the page to train with your new deck.';
+  const count = (n: number) => n.toLocaleString('en');
+  const change = built.cards.length - ctrl.deck.cards.length;
+  return (
+    `Done: your deck now has ${count(built.cards.length)} cards, ` +
+    (change > 0 ? `${count(change)} more` : change < 0 ? `${count(-change)} fewer` : 'as many') +
+    ' than before. Reload the page to train with them.' +
+    (ctrl.yourGames.loaded?.run.running ? ' That pauses the computer analysis below: carry on after.' : '')
+  );
+}
+
+// Why the update stopped, if what it printed says, as it may be well up in the box below.
+function renderFailure(lines: string[]): VNode {
+  const reason = failureReason(lines);
+  return hl('p.mt-run__error', [
+    'The update stopped, so your deck is as it was.',
+    reason ? [hl('br'), reason] : ' What it printed is below.',
+  ]);
+}
+
+// What the update has printed, in a box that keeps its latest lines in view.
+const renderLog = (lines: string[]): VNode =>
+  hl(
+    'pre.mt-your-deck__log',
+    { hook: { insert: v => scrollToEnd(v.elm), postpatch: (_, v) => scrollToEnd(v.elm) } },
+    [lines.join('\n')],
+  );
+const scrollToEnd = (el: Node | undefined) => (el as HTMLElement).scrollTo(0, (el as HTMLElement).scrollHeight);
+
+// Back to training, with the new deck: the page loads again, without #settings.
+function reloadToTrain(): void {
+  window.history.replaceState(null, '', location.pathname);
+  location.reload();
 }
 
 // Your games (yourGames.ts): how many Lichess has analysed, the run on the others, here, and whether
@@ -82,7 +157,7 @@ function renderNotInDeck(ctrl: SettingsPageCtrl, run: AnalysisRun): VNode | unde
     'p',
     since
       ? `Games analysed here since your deck was built: ${since.toLocaleString('en')}. To add their cards, ` +
-          'run npm run update-deck from web, then reload this page.'
+          'use “Update deck”, above.'
       : 'Your deck has the cards from all the games analysed here so far.',
   );
 }
@@ -286,6 +361,7 @@ const color = { white: 'White', black: 'Black' };
 
 const date = (t: number | string): string =>
   new Date(t).toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' });
+const time = (t: number | string): string => new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
 // e.g. "Move 20 as White against RealAgentCooper"
 function caption(card: Card, game: LichessGameJson): string {

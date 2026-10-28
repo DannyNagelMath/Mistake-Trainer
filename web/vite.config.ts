@@ -12,12 +12,19 @@
 //   GET  /api/games     returns the games you've downloaded (../pipeline/data/games.ndjson)
 //   GET  /api/masters   returns the masters database's answers saved when the deck was built
 //                       (../pipeline/data/masters.json)
+// and one for "Update deck" in Training settings (see deckUpdate.ts):
+//   GET  /api/update-deck   says how it stands (idle, running, done, or failed), with what it has
+//                           printed so far
+//   POST /api/update-deck   starts it, unless it's running already: it runs scripts/updateDeck.ts
+//                           in the background (scripts/deckUpdateJob.ts), as npm run update-deck
+//                           does, which downloads your new games and builds the deck again
 // It also serves Stockfish to the page at /stockfish/ (see stockfishFiles below), and makes the
 // pages "cross-origin isolated" so that it can run on several threads (crossOriginIsolation).
 // They only exist in the dev server (npm run dev), which is how this app runs.
 // To start your review history again, delete data/reviews.json; to go back to the default
 // settings, delete data/settings.json. To use other files, e.g. for testing, set the
-// REVIEWS_FILE, SETTINGS_FILE, and ANALYSIS_FILE environment variables to their paths.
+// REVIEWS_FILE, SETTINGS_FILE, and ANALYSIS_FILE environment variables to their paths, and
+// UPDATE_DECK_SCRIPT to the script "Update deck" runs instead of scripts/updateDeck.ts.
 // Your review history is backed up once a day (backupHistory below).
 
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
@@ -26,6 +33,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, type Plugin } from 'vite';
 
+import { DeckUpdateJob } from './scripts/deckUpdateJob.ts';
 import type { SavedAnalysis } from './src/analyses.ts';
 import type { ReviewEntry, ReviewHistory } from './src/reviews.ts';
 
@@ -36,6 +44,13 @@ const settingsFile = process.env.SETTINGS_FILE ?? dataFile('settings.json');
 const analysisFile = process.env.ANALYSIS_FILE ?? dataFile('analysis.json');
 const gamesFile = pipelineFile('games.ndjson');
 const mastersFile = pipelineFile('masters.json');
+
+// "Update deck" runs updateDeck.ts, with node and tsx, as npm run update-deck does.
+const updateDeck = new DeckUpdateJob(
+  process.execPath,
+  ['--import', 'tsx', process.env.UPDATE_DECK_SCRIPT ?? 'scripts/updateDeck.ts'],
+  fileURLToPath(new URL('.', import.meta.url)),
+);
 
 const readJson = <T>(file: string, empty: T): T => (existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : empty);
 
@@ -167,6 +182,16 @@ function dataApi(): Plugin {
       server.middlewares.use(
         '/api/masters',
         handler(() => readJson(mastersFile, {}), readOnly),
+      );
+      server.middlewares.use(
+        '/api/update-deck',
+        handler(
+          () => updateDeck.status,
+          () => {
+            updateDeck.start();
+            return undefined;
+          },
+        ),
       );
     },
   };

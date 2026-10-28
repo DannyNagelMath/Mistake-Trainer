@@ -208,6 +208,19 @@ body:not(.mt-settings-shown) main.mt-settings-page {
   gap: 0.6em;
   margin-top: 1.2em;
 }
+/* "Update deck" in Training settings (settingsPageView.ts renderYourDeck): what it prints, in a
+   box that scrolls. */
+.mt-your-deck__log {
+  max-height: 16em;
+  overflow: auto;
+  margin: 1.2em 0 0;
+  padding: 0.6em 0.8em;
+  background: var(--c-bg-zebra);
+  border: 1px solid var(--c-border);
+  border-radius: 3px;
+  font-size: 0.9em;
+  white-space: pre-wrap;
+}
 /* A run of analyses (analysisRunView.ts), in Training settings and on the comparison page. */
 .mt-run {
   margin: 1.5em 0 2em;

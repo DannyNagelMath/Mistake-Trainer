@@ -18,7 +18,7 @@ import { dirname } from 'node:path';
 import type { MasterMove } from '../src/deck';
 
 const ENDPOINT = 'https://explorer.lichess.org/masters';
-const GAP = 3000; // milliseconds between requests
+export const GAP = 3000; // milliseconds between requests
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -34,6 +34,9 @@ export class MastersExplorer {
   ) {
     this.answers = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : {};
   }
+
+  // Whether the position's answer is saved, so that looking it up asks Lichess nothing.
+  has = (fen: string): boolean => fen in this.answers;
 
   // The moves masters have played from the position: the saved answer, or Lichess's.
   async moves(fen: string): Promise<MasterMove[]> {
