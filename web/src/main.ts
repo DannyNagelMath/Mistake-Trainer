@@ -19,11 +19,15 @@ import { loadSettings } from './settings';
 import { SettingsPageCtrl } from './settingsPage';
 import { view as settingsView } from './settingsPageView';
 import { hl } from './snabbdom';
+import topBar from './topBar';
 import { view } from './view';
 import { YourGamesCtrl } from './yourGames';
 
 // Step 4a: the same snabbdom setup as lila's (ui/analyse/src/view/util.ts).
 const patch = init([classModule, attributesModule, propsModule, eventListenersModule]);
+
+// From lila's site script: the header, as the page scrolls.
+topBar();
 
 const element = document.querySelector('main.analyse') as HTMLElement;
 

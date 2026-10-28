@@ -385,13 +385,7 @@ export class AnalysisCtrl implements RetroRoot {
 
   // From lila: the best move from here according to the game's computer analysis, which gives it on
   // the judged move that follows in the game (treeOps.withMainlineChild).
-  // Not in lila: none if that move is a mistake whose answer "Learn from your mistakes" is hiding.
-  // lila's check (showBestMoveArrows) is on the position you're at, not on the move that follows,
-  // so once a card was done, the blue arrow before another of the game's cards gave its answer.
-  nextNodeBest = (): string | undefined => {
-    const next = this.node.children[0];
-    return next && !this.retro?.hideComputerLine(next) ? next.eval?.best : undefined;
-  };
+  nextNodeBest = (): string | undefined => this.node.children[0]?.eval?.best;
 
   // From lila: annotations on the board, when the setting is on, and not while you're solving
   // (showMoveGlyphs is false then too: AnalysisCtrl.hidingHints).

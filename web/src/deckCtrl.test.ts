@@ -493,27 +493,35 @@ test("for a game analysed here, the closer look says so, and that Lichess hasn't
   );
 });
 
-test("once a card is done, the game's other mistakes, other cards, keep their analysis hidden, and say so", () => {
+test("once a card is done, the game's analysis all shows, at its other mistakes, other cards, too", () => {
   const { ctrl } = start();
   playSolution(ctrl);
   const moveList = textOf(ctrl.treeView.render());
-  expect(moveList).toContain('Another card: its analysis stays hidden');
-  expect(moveList).not.toContain('Learn from this mistake'); // lila's words, for a whole game
-});
-
-test("once a card is done, the position before another card's mistake has no blue arrow giving its answer (not in lila)", () => {
-  const { ctrl } = start();
-  playSolution(ctrl);
-  const blueArrows = () => autoShapes(ctrl).filter(s => s.brush === 'paleBlue').map(s => s.orig + s.dest);
   const done = ctrl.retro!.current()!;
   const others = deck.cards.filter(c => c.ply !== done.fault.node.ply);
   expect(others).not.toEqual([]);
   for (const other of others) {
-    ctrl.userJump(ctrl.mainlinePlyToPath(other.ply - 1));
-    expect(blueArrows()).toEqual([]); // lila's would be Lichess's best move here: that card's answer
+    const mistake = ctrl.mainline.find(n => n.ply === other.ply)!;
+    expect(moveList).toContain(mistake.comments!.find(c => c.by === 'lichess')!.text); // e.g. "Blunder. Qxb4 was best."
   }
-  ctrl.userJump(done.prev.path); // the card that's done still has its answer's arrow
-  expect(blueArrows()).toEqual([done.solution.node.uci]);
+  expect(moveList).not.toContain('Learn from this mistake'); // lila's words for a mistake its review hasn't got to yet
+});
+
+test("once a card is done, the best move arrows show everywhere, around the game's other mistakes too", () => {
+  const { ctrl } = start();
+  playSolution(ctrl);
+  const arrows = (brush: string) => autoShapes(ctrl).filter(s => s.brush === brush).map(s => s.orig + s.dest);
+  const done = ctrl.retro!.current()!;
+  const others = deck.cards.filter(c => c.ply !== done.fault.node.ply);
+  for (const other of others) {
+    const best = ctrl.mainline.find(n => n.ply === other.ply)!.eval!.best!.slice(0, 4); // that card's answer
+    ctrl.userJump(ctrl.mainlinePlyToPath(other.ply - 1)); // the position before the mistake
+    expect(arrows('paleBlue')).toEqual([best]); // the best move from here
+    ctrl.userJump(ctrl.mainlinePlyToPath(other.ply)); // after it
+    expect(arrows('paleGreen')).toEqual([best]); // what should have been played instead
+  }
+  ctrl.userJump(done.prev.path); // and the card that's done, as before
+  expect(arrows('paleBlue')).toEqual([done.solution.node.uci]);
 });
 
 test("a move is compared with our engine's eval of the position before, not Lichess's (not in lila)", async () => {
@@ -528,14 +536,14 @@ test("a move is compared with our engine's eval of the position before, not Lich
   expect(engine.asked).toEqual([before, ctrl.node.fen]); // the position before, then after the move
 });
 
-test("Training settings' Right answers: only the best move in the computer analysis, whoever made it", () => {
+test("Training settings' Right answers: only the engine's best move, or also moves nearly as good", () => {
   const { history, deckCtrl } = start();
   const text = textOf(trainingSettingsView(trainingSettings(deckCtrl, history)));
-  expect(text).toContain('only the best move in the computer analysis');
-  expect(text).not.toContain('Lichess’s best move');
+  expect(text).toContain('only the engine’s best move');
+  expect(text).toContain('On: only the engine’s best move counts as right. Off: moves nearly as good also count');
 });
 
-test("with 'only the best move in the computer analysis' on, any other move is wrong at once, without the engine", () => {
+test("with 'only the engine's best move' on, any other move is wrong at once, without the engine", () => {
   const [card] = deck.cards;
   const deckCtrl = new DeckCtrl({ ...deck, cards: [card] }, { cards: {}, log: [] }, { ...defaultSettings, bestMoveOnly: true }, () => {});
   const ctrl = deckCtrl.analysis;

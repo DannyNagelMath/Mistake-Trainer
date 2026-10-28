@@ -239,11 +239,10 @@ function renderSettings(ctrl: SettingsPageCtrl): VNode {
         ['bestMoveOnly'],
         [
           hl('input', { attrs: { type: 'checkbox', id: 'bestMoveOnly', name: 'bestMoveOnly', checked: shown.bestMoveOnly } }),
-          ' only the best move in the computer analysis',
+          ' only the engine’s best move',
         ],
-        'Off, as on Lichess: a move nearly as good as the best counts too, as Stockfish judges it on ' +
-          'your computer. On: only the best move in the game’s computer analysis counts (and moves masters ' +
-          'have played, and checkmates), so the verdict is the same on any computer, and needs no engine.',
+        'On: only the engine’s best move counts as right. Off: moves nearly as good also count, as on ' +
+          'Lichess. Either way, a checkmate counts, and so do moves masters have played in the opening.',
       ),
 
       hl('div.mt-settings__actions', [

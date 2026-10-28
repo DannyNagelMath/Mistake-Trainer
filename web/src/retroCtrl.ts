@@ -273,8 +273,10 @@ export function make(root: RetroRoot, color: Color): RetroCtrl {
     if (current()) solvedPlies.push(current()!.fault.node.ply);
   }
 
+  // Step 9: in card mode, only the card's own mistake, until it's solved. The game's other mistakes
+  // are other cards, but once this card is done, their analysis shows like the rest of the game's.
   const hideComputerLine = (node: TreeNode): boolean =>
-    isPlyLearnCandidate(node.ply) && !isPlySolved(node.ply);
+    isPlyLearnCandidate(node.ply) && !isPlySolved(node.ply) && (!card || node.ply === card.ply);
 
   function showBadNode(): TreeNode | undefined {
     const cur = current();
