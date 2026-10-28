@@ -13,7 +13,7 @@ import type { Key } from '@lichess-org/chessground/types'; // Step 3a
 
 import { AnalysisSettingsCtrl } from './analysisSettings';
 import { compute as computeAutoShapes } from './autoShape';
-import { displayColumns, storedBooleanProp, toggle, type Toggle } from './common';
+import { displayColumns, propWithEffect, storedBooleanProp, toggle, type Toggle } from './common';
 import { ForkCtrl } from './fork';
 import { IdbTree } from './idbTree';
 import MotifCtrl from './motif';
@@ -25,37 +25,66 @@ import * as treeOps from './tree';
 import { TreeView } from './treeView';
 import type { LichessGameJson, TreeNode } from './tree';
 
-// The tree plus the operations retroCtrl needs, like lila's TreeWrapper (ui/lib/src/tree/tree.ts).
+// The tree plus the operations retroCtrl, the move list, and its menu need, like lila's TreeWrapper
+// (ui/lib/src/tree/tree.ts).
 export interface GameTree {
   root: TreeNode;
   nodeAtPath(path: string): TreeNode;
   getNodeList(path: string): TreeNode[]; // Step 7
   pathIsMainline(path: string): boolean;
+  pathIsForcedVariation(path: string): boolean; // for the move list's menu
+  lastMainlineNode(path: string): TreeNode; // for the menu
   deleteNodeAt(path: string): void;
+  promoteAt(path: string, toMainline: boolean): void; // for the menu
+  forceVariationAt(path: string, force: boolean): void; // for the menu
   updateAt(path: string, update: (node: TreeNode) => void): void; // for idbTree
+  walkUntilTrue(fn: (node: TreeNode, isMainline: boolean) => boolean, from?: string, branchOnly?: boolean): boolean; // for idbTree
 }
 
 function makeGameTree(root: TreeNode): GameTree {
+  // The node at `path`, or undefined if there isn't one (lila's nodeAtPathOrNull).
+  const nodeAtPathOrNull = (path: string): TreeNode | undefined => {
+    let node: TreeNode | undefined = root;
+    for (let i = 0; node && i < path.length; i += 2) node = node.children.find(c => c.id === path.slice(i, i + 2));
+    return node;
+  };
+
+  // Step 7: the root, then each node along the path, ending with the node at `path`.
+  const getNodeList = (path: string): TreeNode[] => {
+    const nodes = [root];
+    for (let i = 2; i <= path.length; i += 2) nodes.push(treeOps.nodeAtPath(root, path.slice(0, i)));
+    return nodes;
+  };
+
+  // True if every step of the path follows children[0].
+  const pathIsMainline = (path: string): boolean => {
+    let node = root;
+    for (let i = 0; i < path.length; i += 2) {
+      const child = node.children[0];
+      if (child?.id !== path.slice(i, i + 2)) return false;
+      node = child;
+    }
+    return true;
+  };
+
   return {
     root,
     nodeAtPath: path => treeOps.nodeAtPath(root, path),
+    getNodeList,
+    pathIsMainline,
 
-    // Step 7: the root, then each node along the path, ending with the node at `path`.
-    getNodeList(path) {
-      const nodes = [root];
-      for (let i = 2; i <= path.length; i += 2) nodes.push(treeOps.nodeAtPath(root, path.slice(0, i)));
-      return nodes;
-    },
+    // From lila: whether a move on the way to `path` was made into a variation ("Convert to variation").
+    pathIsForcedVariation: path => getNodeList(path).some(n => n.forceVariation),
 
-    // True if every step of the path follows children[0].
-    pathIsMainline(path) {
+    // From lila: the last node on the way to `path` that's on the main line.
+    lastMainlineNode(path) {
       let node = root;
       for (let i = 0; i < path.length; i += 2) {
         const child = node.children[0];
-        if (child?.id !== path.slice(i, i + 2)) return false;
+        if (child?.id !== path.slice(i, i + 2)) return node;
         node = child;
       }
-      return true;
+      return node;
     },
 
     // Removes the node at `path`, and everything after it, from its parent's children.
@@ -65,11 +94,62 @@ function makeGameTree(root: TreeNode): GameTree {
       parent.children = parent.children.filter(c => c.id !== id);
     },
 
+    // From lila: "Promote variation" and "Make main line". Going back from `path`, the first move
+    // that's a variation becomes its parent's first continuation, children[0], in place of the line
+    // it branched from; with toMainline, every such move on the way, which makes the line through
+    // `path` the main line. A move made into a variation ("Convert to variation") counts as one, and
+    // is made a plain move again.
+    promoteAt(path, toMainline) {
+      const nodes = getNodeList(path);
+      for (let i = nodes.length - 2; i >= 0; i--) {
+        const node = nodes[i + 1];
+        const parent = nodes[i];
+        if (parent.children[0].id !== node.id) {
+          parent.children = parent.children.filter(n => n.id !== node.id); // lila's ops.removeChild
+          parent.children.unshift(node);
+          if (!toMainline) break;
+        } else if (node.forceVariation) {
+          node.forceVariation = false;
+          if (!toMainline) break;
+        }
+      }
+    },
+
+    // From lila: "Convert to variation" makes the move at `path` (and the main line after it) a
+    // variation, and takes that away from any other move: one at a time.
+    forceVariationAt(path, force) {
+      const unforce = (n: TreeNode) => {
+        n.forceVariation = false;
+        n.children.forEach(unforce);
+      };
+      unforce(root); // lila's ops.updateAll(root, n => (n.forceVariation = false))
+      const node = nodeAtPathOrNull(path);
+      if (node) node.forceVariation = force;
+    },
+
     // Changes the node at `path`, if there is one.
     updateAt(path, update) {
-      let node: TreeNode | undefined = root;
-      for (let i = 0; node && i < path.length; i += 2) node = node.children.find(c => c.id === path.slice(i, i + 2));
+      const node = nodeAtPathOrNull(path);
       if (node) update(node);
+    },
+
+    // From lila: calls fn on the node at `from`, then on each move after it, variations included,
+    // until fn returns true, and says whether it did. fn also learns whether the node is on the main
+    // line. With branchOnly, only the variations from `from` are walked, not the line it's on.
+    walkUntilTrue(fn, from = '', branchOnly = false) {
+      function traverse(node: TreeNode, isMainline: boolean): boolean {
+        if (fn(node, isMainline)) return true;
+        let i = branchOnly ? 1 : 0;
+        branchOnly = false;
+        while (i < node.children.length) {
+          const c = node.children[i];
+          if (traverse(c, isMainline && i === 0 && !c.forceVariation)) return true;
+          i++;
+        }
+        return false;
+      }
+      const n = nodeAtPathOrNull(from);
+      return n ? traverse(n, pathIsMainline(from)) : false;
     },
   };
 }
@@ -80,7 +160,9 @@ function makeGameTree(root: TreeNode): GameTree {
 // Step 9: the fields marked `!` are set in initialize, which the constructor calls.
 export class AnalysisCtrl implements RetroRoot {
   tree!: GameTree;
-  mainline!: TreeNode[]; // the root node, then one node per game move
+  // The root node, then each move of the main line: the game's, unless you've changed it with the
+  // move list's menu. As in lila (setPath), it's worked out again on every jump.
+  mainline!: TreeNode[];
   node!: TreeNode; // the node the board shows
   path!: string; // the path of `node`; '' is the starting position
   nodeList!: TreeNode[]; // Step 7: the root, then each node along `path`, ending with `node`
@@ -99,9 +181,18 @@ export class AnalysisCtrl implements RetroRoot {
   // Step 6: for the move list.
   game!: LichessGameJson; // lila keeps the game's details in ctrl.data.game
   gamePath!: string; // the path of the game's last move
+  turns!: number; // the ply of the game's last move, lila's data.game.turns
   readonly treeView: TreeView;
   readonly idbTree: IdbTree = new IdbTree(this); // which variations are folded away, for each game
   showComments = true;
+  // From lila, for the move list's right-click menu (contextMenu.ts): the move it's open on, and the
+  // moves that "Copy ... PGN" would copy, or "Delete from here" would delete, while the pointer is
+  // over it, for the list to highlight.
+  contextMenuPath?: string;
+  readonly pendingCopy = propWithEffect<{ eventPath: string; withVariations: boolean } | null>(null, () =>
+    this.redraw(),
+  );
+  readonly pendingDeletionPath = propWithEffect<string | null>(null, () => this.redraw());
   // The analysis board's settings, which "Settings" in the menu changes (analysisSettings.ts).
   // As in lila, a change redraws the board's arrows and annotations, and the page.
   readonly settings = new AnalysisSettingsCtrl(() => {
@@ -149,6 +240,7 @@ export class AnalysisCtrl implements RetroRoot {
     this.tree = makeGameTree(treeOps.buildTree(game));
     this.mainline = treeOps.mainline(this.tree.root);
     this.gamePath = this.mainline.map(n => n.id).join('');
+    this.turns = this.mainline[this.mainline.length - 1].ply;
     this.fork = new ForkCtrl(this);
     this.orientation = orientation;
     this.flipped = false;
@@ -178,8 +270,9 @@ export class AnalysisCtrl implements RetroRoot {
 
   // Step 5: for the retro panel, which says "Waiting for analysis" until this is true.
   // Trim: lila checks for an eval on the root node. The API's analysis starts after the first
-  // move, so our root never has one; this checks the first move instead.
-  hasFullComputerAnalysis = (): boolean => !!this.mainline[1]?.eval;
+  // move, so our root never has one; this checks the game's analysis instead (not the main line's
+  // first move, which you can change with the move list's menu).
+  hasFullComputerAnalysis = (): boolean => !!this.game.analysis?.length;
 
   // Step 6: the moves after `node` that the move list shows, from lila's visibleChildren.
   // An engine line is hidden while its mistake is unsolved, unless the board is on it.
@@ -216,6 +309,55 @@ export class AnalysisCtrl implements RetroRoot {
   // Not in lila: none while hiding hints.
   showMoveGlyphs = (): boolean => this.settings.showStaticAnalysis && !this.hidingHints();
 
+  // From lila: whether the move at `path` is one that "Copy ... PGN" would copy, while the pointer is
+  // over it. On the main line, it copies the main line; in a variation, the moves that lead to it and
+  // the ones after it (lila's treePath.areComparable: one path leads to the other).
+  isPendingCopy = (path: string, isMainline: boolean): boolean => {
+    const pending = this.pendingCopy();
+    if (!pending) return false;
+    const { eventPath, withVariations } = pending;
+    return withVariations ? path.startsWith(eventPath) || eventPath.startsWith(path) : isMainline;
+  };
+
+  // From lila: "Delete from here" in the move list's menu deletes the move at `path` and everything
+  // after it. It asks first if that's 10 moves or more, or any comments, such as the computer
+  // analysis's. If the board was on one of those moves, it goes back to the move before.
+  // Trim: lila asks with a dialog of its own (lib/view/dialogs.ts), and so waits for the answer
+  // (async); this is the browser's.
+  deleteNode = (path: string): void => {
+    this.pendingDeletionPath(null);
+    const node = this.tree.nodeAtPath(path);
+    const count = treeOps.countChildrenAndComments(node);
+    if (
+      (count.nodes >= 10 || count.comments > 0) &&
+      !confirm(
+        'Delete ' +
+          plural('move', count.nodes) +
+          (count.comments ? ' and ' + plural('comment', count.comments) : '') +
+          '?',
+      )
+    )
+      return;
+    this.tree.deleteNodeAt(path);
+    if (this.path.startsWith(path)) this.userJump(path.slice(0, -2));
+    else this.userJump(this.path);
+    this.redraw();
+  };
+
+  // From lila: "Promote variation" (toMainline false) and "Make main line" (true), in the move list's
+  // menu (GameTree.promoteAt). The board goes to the move.
+  promote = (path: string, toMainline: boolean): void => {
+    this.tree.promoteAt(path, toMainline);
+    this.userJump(path);
+  };
+
+  // From lila: "Convert to variation" in the move list's menu (GameTree.forceVariationAt). The board
+  // goes to the move.
+  forceVariation = (path: string, force: boolean): void => {
+    this.tree.forceVariationAt(path, force);
+    this.userJump(path);
+  };
+
   // Step 3a: the board settings for the current node, like lila's makeCgOpts.
   // Step 3a/3b: the board settings for the current node, like lila's makeCgOpts.
   cgConfig = (): CgConfig => {
@@ -244,6 +386,7 @@ export class AnalysisCtrl implements RetroRoot {
     this.node = this.tree.nodeAtPath(path);
     this.path = path;
     this.nodeList = this.tree.getNodeList(path); // Step 7: like lila's setPath
+    this.mainline = treeOps.mainline(this.tree.root); // like lila's setPath: the move list's menu can change it
     this.idbTree.revealNode(); // like lila's setPath
     this.onMainline = this.tree.pathIsMainline(path);
     if (pathChanged) this.retro?.onJump();
@@ -482,3 +625,6 @@ export class AnalysisCtrl implements RetroRoot {
 function positionOf(node: TreeNode): Chess {
   return Chess.fromSetup(parseFen(node.fen).unwrap()).unwrap();
 }
+
+// From lila's ui/analyse/src/view/util.ts: e.g. "1 move", "12 moves".
+const plural = (noun: string, nb: number): string => nb + ' ' + (nb === 1 ? noun : noun + 's');

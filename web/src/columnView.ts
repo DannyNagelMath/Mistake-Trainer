@@ -41,27 +41,31 @@ class ColumnView extends InlineView {
     const isWhite = child.ply % 2 === 1;
     const comments = this.commentNodes(child);
     const interruptData = { class: { anchor: parentDisclose === 'expanded' } };
-    // Trim: lila first checks child.forceVariation, a study feature.
-    return [
-      isWhite && renderIndex(child.ply, false),
-      this.moveNode(child, opts),
-      // A variation or comment after White's move breaks the row: "..." fills Black's column before
-      // it, and the move number repeats with "..." after it.
-      parentDisclose !== 'collapsed' &&
-        (siblings.length > 0 || comments.length > 0) && [
-          isWhite && emptyMove(),
-          hl('interrupt', interruptData, [
-            comments,
-            siblings.length > 0 ? this.lines(siblings, opts) : parentDisclose && this.disclosureConnector(parentPath),
-          ]),
-          isWhite && child.children.length > 0 && [renderIndex(child.ply, false), emptyMove()],
-        ],
-      this.renderNodes(this.ctrl.visibleChildren(child), {
-        parentPath: childPath,
-        parentNode: child,
-        parentDisclose: this.ctrl.idbTree.discloseOf(child, true),
-        isMainline: true,
-      }),
-    ];
+    // A move made into a variation ("Convert to variation") is written as one, with the others.
+    return child.forceVariation
+      ? hl('interrupt', interruptData, this.lines([child, ...siblings], opts))
+      : [
+          isWhite && renderIndex(child.ply, false),
+          this.moveNode(child, opts),
+          // A variation or comment after White's move breaks the row: "..." fills Black's column before
+          // it, and the move number repeats with "..." after it.
+          parentDisclose !== 'collapsed' &&
+            (siblings.length > 0 || comments.length > 0) && [
+              isWhite && emptyMove(),
+              hl('interrupt', interruptData, [
+                comments,
+                siblings.length > 0
+                  ? this.lines(siblings, opts)
+                  : parentDisclose && this.disclosureConnector(parentPath),
+              ]),
+              isWhite && child.children.length > 0 && [renderIndex(child.ply, false), emptyMove()],
+            ],
+          this.renderNodes(this.ctrl.visibleChildren(child), {
+            parentPath: childPath,
+            parentNode: child,
+            parentDisclose: this.ctrl.idbTree.discloseOf(child, true),
+            isMainline: true,
+          }),
+        ];
   }
 }

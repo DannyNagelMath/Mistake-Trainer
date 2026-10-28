@@ -1,5 +1,5 @@
-// common.ts: small helpers from lila's ui/lib (master, commit 27ffc8b): toggle, repeater, and
-// blurIfPrimaryClick from src/common.ts, storedBooleanProp from src/storage.ts,
+// common.ts: small helpers from lila's ui/lib (master, commit 27ffc8b): toggle, repeater,
+// blurIfPrimaryClick, and propWithEffect from src/common.ts, storedBooleanProp from src/storage.ts,
 // isTouchDevice, isMac, and displayColumns from src/device.ts,
 // addPointerListeners from src/pointer.ts, and stepwiseScroll from src/view/stepwiseScroll.ts.
 // Every change from lila's version is marked with a comment starting "Trim:".
@@ -51,6 +51,23 @@ export function blurIfPrimaryClick(e: Event): void {
   if (target instanceof HTMLElement && e.button === 0 && (e.clientX || e.clientY))
     requestAnimationFrame(() => target.blur());
 }
+
+// A value: read it with p(), set it with p(value), which also runs `effect`, e.g. a redraw.
+// Trim: lila's type is Prop, which its prop() returns too (retroCtrl.ts has a copy of that one).
+export type PropWithEffect<T> = {
+  (): T;
+  (v: T): T;
+};
+export const propWithEffect = <A>(initialValue: A, effect: (value: A) => void): PropWithEffect<A> => {
+  let value = initialValue;
+  return (v?: A) => {
+    if (v !== undefined) {
+      value = v;
+      effect(v);
+    }
+    return value;
+  };
+};
 
 // ---------- storage.ts ----------
 

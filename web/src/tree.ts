@@ -83,6 +83,9 @@ export interface TreeNode {
   ceval?: EngineEval;
   comp?: boolean; // only the first node of an engine line is marked comp = true
   collapsed?: boolean; // its variations are folded away in the move list (variation hiding)
+  // From lila: the main line from this move on is shown as a variation ("Convert to variation", in
+  // the move list's menu), although it's still children[0]. Only one move at a time has it.
+  forceVariation?: boolean;
   glyphs?: { id: number; symbol: string; name: string }[];
   comments?: TreeComment[]; // Step 6: e.g. "Mistake. Nf3 was best." by 'lichess', on the judged move
   clock?: number; // Step 8: the clock of whoever just moved, in centiseconds; at the root, the starting time
@@ -204,6 +207,21 @@ export const hasBranching = (node: TreeNode, maxDepth: number): boolean =>
 // True if `descendant` is `container` or somewhere in the moves after it.
 export function contains(container: TreeNode, descendant: TreeNode): boolean {
   return container === descendant || !!container.children?.some(child => contains(child, descendant));
+}
+
+// How many moves there are from `node` on, itself included, and how many comments they have: for
+// "Delete from here" in the move list's menu, which asks first when it's a lot.
+export function countChildrenAndComments(node: TreeNode): { nodes: number; comments: number } {
+  const count = {
+    nodes: 1,
+    comments: (node.comments || []).length,
+  };
+  node.children.forEach(function (child) {
+    const c = countChildrenAndComments(child);
+    count.nodes += c.nodes;
+    count.comments += c.comments;
+  });
+  return count;
 }
 
 // How many moves apart two paths are, going back to where they split and forward again.

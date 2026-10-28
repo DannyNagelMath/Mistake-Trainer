@@ -53,16 +53,18 @@ export class InlineView {
 
   renderNodes([child, ...siblings]: TreeNode[], args: Args): LooseVNodes {
     if (!child) return undefined;
-    const { parentDisclose } = args;
-    // Trim: lila first checks child.forceVariation, a study feature.
-    return [
-      this.moveNode(child, args),
-      parentDisclose !== 'collapsed' && [
-        this.commentNodes(child),
-        siblings[0] && hl('interrupt', this.lines(siblings, args)),
-      ],
-      this.renderNodes(this.ctrl.visibleChildren(child), this.childArgs(child, args, true)),
-    ];
+    const { isMainline, parentDisclose } = args;
+    // A move made into a variation ("Convert to variation") is written as one, with the others.
+    return child.forceVariation && isMainline
+      ? hl('interrupt', this.lines([child, ...siblings], args))
+      : [
+          this.moveNode(child, args),
+          parentDisclose !== 'collapsed' && [
+            this.commentNodes(child),
+            siblings[0] && hl('interrupt', this.lines(siblings, args)),
+          ],
+          this.renderNodes(this.ctrl.visibleChildren(child), this.childArgs(child, args, true)),
+        ];
   }
 
   commentNodes(node: TreeNode, classes: Classes = {}): LooseVNodes[] {
@@ -161,10 +163,13 @@ export class InlineView {
           (!parenthetical || parentNode.children[0] !== node))); // ugh
     const classes: Classes = {
       mainline: isMainline && this.inline,
+      // Trim: lila's conceal and hide classes, for broadcasts.
       active: path === ctrl.path,
       current: path === currentPath,
       nongame: !currentPath && !!ctrl.gamePath && path.startsWith(ctrl.gamePath) && path !== ctrl.gamePath,
-      // Trim: no conceal/hide (broadcasts), context-menu, pending-deletion, or pending-copy classes yet.
+      'context-menu': path === ctrl.contextMenuPath,
+      'pending-deletion': path.startsWith(ctrl.pendingDeletionPath() || ' '),
+      'pending-copy': ctrl.isPendingCopy(path, isMainline),
     };
     const glyphs = [...(node.glyphs ?? [])]; // Trim: lila adds glyphs from live annotation here.
     if (ctrl.showMoveGlyphs()) {

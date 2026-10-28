@@ -6,6 +6,8 @@ import type { Hooks, VNode } from 'snabbdom';
 
 import type { AnalysisCtrl } from './analysisCtrl';
 import { renderColumnView } from './columnView';
+import { addPointerListeners, isTouchDevice } from './common';
+import { renderContextMenu } from './contextMenu';
 import { renderInlineView } from './inlineView';
 import { onInsert } from './snabbdom';
 
@@ -34,8 +36,22 @@ export class TreeView {
     return {
       ...onInsert(el => {
         if (ctrl.path !== '') this.autoScrollRequest = 'instant';
-        // Trim: lila opens a context menu on right-click (or double-click or long press on touch
-        // screens), to delete or promote variations, copy them, and so on.
+        const ctxMenuCallback = (e: MouseEvent) => {
+          // Not in lila: no menu while you're solving a card, when copying the moves would give the
+          // rest of the game away, and changing them could upset the card. The browser's own menu
+          // opens instead, as it would elsewhere.
+          if (ctrl.hidingHints()) return true;
+          renderContextMenu(e, ctrl, eventPath(e) ?? '');
+          ctrl.redraw();
+          return false;
+        };
+        // Trim: in lila's debug mode, a double-click opens the menu instead, to leave right-clicks
+        // to the browser's developer tools.
+        el.oncontextmenu = ctxMenuCallback;
+        if (isTouchDevice()) {
+          el.ondblclick = ctxMenuCallback;
+          addPointerListeners(el, { hold: ctxMenuCallback });
+        }
         el.addEventListener('pointerup', (e: PointerEvent) => {
           if (!(e.target instanceof HTMLElement)) return;
           if (e.target.classList.contains('disclosure') || (e.button !== undefined && e.button !== 0)) return;

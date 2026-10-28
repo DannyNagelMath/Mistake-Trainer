@@ -88,7 +88,6 @@ export const analysisSource = (game: LichessGameJson): string =>
 export function renderSide(ctrl: AnalysisCtrl, extra?: VNode): VNode {
   const game = ctrl.game;
   const finished = game.status !== undefined && status[game.status] >= status.mate;
-  const lastPly = ctrl.mainline[ctrl.mainline.length - 1].ply;
   const speed = speeds[game.speed ?? ''];
   return hl('aside.analyse__side', [
     hl('div.game__meta', [
@@ -123,7 +122,7 @@ export function renderSide(ctrl: AnalysisCtrl, extra?: VNode): VNode {
       // card is done (AnalysisCtrl.hidingHints).
       finished &&
         !ctrl.hidingHints() &&
-        hl('section.status', statusOf({ winner: game.winner, status: game.status!, ply: lastPly })),
+        hl('section.status', statusOf({ winner: game.winner, status: game.status!, ply: ctrl.turns })),
       // Not in lila: where the computer analysis came from.
       hl('section', analysisSource(game)),
       // Step 8: not in lila, which is lichess.org itself. The game there, at the move on the board.

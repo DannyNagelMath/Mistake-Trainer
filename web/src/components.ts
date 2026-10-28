@@ -13,8 +13,9 @@ import type { EvalScore } from './winningChances';
 
 type Glyph = NonNullable<TreeNode['glyphs']>[number];
 
-// The move number that `ply` belongs to: plies 1 and 2 are move 1.
-const plyToTurn = (ply: number): number => Math.floor((ply - 1) / 2) + 1;
+// The move number that `ply` belongs to: plies 1 and 2 are move 1. Exported for the move list's
+// menu (contextMenu.ts, pgnExport.ts).
+export const plyToTurn = (ply: number): number => Math.floor((ply - 1) / 2) + 1;
 
 // Centipawns as pawns, e.g. -153 as "-1.5". Step 8: exported for the eval chart.
 export function renderEval(e: number): string {
@@ -65,8 +66,7 @@ export function renderResult(ctrl: AnalysisCtrl): VNode[] {
   if (game.status && status[game.status] >= status.mate) {
     const winner = game.winner;
     const result = winner === 'white' ? '1-0' : winner === 'black' ? '0-1' : '½-½';
-    const ply = ctrl.mainline[ctrl.mainline.length - 1].ply; // lila's game.turns
-    return render(result, statusOf({ winner, status: game.status, ply }));
+    return render(result, statusOf({ winner, status: game.status, ply: ctrl.turns }));
   }
   return [];
 }

@@ -2,8 +2,8 @@
 // disclosure mode), remembered for each game. From lila's ui/analyse/src/idbTree.ts (master,
 // commit 27ffc8b). Every change from lila's version is marked with a comment starting "Trim:".
 // Trim: lila's IdbTree also saves the moves you add to a game and the engine's evals, so they're
-// still there next time, and has stepLine (shift+up/down) and "Collapse all" / "Expand all" (the
-// move list's right-click menu), which we don't have. Only the folding is here.
+// still there next time, and has stepLine (shift+up/down), which we don't have. Only the folding is
+// here.
 
 import type { AnalysisCtrl } from './analysisCtrl';
 import { hasBranching, type TreeNode } from './tree';
@@ -28,8 +28,36 @@ function storedPaths(): Record<string, string[]> {
 export class IdbTree {
   constructor(private readonly ctrl: AnalysisCtrl) {}
 
+  // With collapsed true, whether some of the variations from `path` on are folded away, and with
+  // false, whether some aren't: the move list's menu then offers "Expand all", or "Collapse all".
+  // Only with variation hiding on.
+  someCollapsedOf(collapsed: boolean, path = ''): boolean {
+    return (
+      this.ctrl.settings.disclosureMode &&
+      this.ctrl.tree.walkUntilTrue(
+        (n, m) => this.isCollapsible(n, m) && collapsed === Boolean(n.collapsed),
+        path,
+        path !== '',
+      )
+    );
+  }
+
   setCollapsed(path: string, collapsed: boolean): void {
     this.ctrl.tree.updateAt(path, n => (n.collapsed = collapsed));
+    this.saveCollapsed();
+    this.ctrl.redraw();
+  }
+
+  // Folds away (or brings back) every variation from `from` on: "Collapse all" and "Expand all".
+  setCollapsedFrom(from: string, collapsed: boolean, thisBranchOnly = false): void {
+    this.ctrl.tree.walkUntilTrue(
+      (n, m) => {
+        if (this.isCollapsible(n, m)) n.collapsed = collapsed;
+        return false;
+      },
+      from,
+      thisBranchOnly,
+    );
     this.saveCollapsed();
     this.ctrl.redraw();
   }
@@ -85,8 +113,8 @@ export class IdbTree {
   private isCollapsible(node: TreeNode, isMainline: boolean): boolean {
     const [first, second, third] = node.children.filter(n => this.ctrl.settings.showStaticAnalysis || !n.comp);
     return Boolean(
-      // Trim: lila also checks first?.forceVariation, a study feature.
-      third ||
+      first?.forceVariation ||
+        third ||
         (second && hasBranching(second, 6)) ||
         (isMainline && this.ctrl.treeView.mode === 'column' && (second || first?.comments?.filter(Boolean).length)),
     );
