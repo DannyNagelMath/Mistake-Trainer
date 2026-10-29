@@ -59,6 +59,13 @@ body:not(.mt-settings-shown) main.mt-settings-page {
   flex: 1 1 7em;
   padding: 0.8em 0.4em;
 }
+/* How you did on the card last time (renderLastTime in retroView.ts), under "Good move" or
+   "Solution". */
+.retro-box .mt-last-time {
+  margin-top: 0.4em;
+  color: var(--c-font-dim);
+  font-size: 0.9em;
+}
 
 /* The progress box (progressView.ts), in the side panel under the game's details, and boxed
    like them (lila's .game__meta). */
@@ -96,6 +103,29 @@ body:not(.mt-settings-shown) main.mt-settings-page {
 .mt-settings-page__counts,
 .mt-settings__counts {
   color: var(--c-font-dim);
+}
+/* How often you found the move (renderRates in settingsPageView.ts), under the counts. */
+.mt-rates table {
+  border-collapse: collapse;
+  margin-top: 1em;
+}
+.mt-rates caption {
+  text-align: start;
+  font-weight: bold;
+  margin-bottom: 0.4em;
+}
+.mt-rates th,
+.mt-rates td {
+  padding: 0.25em 1.5em 0.25em 0;
+  text-align: start;
+}
+.mt-rates tbody th {
+  font-weight: normal;
+}
+.mt-rates p {
+  margin-top: 0.6em;
+  color: var(--c-font-dim);
+  font-size: 0.9em;
 }
 .mt-settings__counts {
   margin: -0.4em 0 1.4em 13em;

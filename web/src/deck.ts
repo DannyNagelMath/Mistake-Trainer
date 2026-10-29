@@ -44,7 +44,15 @@ export interface Deck {
   builtAt: string; // when the deck was built, as an ISO date
   games: Record<string, LichessGameJson>; // by game id; only games with at least one card
   cards: Card[];
+  // When each of your games with computer analysis started, newest first, mistakes or not, for
+  // "Recent games" in Training settings. Decks built before October 29, 2026 don't have it.
+  gameTimes?: number[];
 }
+
+// Deck.gameTimes, or for a deck built without it, when each of its games started, newest first:
+// only the games with cards, as those are all it has.
+export const gameTimesOf = (deck: Deck): number[] =>
+  deck.gameTimes ?? Object.values(deck.games).map(g => g.createdAt ?? 0).sort((a, b) => b - a);
 
 // Your color in the game, or undefined if you didn't play in it.
 export function colorOf(game: LichessGameJson, username: string): Color | undefined {

@@ -6,6 +6,7 @@ import type { Card } from './deck';
 import type { ReviewEntry, ReviewHistory } from './reviews';
 import {
   canComeUp,
+  cardsInPlay,
   cardsLeft,
   gradeOf,
   isCollapse,
@@ -14,11 +15,13 @@ import {
   nextAvailable,
   pickNext,
   progress,
+  recentGames,
   reviewCard,
   scheduler,
   orderNewCards,
   winRatings,
   withMinimumGap,
+  yourLastGames,
 } from './schedule';
 import { defaultSettings, pawnsToChances, type Settings } from './settings';
 
@@ -314,4 +317,27 @@ test("how long a game's other cards wait follows the settings: here 3 days, and 
   expect(nextAvailable(cards, h, now, { ...s, gameRestDays: 3 })).toEqual(minutes(-60 * 30 + 3 * 24 * 60));
   const justNow = history({ 'g/3': scheduled(State.Review, minutes(-10)) }, [reviewed('g/1', minutes(-1))]);
   expect(pickNext(cards, justNow, now, { ...s, gameRestDays: 0 })?.id).toBe('g/3');
+});
+
+test('"Recent games": new cards only from your latest games; started and suspended cards stay in play', () => {
+  // Four games, a/1 the newest, each started a day before the one after it.
+  const day = 24 * 60 * 60_000;
+  const games = ['a/1', 'b/3', 'c/5', 'd/7'].map((id, i) => card(id, { playedAt: 10 * day - i * day }));
+  const times = games.map(c => c.playedAt);
+  const ids = (cards: Card[]) => cards.map(c => c.id);
+  expect(recentGames(times, { ...s, recentGames: 2 })).toEqual({ games: 2, since: 9 * day });
+  expect(ids(cardsInPlay(games, history(), times, { ...s, recentGames: 2 }))).toEqual(['a/1', 'b/3']);
+  // d/7, from the oldest game, was started, and c/5 suspended: both stay.
+  const h = { ...history({ 'd/7': scheduled(State.Review, minutes(-1)) }), suspended: { 'c/5': now.toISOString() } };
+  const inPlay = cardsInPlay(games, h, times, { ...s, recentGames: 2 });
+  expect(ids(inPlay)).toEqual(['a/1', 'b/3', 'c/5', 'd/7']);
+  expect(pickNext(inPlay, h, now, s)?.id).toBe('d/7'); // due, so it comes first, whatever its game
+  expect(progress(inPlay, h, now, s)).toMatchObject({ started: 1, notStarted: 2, suspended: 1 });
+  // Empty, or as many games as you have or more: all of them.
+  for (const recent of [null, 4, 10]) {
+    expect(recentGames(times, { ...s, recentGames: recent })).toBeUndefined();
+    expect(cardsInPlay(games, history(), times, { ...s, recentGames: recent })).toBe(games);
+  }
+  expect(yourLastGames(1)).toBe('your last game');
+  expect(yourLastGames(100)).toBe('your last 100 games');
 });

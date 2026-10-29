@@ -5,7 +5,7 @@ import { expect, test } from 'vitest';
 import real1 from '../fixtures/real1.json';
 import real2 from '../fixtures/real2.json';
 import real3 from '../fixtures/real3.json';
-import { cardsOfGame, colorOf, inOpening, mistakeOf, withAnalysis, withMasterMoves, yourGames, type MasterMove } from './deck';
+import { cardsOfGame, colorOf, gameTimesOf, inOpening, mistakeOf, withAnalysis, withMasterMoves, yourGames, type MasterMove } from './deck';
 import type { LichessGameJson } from './tree';
 
 const fixtures: Record<string, unknown> = { real1, real2, real3 };
@@ -104,4 +104,13 @@ test('castling matches, however the masters database writes it (not in lila)', (
   const castled = { fen, uci: 'e1h1' }; // 4.O-O, as chessops writes it
   expect(withMasterMoves(card, castled, [masterMove('e1g1', 9)])).toBeUndefined(); // a book move
   expect(withMasterMoves(card, { fen, uci: 'd2d3' }, [masterMove('e1g1', 9)])).toEqual({ ...card, masterMoves: ['e1h1'] });
+});
+
+test("gameTimesOf: when each of your games started, newest first; for an older deck, only its games with cards", () => {
+  const game = real1 as unknown as LichessGameJson;
+  const newer = { ...game, id: 'newer', createdAt: 2000 };
+  const older = { ...game, id: 'older', createdAt: 1000 };
+  const deck = { username: 'mugglesman1982', builtAt: '', games: { older, newer }, cards: [] };
+  expect(gameTimesOf(deck)).toEqual([2000, 1000]); // built before Deck.gameTimes
+  expect(gameTimesOf({ ...deck, gameTimes: [3000, 2000, 1500, 1000] })).toEqual([3000, 2000, 1500, 1000]);
 });

@@ -6,7 +6,7 @@
 import type { VNode } from 'snabbdom';
 
 import type { DeckCtrl } from './deckCtrl';
-import type { Progress } from './schedule';
+import { yourLastGames, type Progress } from './schedule';
 import { hl } from './snabbdom';
 
 const count = (n: number, label: string, title: string): VNode =>
@@ -29,10 +29,11 @@ export function describeNext(next: NonNullable<Progress['nextDue']>, now: Date):
 
 export function renderProgress(deck: DeckCtrl): VNode {
   const p = deck.progress();
+  const recent = deck.recent();
   return hl('div.mt-progress', [
     hl('div.mt-progress__counts', [
       count(p.started, 'started', 'Reviewed at least once'),
-      count(p.notStarted, 'not started', 'New cards'),
+      count(p.notStarted, 'not started', recent ? `New cards from ${yourLastGames(recent.games)}` : 'New cards'),
       p.suspended > 0 && count(p.suspended, 'suspended', 'Not shown until you bring them back in Training settings'),
     ]),
     // Each on a line of its own, as the next cards' day and time don't fit on one line beside it.

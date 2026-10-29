@@ -42,6 +42,29 @@ const renderRatingChoices = (choices: { label: string; rate: () => void }[]): VN
     choices.map(c => hl('button.button', { hook: bind('click', c.rate) }, c.label)),
   );
 
+// Step 9: once you've answered a card that has come up before, how you did last time, e.g.
+// "Last time (Oct 12): wrong, you played Qh4." Not while you're still looking for the move, when it
+// could give the answer away. Reviews from before October 29, 2026 didn't save the move.
+function renderLastTime(ctrl: RetroCtrl): VNode | undefined {
+  const last = ctrl.card?.lastTime;
+  if (!last) return;
+  const at = new Date(last.log.review);
+  const date = at.toLocaleDateString([], {
+    year: at.getFullYear() === new Date().getFullYear() ? undefined : 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+  const san = last.move?.san;
+  const gameMove = !!last.move && last.move.uci === ctrl.current()?.fault.node.uci;
+  const what = {
+    win: san ? `right, with ${san}` : 'right',
+    fail: san ? `wrong, you played ${san}` + (gameMove ? ', the game’s move' : '') : 'wrong',
+    view: 'you looked at the solution',
+    skip: 'you skipped it',
+  }[last.result];
+  return hl('div.mt-last-time', `Last time (${date}): ${what}.`);
+}
+
 // Fills as the engine searches deeper, while it checks a move that is neither the game move nor
 // the engine's.
 const minDepth = 8;
@@ -113,7 +136,11 @@ const feedback = {
         'div.half.top',
         hl('div.player', [
           hl('div.icon', '✓'),
-          hl('div.instruction', [hl('strong', i18n.study.goodMove), choices && hl('em', 'How did you find it?')]),
+          hl('div.instruction', [
+            hl('strong', i18n.study.goodMove),
+            choices && hl('em', 'How did you find it?'),
+            renderLastTime(ctrl), // Step 9
+          ]),
         ]),
       ),
       choices ? renderRatingChoices(choices) : jumpToNext(ctrl),
@@ -131,6 +158,7 @@ const feedback = {
               'em',
               i18n.site.bestWasX.asArray(hl('strong', renderIndexAndMove(ctrl.current()!.solution.node, false, false))),
             ),
+            renderLastTime(ctrl), // Step 9
           ]),
         ]),
       ),

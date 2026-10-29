@@ -7,6 +7,7 @@
 import type { Color } from 'chessops';
 
 import { evalSwings } from './nodeFinder';
+import type { ReviewEntry } from './reviews';
 import type { TreeNode } from './tree';
 import * as winningChances from './winningChances';
 
@@ -75,6 +76,7 @@ export interface RetroCardOpts {
   suspend(): void; // "Suspend card": it never comes up again; the next card is dealt
   openingUcis: Uci[]; // moves masters have played from the position, accepted as right answers
   bestMoveOnly(): boolean; // only the analysis's best move counts, not any move nearly as good
+  lastTime?: ReviewEntry; // the card's last review, if it's had one, for the panel once you've answered
 }
 
 export type CardResult = 'win' | 'fail' | 'view' | 'skip'; // Step 9

@@ -2,7 +2,8 @@
 // The rules follow Anki's:
 //   1. cards that are due now, the most overdue first;
 //   2. then new cards (never reviewed), in the order orderNewCards puts them in, up to the
-//      new-card limit if you've set one.
+//      new-card limit if you've set one, and only from your recent games if you've set that
+//      (cardsInPlay, which callers apply to the deck first).
 // A card is due once FSRS's due time for it has passed, to the millisecond. Every review goes
 // through reviewCard below: FSRS schedules it, and a card never comes back within the minimum gap.
 // "A day" always means 24 hours counted from a review, never a calendar day:
@@ -117,6 +118,27 @@ function gameRestEnds(history: ReviewHistory, s: Settings): Map<string, number> 
     if (end > (ends.get(game) ?? 0)) ends.set(game, end);
   }
   return ends;
+}
+
+// "Recent games" (s.recentGames): how many of your latest games new cards come from, and when the
+// oldest of them started; undefined when that takes in all your games. `gameTimes`: when each of
+// your games started, newest first (deck.ts gameTimesOf).
+export function recentGames(gameTimes: number[], s: Settings): { games: number; since: number } | undefined {
+  const n = s.recentGames;
+  return n !== null && n < gameTimes.length ? { games: n, since: gameTimes[n - 1] } : undefined;
+}
+
+// E.g. "your last 100 games", or "your last game".
+export const yourLastGames = (n: number): string => (n === 1 ? 'your last game' : `your last ${n} games`);
+
+// The cards in play, for the functions below: new cards only from your recent games (recentGames),
+// but every card you've started, which keeps coming back whatever its game, and every suspended
+// one, so it still counts as suspended.
+export function cardsInPlay(deck: Card[], history: ReviewHistory, gameTimes: number[], s: Settings): Card[] {
+  const recent = recentGames(gameTimes, s);
+  return recent
+    ? deck.filter(c => c.playedAt >= recent.since || history.cards[c.id] || history.suspended?.[c.id])
+    : deck;
 }
 
 // The cards you haven't suspended.

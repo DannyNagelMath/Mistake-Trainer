@@ -17,6 +17,9 @@ export const newCardOrders: NewCardOrder[] = ['collapses', 'recent', 'openings',
 
 export interface Settings {
   // New cards
+  // New cards only come from your latest games with computer analysis, this many; null for all.
+  // The cards you've started keep coming back, whatever their game (schedule.ts cardsInPlay).
+  recentGames: number | null;
   newCardOrder: NewCardOrder;
   newCardsPerDay: number | null; // at most this many new cards in any 24 hours; null for no limit
   // A collapse: the eval before your move was better than collapseBefore, and after it, worse
@@ -33,6 +36,7 @@ export interface Settings {
 }
 
 export const defaultSettings: Settings = {
+  recentGames: null, // all your games
   newCardOrder: 'collapses',
   newCardsPerDay: null, // no limit: you do as many as you get around to
   collapseBefore: -1.1,
@@ -50,6 +54,7 @@ export type NumberKey = Exclude<keyof Settings, 'newCardOrder' | 'bestMoveOnly'>
 // every card very soon; much below 0.7 you'd forget most cards before seeing them again. The
 // minimum gap starts at 1 day because FSRS never schedules a card sooner than that anyway.
 export const ranges: Record<NumberKey, { min: number; max: number; whole?: boolean }> = {
+  recentGames: { min: 1, max: 100_000, whole: true },
   newCardsPerDay: { min: 1, max: 1000, whole: true },
   collapseBefore: { min: -10, max: 10 },
   collapseAfter: { min: -10, max: 10 },
@@ -69,7 +74,7 @@ export function problems(s: Settings): Problems {
   for (const key of Object.keys(ranges) as NumberKey[]) {
     const value = s[key];
     const { min, max, whole } = ranges[key];
-    if (key === 'newCardsPerDay' && value === null) continue; // no limit
+    if ((key === 'newCardsPerDay' || key === 'recentGames') && value === null) continue; // no limit
     if (typeof value !== 'number' || !(value >= min && value <= max) || (whole && !Number.isInteger(value)))
       found[key] = `${whole ? 'A whole number' : 'A number'} from ${min} to ${max}`;
   }

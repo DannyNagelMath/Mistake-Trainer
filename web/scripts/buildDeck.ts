@@ -46,6 +46,7 @@ if (!username)
   );
 
 const deck: Deck = { username, builtAt: new Date().toISOString(), games: {}, cards: [] };
+const gameTimes: number[] = []; // when each game with computer analysis started (Deck.gameTimes)
 const skipped: Record<string, number> = {}; // reason -> number of games
 const skip = (reason: string) => (skipped[reason] = (skipped[reason] ?? 0) + 1);
 
@@ -80,6 +81,7 @@ games.forEach(g => {
   } catch (e) {
     return skip(`couldn't read the moves (${(e as Error).message})`);
   }
+  gameTimes.push(game.createdAt ?? 0); // mistakes or not
   if (!cards.length) return skip('no mistakes');
   deck.games[game.id] = game;
   deck.cards.push(...cards);
@@ -112,12 +114,13 @@ for (const card of opening) {
 }
 // The deck only keeps games that still have a card.
 for (const id of Object.keys(deck.games)) if (!deck.cards.some(c => c.gameId === id)) delete deck.games[id];
+deck.gameTimes = gameTimes.sort((a, b) => b - a); // newest first
 
 mkdirSync(dirname(deckFile), { recursive: true });
 writeFileSync(deckFile, JSON.stringify(deck));
 
 const gameCount = Object.keys(deck.games).length;
-console.log(`${deckFile}: ${deck.cards.length} cards from ${gameCount} games`);
+console.log(`${deckFile}: ${deck.cards.length} cards from ${gameCount} games (of ${gameTimes.length} with computer analysis)`);
 const analysedHere = deck.cards.filter(c => deck.games[c.gameId].analysedHere);
 console.log(
   `  from games analysed on your computer: ${analysedHere.length} cards from ${new Set(analysedHere.map(c => c.gameId)).size} games`,

@@ -1,6 +1,7 @@
 // settingsPageView.ts: Not in lila. Draws Training settings (see settingsPage.ts): how your cards
-// stand, the settings form, updating your deck, the computer analysis of your games, and your
-// suspended cards, each on a small board you can click to look at it up close.
+// stand, how often you find the move, the settings form, updating your deck, the computer analysis
+// of your games, and your suspended cards, each on a small board you can click to look at it up
+// close.
 
 import { Chessground } from '@lichess-org/chessground';
 import type { DrawShape } from '@lichess-org/chessground/draw';
@@ -14,12 +15,13 @@ import { clickedOutside } from './analysisSettingsView';
 import { makeShapesFromUci } from './autoShape';
 import { renderEval, renderIndex } from './components';
 import type { SettingsPageCtrl } from './settingsPage';
-import type { Card } from './deck';
+import { gameTimesOf, type Card } from './deck';
 import { failureReason } from './deckUpdate';
 import { i18n } from './i18n';
 import { licon } from './licon';
-import { isAlreadyWon, isCollapse, isOpening, progress } from './schedule';
+import { activeCards, isAlreadyWon, isCollapse, isOpening, progress, recentGames } from './schedule';
 import { fixProblems, newCardOrders, problems, ranges, type NewCardOrder, type NumberKey, type Settings } from './settings';
+import { answerRates, type AnswerRates, type Rate } from './reviews';
 import { analysisSource } from './side';
 import { hl, onInsert, type LooseVNodes } from './snabbdom';
 import { buildTree, mainline, type LichessGameJson, type TreeNode } from './tree';
@@ -28,6 +30,7 @@ export function view(ctrl: SettingsPageCtrl): VNode {
   return hl('main.page-small.box.box-pad.mt-settings-page', [
     hl('h1.box__top', 'Training settings'),
     renderCounts(ctrl),
+    renderRates(ctrl),
     renderSettings(ctrl),
     renderYourDeck(ctrl),
     renderComputerAnalysis(ctrl),
@@ -46,6 +49,37 @@ function renderCounts(ctrl: SettingsPageCtrl): VNode {
   return hl('p.mt-settings-page__counts', [
     `Your ${ctrl.deck.cards.length} cards: `,
     [`${p.started} started`, `${p.notStarted} not started`, `${p.suspended} suspended`].join(' · '),
+  ]);
+}
+
+// How often you find the move (reviews.ts answerRates), over all your reviews and, once some are
+// older than that, the last 30 days, so you can see whether it's changing. Until then the two would
+// be the same.
+function renderRates(ctrl: SettingsPageCtrl): VNode | undefined {
+  const log = ctrl.history.log;
+  if (!log.length) return;
+  const all = answerRates(log);
+  const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60_000);
+  const lately = new Date(log[0].log.review) < monthAgo ? answerRates(log, monthAgo) : undefined; // oldest first
+  const cell = (r: Rate) => hl('td', r.of ? `${Math.round((100 * r.right) / r.of)}% (${r.right} of ${r.of})` : '–');
+  const row = (label: string, key: keyof AnswerRates) =>
+    hl('tr', [hl('th', label), cell(all[key]), lately && cell(lately[key])]);
+  return hl('div.mt-rates', [
+    hl('table', [
+      hl('caption', 'How often you found the move'),
+      hl('thead', hl('tr', [hl('th'), hl('th', 'All your reviews'), lately && hl('th', 'Last 30 days')])),
+      hl('tbody', [
+        row('The first time', 'firstTime'),
+        row('When a card came back', 'cameBack'),
+        row('… after getting it wrong', 'afterWrong'),
+        row('… after getting it right', 'afterRight'),
+      ]),
+    ]),
+    hl(
+      'p',
+      `When cards come back, FSRS aims for ${Math.round(preview(ctrl).desiredRetention * 100)}% right: ` +
+        'your desired retention, below.',
+    ),
   ]);
 }
 
@@ -173,12 +207,15 @@ const orderLabels: Record<NewCardOrder, string> = {
 const scales: Partial<Record<keyof Settings, number>> = { desiredRetention: 100 };
 
 // The settings, from the form's inputs, which are named after them. A number that's empty or
-// can't be read is NaN, which problems() reports, except that an empty new-card limit means none.
+// can't be read is NaN, which problems() reports, except that an empty new-card limit means none,
+// and empty "Recent games" means all your games.
 function readForm(form: HTMLFormElement): Settings {
   const input = (key: keyof Settings) => form.elements.namedItem(key) as HTMLInputElement;
   const num = (key: keyof Settings) => (input(key).value === '' ? NaN : Number(input(key).value) / (scales[key] ?? 1));
-  const noLimit = input('newCardsPerDay').value === '' && !input('newCardsPerDay').validity.badInput;
+  const empty = (key: keyof Settings) => input(key).value === '' && !input(key).validity.badInput;
+  const noLimit = empty('newCardsPerDay');
   return {
+    recentGames: empty('recentGames') ? null : num('recentGames'),
     newCardOrder: input('newCardOrder').value as NewCardOrder,
     newCardsPerDay: noLimit ? null : num('newCardsPerDay'),
     collapseBefore: num('collapseBefore'),
@@ -243,6 +280,15 @@ function renderSettings(ctrl: SettingsPageCtrl): VNode {
     },
     [
       hl('h2', 'New cards'),
+      row(
+        'Recent games',
+        ['recentGames'],
+        ['from your last ', numberInput('recentGames', 1, 'all'), ' games'],
+        'New cards only come from your latest games, this many. The cards you’ve started keep coming ' +
+          'back, whatever their game. To move on to older games, raise it. Leave it empty for all your ' +
+          'games. It counts your games with computer analysis, mistakes or not.',
+      ),
+      renderRecentCounts(ctrl),
       row(
         'Order',
         ['newCardOrder'],
@@ -330,6 +376,26 @@ function renderSettings(ctrl: SettingsPageCtrl): VNode {
         hl('span.mt-settings__message', ctrl.message || (ctrl.changed() ? 'Unsaved changes' : '')),
       ]),
     ],
+  );
+}
+
+// What "Recent games" takes in, with the form's settings, e.g. "Your last 100 games, back to Sep 5,
+// 2025, have 299 cards, 260 of them not started."
+function renderRecentCounts(ctrl: SettingsPageCtrl): VNode | undefined {
+  const s = preview(ctrl);
+  if (s.recentGames === null) return;
+  const times = gameTimesOf(ctrl.deck);
+  const recent = recentGames(times, s);
+  if (!recent) return hl('p.mt-settings__counts', `That’s all your ${times.length.toLocaleString('en')} games.`);
+  const cards = ctrl.deck.cards.filter(c => c.playedAt >= recent.since);
+  const notStarted = activeCards(cards, ctrl.history).filter(c => !ctrl.history.cards[c.id]).length;
+  const games =
+    recent.games === 1 ? `Your last game, on ${date(recent.since)}, has` : (
+      `Your last ${recent.games} games, back to ${date(recent.since)}, have`
+    );
+  return hl(
+    'p.mt-settings__counts',
+    `${games} ${cards.length} card${cards.length === 1 ? '' : 's'}, ${notStarted} of them not started.`,
   );
 }
 

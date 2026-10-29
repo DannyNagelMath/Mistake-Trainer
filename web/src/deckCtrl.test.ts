@@ -7,7 +7,7 @@ import { Chess } from 'chessops/chess';
 import { parseFen } from 'chessops/fen';
 import { makeSquare } from 'chessops/util';
 import type { VNode } from 'snabbdom';
-import { Rating } from 'ts-fsrs';
+import { createEmptyCard, Rating, State } from 'ts-fsrs';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 import real1 from '../fixtures/real1.json';
@@ -20,6 +20,8 @@ import { DeckUpdateCtrl } from './deckUpdate';
 import { getBestEval } from './evalGauge';
 import { detectCheckable, detectPins, detectUndefended } from './motif';
 import type { ReviewHistory } from './reviews';
+import { renderProgress } from './progressView';
+import renderRetro from './retroView';
 import type { EngineEval } from './engine';
 import { defaultSettings, type Settings } from './settings';
 import { SettingsPageCtrl } from './settingsPage';
@@ -76,7 +78,10 @@ beforeEach(() => {
   );
   vi.stubGlobal('alert', vi.fn());
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.useRealTimers(); // after a test that set the date
+});
 
 // A stand-in for the browser's localStorage or sessionStorage, keeping what's stored in `stored`.
 const standIn = (stored: Record<string, string>) => ({
@@ -136,6 +141,77 @@ test('"View the solution" and "Skip" are Again at once', () => {
   const skipped = start();
   skipped.retro().skip();
   expect(skipped.history.log.map(e => [e.result, e.log.rating])).toEqual([['skip', Rating.Again]]);
+});
+
+test('each review saves the move you played first, right or wrong; "View the solution" and "Skip" have none', () => {
+  const right = start();
+  const solution = right.retro().current()!.solution.node;
+  playSolution(right.ctrl);
+  right.retro().card!.ratingChoices()![1].rate();
+  expect(right.history.log[0].move).toEqual({ san: solution.san, uci: solution.uci });
+  expect((saved.at(-1) as { entry: object }).entry).toMatchObject({ move: { san: solution.san } }); // and it's saved
+
+  const wrong = start();
+  const gameMove = wrong.retro().current()!.fault.node;
+  playGameMove(wrong.ctrl);
+  playSolution(wrong.ctrl); // right on the second try: the review is the first
+  expect(wrong.history.log.map(e => e.move)).toEqual([{ san: gameMove.san, uci: gameMove.uci }]);
+
+  const later = start();
+  const laterSolution = later.retro().current()!.solution.node;
+  playSolution(later.ctrl);
+  later.retro().jumpToNext(); // not rated: recorded as Good, with the move
+  expect(later.history.log[0].move).toEqual({ san: laterSolution.san, uci: laterSolution.uci });
+
+  const viewed = start();
+  viewed.retro().viewSolution();
+  const skipped = start();
+  skipped.retro().skip();
+  expect([viewed.history.log[0].move, skipped.history.log[0].move]).toEqual([undefined, undefined]);
+});
+
+// A first session on Oct 12, 2026, at noon, which does `firstTry` on its card; then another on
+// `back`, by when the card is due again, with the panel open on it.
+function comeBack(firstTry: (ctrl: AnalysisCtrl, history: ReviewHistory) => void, back = new Date(2026, 9, 20, 12)) {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date(2026, 9, 12, 12));
+  const first = start();
+  const { fault, solution } = first.retro().current()!;
+  firstTry(first.ctrl, first.history);
+  if (first.retro().card!.ratingChoices()) first.retro().card!.ratingChoices()![0].rate();
+  vi.setSystemTime(back);
+  const deckCtrl = new DeckCtrl(deck, first.history, defaultSettings, () => {});
+  const ctrl = deckCtrl.analysis;
+  ctrl.toggleRetro();
+  expect(ctrl.retro!.card!.ply).toBe(fault.node.ply); // the same card
+  const note = () => textOf(find(renderRetro(ctrl), 'div.mt-last-time')).trim();
+  return { ctrl, history: first.history, gameMove: fault.node.san!, best: solution.node.san!, note };
+}
+
+test("a card that comes back says how you did last time, once you've answered, and not before", () => {
+  const { ctrl, gameMove, note } = comeBack(playGameMove);
+  expect(note()).toBe(''); // while you look for the move
+  playGameMove(ctrl);
+  expect(ctrl.retro!.feedback()).toBe('fail');
+  expect(note()).toBe(''); // still looking
+  playSolution(ctrl);
+  expect(note()).toBe(`Last time (Oct 12): wrong, you played ${gameMove}, the game’s move.`);
+});
+
+test('after the right move last time, the note says so, with the move; it shows with the solution too', () => {
+  const { ctrl, best, note } = comeBack(playSolution);
+  ctrl.retro!.viewSolution();
+  expect(ctrl.retro!.feedback()).toBe('view');
+  expect(note()).toBe(`Last time (Oct 12): right, with ${best}.`);
+});
+
+test('for a review from before the move was saved, the note says right or wrong; the year, if it was another', () => {
+  const { ctrl, note } = comeBack((ctrl, history) => {
+    playGameMove(ctrl);
+    delete history.log[0].move; // as in the reviews saved so far
+  }, new Date(2027, 0, 5, 12));
+  playSolution(ctrl);
+  expect(note()).toBe('Last time (Oct 12, 2026): wrong.');
 });
 
 test('moving on from a card you got right, without choosing, records Good', () => {
@@ -654,4 +730,95 @@ test('variation hiding: once the card is done, moves with variations get a fold 
   ctrl.loadGame(game, 'white');
   expect(folded()).toBe(false); // ...for next time too
   ctrl.settings.set('disclosureMode', false);
+});
+
+// "Recent games": the deck's game, and a copy of it played 30 days before, with the same three cards.
+const older: LichessGameJson = { ...game, id: 'older000', createdAt: game.createdAt! - 30 * 24 * 60 * 60_000 };
+const twoGames: Deck = {
+  ...deck,
+  games: { [game.id]: game, [older.id]: older },
+  cards: [...cardsOfGame(game, 'white'), ...cardsOfGame(older, 'white')],
+  gameTimes: [game.createdAt!, older.createdAt!],
+};
+const lastGameOnly: Settings = { ...defaultSettings, recentGames: 1, gameRestDays: 0 };
+
+test('with "Recent games" at 1, new cards only come from your last game, and the end of the session says so', () => {
+  const deckCtrl = new DeckCtrl(twoGames, { cards: {}, log: [] }, lastGameOnly, () => {});
+  const ctrl = deckCtrl.analysis;
+  ctrl.toggleRetro();
+  // The progress box counts the new cards from your last game, and says so when you point at them.
+  const [, notStarted] = find(renderProgress(deckCtrl), 'div.mt-progress__counts')!.children as VNode[];
+  expect(textOf(notStarted)).toBe('3 not started');
+  expect(notStarted.data!.attrs!.title).toBe('New cards from your last game');
+  const dealt: string[] = [];
+  for (let i = 0; i < 3; i++) {
+    dealt.push(ctrl.game.id);
+    ctrl.retro!.skip(); // records it, and deals the next card, if there is one
+  }
+  expect(dealt).toEqual([game.id, game.id, game.id]);
+  expect(ctrl.retro!.current()).toBeNull(); // nothing more
+  expect(ctrl.retro!.card!.summary()).toContain(
+    "You've started all the cards from your last game. For more, raise that number in Training settings (Recent games).",
+  );
+  // Raised to 2 in Training settings: the older game's cards come up.
+  deckCtrl.useSettings({ ...lastGameOnly, recentGames: 2 });
+  ctrl.retro!.card!.restart();
+  expect(ctrl.game.id).toBe(older.id);
+  expect(deckCtrl.progress().notStarted).toBe(3); // the one on screen too, until you answer it
+});
+
+test('a card you started from an older game keeps coming back, whatever "Recent games" says', () => {
+  const olderCard = `${older.id}/${cardsOfGame(older, 'white')[0].ply}`;
+  const history: ReviewHistory = {
+    cards: { [olderCard]: { ...createEmptyCard(new Date(0)), state: State.Review, due: new Date(Date.now() - 60_000) } },
+    log: [],
+  };
+  const deckCtrl = new DeckCtrl(twoGames, history, lastGameOnly, () => {});
+  deckCtrl.analysis.toggleRetro();
+  expect(`${deckCtrl.analysis.game.id}/${deckCtrl.analysis.retro!.card!.ply}`).toBe(olderCard); // due, so first
+  expect(deckCtrl.progress()).toMatchObject({ started: 1, notStarted: 3 });
+});
+
+test('Training settings: "Recent games" says what it takes in, as you type', () => {
+  const history: ReviewHistory = { cards: {}, log: [] };
+  const page = (recentGames: number | null) =>
+    new SettingsPageCtrl(twoGames, history, { ...defaultSettings, recentGames }, () => {}, () => {}, notLoaded(), noUpdate());
+  const counts = (recentGames: number | null) => textOf(find(trainingSettingsView(page(recentGames)), 'form.mt-settings'));
+  const day = new Date(game.createdAt!).toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' });
+  expect(counts(1)).toContain(`Your last game, on ${day}, has 3 cards, 3 of them not started.`);
+  expect(counts(5)).toContain('That’s all your 2 games.');
+  expect(counts(null)).not.toContain('Your last');
+  expect(find(trainingSettingsView(page(null)), 'input')?.data?.attrs).toMatchObject({ id: 'recentGames', value: '' });
+});
+
+test('Training settings: how often you found the move; the last 30 days too, once some reviews are older', () => {
+  const DAY = 24 * 60 * 60_000;
+  const review = (cardId: string, result: 'win' | 'fail', daysAgo: number) =>
+    ({ cardId, result, log: { review: new Date(Date.now() - daysAgo * DAY).toISOString() } }) as unknown as ReviewHistory['log'][number];
+  const rates = (log: ReviewHistory['log']) => {
+    const page = new SettingsPageCtrl(deck, { cards: {}, log }, defaultSettings, () => {}, () => {}, notLoaded(), noUpdate());
+    const table = find(trainingSettingsView(page), 'div.mt-rates');
+    return table && (find(table, 'table')!.children as VNode[]).slice(1).map(part => (part.children as VNode[]).map(row => textOf(row).trim().replace(/\s+/g, ' ')));
+  };
+  expect(rates([])).toBeUndefined(); // no reviews yet
+  // All in the last 30 days: one column.
+  expect(rates([review('a/1', 'fail', 9), review('b/1', 'win', 8), review('a/1', 'win', 1)])).toEqual([
+    ['All your reviews'],
+    [
+      'The first time 50% (1 of 2)',
+      'When a card came back 100% (1 of 1)',
+      '… after getting it wrong 100% (1 of 1)',
+      '… after getting it right –',
+    ],
+  ]);
+  // One older than that: the last 30 days get a column of their own.
+  expect(rates([review('a/1', 'fail', 40), review('b/1', 'win', 8), review('a/1', 'win', 1)])).toEqual([
+    ['All your reviews Last 30 days'],
+    [
+      'The first time 50% (1 of 2) 100% (1 of 1)',
+      'When a card came back 100% (1 of 1) 100% (1 of 1)',
+      '… after getting it wrong 100% (1 of 1) 100% (1 of 1)',
+      '… after getting it right – –',
+    ],
+  ]);
 });
