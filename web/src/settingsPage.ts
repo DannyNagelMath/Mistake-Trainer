@@ -1,5 +1,5 @@
-// settingsPage.ts: Not in lila. Training settings: updating your deck (deckUpdate.ts), the computer
-// analysis of your games (yourGames.ts), your settings, and your suspended cards.
+// settingsPage.ts: Not in lila. Training settings: your settings, updating your deck (deckUpdate.ts),
+// the computer analysis of your games (yourGames.ts), and your suspended cards.
 // SettingsPageCtrl keeps its state, and settingsPageView.ts draws it with snabbdom. It shows in
 // the trainer's page, over the trainer, which waits hidden as you left it (main.ts makes a new
 // SettingsPageCtrl each time it opens).

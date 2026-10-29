@@ -1,5 +1,5 @@
 // settingsPageView.ts: Not in lila. Draws Training settings (see settingsPage.ts): how your cards
-// stand, updating your deck, the computer analysis of your games, the settings form, and your
+// stand, the settings form, updating your deck, the computer analysis of your games, and your
 // suspended cards, each on a small board you can click to look at it up close.
 
 import { Chessground } from '@lichess-org/chessground';
@@ -28,9 +28,9 @@ export function view(ctrl: SettingsPageCtrl): VNode {
   return hl('main.page-small.box.box-pad.mt-settings-page', [
     hl('h1.box__top', 'Training settings'),
     renderCounts(ctrl),
+    renderSettings(ctrl),
     renderYourDeck(ctrl),
     renderComputerAnalysis(ctrl),
-    renderSettings(ctrl),
     renderSuspended(ctrl),
     ctrl.looking && renderLook(ctrl, ctrl.looking),
   ]);

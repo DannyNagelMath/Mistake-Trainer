@@ -52,7 +52,7 @@ You need Node.js, Python 3, git, and a [Lichess API token](https://lichess.org/a
 5. Start the page with `npm run dev`, and open the address it prints.
 
 Later, to add the games you've played since, and the games analysed in Training settings since,
-press **Update deck** at the top of Training settings (or run `npm run update-deck` from `web`): it
+press **Update deck** in Training settings (or run `npm run update-deck` from `web`): it
 downloads the new games and builds the deck again. Your review history is backed up once a day, in
 `web/data/backups`; to go back to a backup, stop the page and copy it over `web/data/reviews.json`.
 
