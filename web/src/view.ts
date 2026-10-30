@@ -21,6 +21,7 @@ import { renderProgress } from './progressView';
 import retroView from './retroView';
 import { render as trainingView } from './roundTraining';
 import { renderSide } from './side';
+import { renderStats } from './statsView';
 import { bindNonPassive, hl } from './snabbdom';
 
 // Like lila's ground.ts render, followed by the relevant part of AnalyseCtrl.setChessground.
@@ -150,6 +151,7 @@ export function view(ctrl: AnalysisCtrl, deck?: DeckCtrl): VNode {
       renderSide(ctrl, deck && renderProgress(deck)),
       // Not in lila, whose dialogs add themselves to the page: the menu's Settings dialog, while open.
       ctrl.settingsOpen && analysisSettingsView(ctrl),
+      deck?.statsOpen && renderStats(deck), // and "Your stats", from the progress box
     ],
   );
 }

@@ -98,12 +98,13 @@ export class DeckCtrl {
   private awaitingRating = false; // right first time, and the panel is asking how it went
   private firstMove?: ReviewEntry['move']; // the move you played first on this card, if you did
   private reviewed = 0; // reviews recorded this session
+  statsOpen = false; // whether "Your stats" is showing (statsView.ts)
 
   // The deck must have at least one card. This sets up the first card; main.ts opens the panel
   // on it after the first render (opening it redraws, and the page needs this object for that).
   constructor(
     readonly deck: Deck,
-    private readonly history: ReviewHistory,
+    readonly history: ReviewHistory,
     public settings: Settings, // changed only by useSettings
     private readonly redraw: () => void,
   ) {
@@ -189,6 +190,16 @@ export class DeckCtrl {
     this.analysis.toggleRetro();
     this.redraw();
   }
+
+  // "Your stats", from the link in the progress box: a dialog, part of the page while it's open.
+  openStats = (): void => {
+    this.statsOpen = true;
+    this.redraw();
+  };
+  closeStats = (): void => {
+    this.statsOpen = false;
+    this.redraw();
+  };
 
   // The counts for the progress box.
   progress = (): Progress => progress(this.cards, this.history, new Date(), this.settings);

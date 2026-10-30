@@ -90,6 +90,10 @@ body:not(.mt-settings-shown) main.mt-settings-page {
 .mt-progress__now {
   color: var(--c-font-dim);
 }
+.mt-progress__stats {
+  align-self: flex-start;
+  cursor: pointer;
+}
 
 /* The settings page (settings.html, settingsPageView.ts). lila's own settings pages use its form
    styles, which aren't in the stylesheets we build, so these lay the form out; the inputs and
@@ -104,25 +108,25 @@ body:not(.mt-settings-shown) main.mt-settings-page {
 .mt-settings__counts {
   color: var(--c-font-dim);
 }
-/* How often you found the move (renderRates in settingsPageView.ts), under the counts. */
-.mt-rates table {
+/* Your stats (statsView.ts), a dialog opened from the progress box: how often you found the move. */
+.mt-stats table {
   border-collapse: collapse;
   margin-top: 1em;
 }
-.mt-rates caption {
+.mt-stats caption {
   text-align: start;
   font-weight: bold;
   margin-bottom: 0.4em;
 }
-.mt-rates th,
-.mt-rates td {
+.mt-stats th,
+.mt-stats td {
   padding: 0.25em 1.5em 0.25em 0;
   text-align: start;
 }
-.mt-rates tbody th {
+.mt-stats tbody th {
   font-weight: normal;
 }
-.mt-rates p {
+.mt-stats p {
   margin-top: 0.6em;
   color: var(--c-font-dim);
   font-size: 0.9em;

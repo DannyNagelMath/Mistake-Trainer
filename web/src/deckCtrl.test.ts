@@ -22,6 +22,7 @@ import { detectCheckable, detectPins, detectUndefended } from './motif';
 import type { ReviewHistory } from './reviews';
 import { renderProgress } from './progressView';
 import renderRetro from './retroView';
+import { renderStats } from './statsView';
 import type { EngineEval } from './engine';
 import { defaultSettings, type Settings } from './settings';
 import { SettingsPageCtrl } from './settingsPage';
@@ -791,18 +792,28 @@ test('Training settings: "Recent games" says what it takes in, as you type', () 
   expect(find(trainingSettingsView(page(null)), 'input')?.data?.attrs).toMatchObject({ id: 'recentGames', value: '' });
 });
 
-test('Training settings: how often you found the move; the last 30 days too, once some reviews are older', () => {
+test('"Your stats", from the progress box: how often you found the move; the last 30 days too, once some reviews are older', () => {
   const DAY = 24 * 60 * 60_000;
   const review = (cardId: string, result: 'win' | 'fail', daysAgo: number) =>
     ({ cardId, result, log: { review: new Date(Date.now() - daysAgo * DAY).toISOString() } }) as unknown as ReviewHistory['log'][number];
-  const rates = (log: ReviewHistory['log']) => {
-    const page = new SettingsPageCtrl(deck, { cards: {}, log }, defaultSettings, () => {}, () => {}, notLoaded(), noUpdate());
-    const table = find(trainingSettingsView(page), 'div.mt-rates');
-    return table && (find(table, 'table')!.children as VNode[]).slice(1).map(part => (part.children as VNode[]).map(row => textOf(row).trim().replace(/\s+/g, ' ')));
+  // The dialog's table, row by row, after clicking "Your stats".
+  const stats = (log: ReviewHistory['log']) => {
+    const deckCtrl = new DeckCtrl(deck, { cards: {}, log }, defaultSettings, () => {});
+    deckCtrl.analysis.toggleRetro();
+    expect(deckCtrl.statsOpen).toBe(false);
+    click(find(renderProgress(deckCtrl), 'a.mt-progress__stats'));
+    expect(deckCtrl.statsOpen).toBe(true);
+    const dialog = renderStats(deckCtrl);
+    const table = find(dialog, 'table');
+    deckCtrl.closeStats();
+    expect(deckCtrl.statsOpen).toBe(false);
+    return table
+      ? (table.children as VNode[]).slice(1).map(part => (part.children as VNode[]).map(row => textOf(row).trim().replace(/\s+/g, ' ')))
+      : textOf(dialog).trim();
   };
-  expect(rates([])).toBeUndefined(); // no reviews yet
+  expect(stats([])).toBe('Your stats No reviews yet.');
   // All in the last 30 days: one column.
-  expect(rates([review('a/1', 'fail', 9), review('b/1', 'win', 8), review('a/1', 'win', 1)])).toEqual([
+  expect(stats([review('a/1', 'fail', 9), review('b/1', 'win', 8), review('a/1', 'win', 1)])).toEqual([
     ['All your reviews'],
     [
       'The first time 50% (1 of 2)',
@@ -812,7 +823,7 @@ test('Training settings: how often you found the move; the last 30 days too, onc
     ],
   ]);
   // One older than that: the last 30 days get a column of their own.
-  expect(rates([review('a/1', 'fail', 40), review('b/1', 'win', 8), review('a/1', 'win', 1)])).toEqual([
+  expect(stats([review('a/1', 'fail', 40), review('b/1', 'win', 8), review('a/1', 'win', 1)])).toEqual([
     ['All your reviews Last 30 days'],
     [
       'The first time 50% (1 of 2) 100% (1 of 1)',
@@ -821,4 +832,7 @@ test('Training settings: how often you found the move; the last 30 days too, onc
       '… after getting it right – –',
     ],
   ]);
+  // Not in Training settings any more.
+  const page = new SettingsPageCtrl(deck, { cards: {}, log: [review('a/1', 'win', 1)] }, defaultSettings, () => {}, () => {}, notLoaded(), noUpdate());
+  expect(textOf(trainingSettingsView(page))).not.toContain('How often you found the move');
 });

@@ -1,7 +1,6 @@
 // settingsPageView.ts: Not in lila. Draws Training settings (see settingsPage.ts): how your cards
-// stand, how often you find the move, the settings form, updating your deck, the computer analysis
-// of your games, and your suspended cards, each on a small board you can click to look at it up
-// close.
+// stand, the settings form, updating your deck, the computer analysis of your games, and your
+// suspended cards, each on a small board you can click to look at it up close.
 
 import { Chessground } from '@lichess-org/chessground';
 import type { DrawShape } from '@lichess-org/chessground/draw';
@@ -21,7 +20,6 @@ import { i18n } from './i18n';
 import { licon } from './licon';
 import { activeCards, isAlreadyWon, isCollapse, isOpening, progress, recentGames } from './schedule';
 import { fixProblems, newCardOrders, problems, ranges, type NewCardOrder, type NumberKey, type Settings } from './settings';
-import { answerRates, type AnswerRates, type Rate } from './reviews';
 import { analysisSource } from './side';
 import { hl, onInsert, type LooseVNodes } from './snabbdom';
 import { buildTree, mainline, type LichessGameJson, type TreeNode } from './tree';
@@ -30,7 +28,6 @@ export function view(ctrl: SettingsPageCtrl): VNode {
   return hl('main.page-small.box.box-pad.mt-settings-page', [
     hl('h1.box__top', 'Training settings'),
     renderCounts(ctrl),
-    renderRates(ctrl),
     renderSettings(ctrl),
     renderYourDeck(ctrl),
     renderComputerAnalysis(ctrl),
@@ -49,37 +46,6 @@ function renderCounts(ctrl: SettingsPageCtrl): VNode {
   return hl('p.mt-settings-page__counts', [
     `Your ${ctrl.deck.cards.length} cards: `,
     [`${p.started} started`, `${p.notStarted} not started`, `${p.suspended} suspended`].join(' · '),
-  ]);
-}
-
-// How often you find the move (reviews.ts answerRates), over all your reviews and, once some are
-// older than that, the last 30 days, so you can see whether it's changing. Until then the two would
-// be the same.
-function renderRates(ctrl: SettingsPageCtrl): VNode | undefined {
-  const log = ctrl.history.log;
-  if (!log.length) return;
-  const all = answerRates(log);
-  const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60_000);
-  const lately = new Date(log[0].log.review) < monthAgo ? answerRates(log, monthAgo) : undefined; // oldest first
-  const cell = (r: Rate) => hl('td', r.of ? `${Math.round((100 * r.right) / r.of)}% (${r.right} of ${r.of})` : '–');
-  const row = (label: string, key: keyof AnswerRates) =>
-    hl('tr', [hl('th', label), cell(all[key]), lately && cell(lately[key])]);
-  return hl('div.mt-rates', [
-    hl('table', [
-      hl('caption', 'How often you found the move'),
-      hl('thead', hl('tr', [hl('th'), hl('th', 'All your reviews'), lately && hl('th', 'Last 30 days')])),
-      hl('tbody', [
-        row('The first time', 'firstTime'),
-        row('When a card came back', 'cameBack'),
-        row('… after getting it wrong', 'afterWrong'),
-        row('… after getting it right', 'afterRight'),
-      ]),
-    ]),
-    hl(
-      'p',
-      `When cards come back, FSRS aims for ${Math.round(preview(ctrl).desiredRetention * 100)}% right: ` +
-        'your desired retention, below.',
-    ),
   ]);
 }
 
@@ -284,9 +250,7 @@ function renderSettings(ctrl: SettingsPageCtrl): VNode {
         'Recent games',
         ['recentGames'],
         ['from your last ', numberInput('recentGames', 1, 'all'), ' games'],
-        'New cards only come from your latest games, this many. The cards you’ve started keep coming ' +
-          'back, whatever their game. To move on to older games, raise it. Leave it empty for all your ' +
-          'games. It counts your games with computer analysis, mistakes or not.',
+        'Leave it empty for all your games. It counts your games with computer analysis, mistakes or not.',
       ),
       renderRecentCounts(ctrl),
       row(

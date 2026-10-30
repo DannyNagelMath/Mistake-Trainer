@@ -101,8 +101,9 @@ function route(): void {
   if (showSettings === !!settingsCtrl) return;
   if (showSettings) {
     trainerScroll = window.scrollY;
-    // The board's Settings dialog, if it's open, would keep you from using the rest of the page.
+    // The board's Settings dialog, or Your stats, if open, would keep you from using the rest of the page.
     if (deckCtrl.analysis.settingsOpen) deckCtrl.analysis.closeSettings();
+    if (deckCtrl.statsOpen) deckCtrl.closeStats();
     settingsCtrl = new SettingsPageCtrl(
       deckCtrl.deck,
       history,
