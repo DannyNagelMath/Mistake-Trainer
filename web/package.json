@@ -6,11 +6,9 @@
   "scripts": {
     "dev": "vite",
     "check": "tsc --noEmit && tsc --noEmit -p scripts",
-    "check-tree": "tsx scripts/checkTree.ts",
     "update-deck": "tsx scripts/updateDeck.ts",
     "test": "vitest run",
-    "build": "tsc --noEmit && vite build",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p scripts"
+    "build": "tsc --noEmit && vite build"
   },
   "devDependencies": {
     "@types/node": "^24.19.0",

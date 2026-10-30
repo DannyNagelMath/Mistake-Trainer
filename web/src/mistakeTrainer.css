@@ -255,30 +255,12 @@ body:not(.mt-settings-shown) main.mt-settings-page {
   font-size: 0.9em;
   white-space: pre-wrap;
 }
-/* A run of analyses (analysisRunView.ts), in Training settings and on the comparison page. */
+/* A run of analyses (analysisRunView.ts), in Training settings. */
 .mt-run {
   margin: 1.5em 0 2em;
 }
 .mt-run__error {
   color: var(--c-bad);
-}
-/* The comparison page (compare.html): Lichess's analysis and ours, game by game. */
-.mt-compare-page table {
-  width: 100%;
-  border-collapse: collapse;
-}
-.mt-compare-page th,
-.mt-compare-page td {
-  padding: 0.4em 0.6em;
-  border-bottom: 1px solid var(--c-border);
-  text-align: start;
-  vertical-align: top;
-}
-.mt-compare__differs td {
-  background: var(--c-bg-zebra2);
-}
-.mt-compare__book {
-  text-decoration: line-through;
 }
 /* On narrow screens, each setting's label goes above it. */
 @media (max-width: 650px) {

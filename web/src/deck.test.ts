@@ -1,5 +1,5 @@
 // deck.test.ts: Step 9. Checks that the deck finds the same mistakes as "Learn from your mistakes".
-// The expected plies are the ones scripts/checkRetro.ts reports for these games.
+// The expected plies are the mistakes retroCtrl quizzes in these games.
 import { expect, test } from 'vitest';
 
 import real1 from '../fixtures/real1.json';

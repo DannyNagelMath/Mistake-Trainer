@@ -140,12 +140,9 @@ export function withMasterMoves(card: Card, mistake: { fen: string; uci: string 
   return book.length ? { ...card, masterMoves: book } : card;
 }
 
-// Loads the games you've downloaded (../pipeline/data/games.ndjson), or the masters database's
-// answers saved when the deck was built (../pipeline/data/masters.json, by FEN), from the dev
-// server (vite.config.ts).
+// Loads the games you've downloaded (../pipeline/data/games.ndjson) from the dev server
+// (vite.config.ts).
 export const loadGames = (): Promise<LichessGameJson[]> => loadData('/api/games', 'your downloaded games');
-export const loadMasters = (): Promise<Record<string, MasterMove[]>> =>
-  loadData('/api/masters', "the masters database's saved answers");
 
 async function loadData<T>(url: string, what: string): Promise<T> {
   const response = await fetch(url);

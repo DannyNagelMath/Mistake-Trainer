@@ -1,7 +1,7 @@
 // analysisRun.ts: Not in lila. Analyses games one after another on your computer
 // (localAnalysis.ts), and saves each analysis as soon as it's done (analyses.ts), so a run can be
 // paused, or the page closed, and taken up again later. Training settings runs it on your games
-// Lichess hasn't analysed (yourGames.ts), and the comparison page on those it has (compare.ts).
+// Lichess hasn't analysed (yourGames.ts).
 // analysisRunView.ts draws it.
 
 import { saveAnalysis, type SavedAnalysis } from './analyses';

@@ -130,6 +130,5 @@ function route(): void {
 window.addEventListener('hashchange', route);
 route(); // e.g. after reloading Training settings
 
-// For testing from the browser console; remove later.
-(window as any).ctrl = deckCtrl.analysis;
-(window as any).deck = deckCtrl;
+// For trying things from the browser console while developing (npm run dev), not in a build.
+if (import.meta.env.DEV) Object.assign(window, { ctrl: deckCtrl.analysis, deck: deckCtrl });

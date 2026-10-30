@@ -8,10 +8,8 @@
 //   POST /api/settings  replaces them (see settings.ts, which checks them when a page loads them)
 //   GET  /api/analysis  returns the analyses made on your computer, by game ({} if none yet)
 //   POST /api/analysis  with { gameId, analysis, engine, nodes, at } saves one (see analyses.ts)
-// and two that only read what the scripts in ../pipeline and scripts/ saved (see deck.ts):
+// and one that only reads what ../pipeline/save_my_games.py saved (see deck.ts):
 //   GET  /api/games     returns the games you've downloaded (../pipeline/data/games.ndjson)
-//   GET  /api/masters   returns the masters database's answers saved when the deck was built
-//                       (../pipeline/data/masters.json)
 // and one for "Update deck" in Training settings (see deckUpdate.ts):
 //   GET  /api/update-deck   says how it stands (idle, running, done, or failed), with what it has
 //                           printed so far
@@ -43,7 +41,6 @@ const historyFile = process.env.REVIEWS_FILE ?? dataFile('reviews.json');
 const settingsFile = process.env.SETTINGS_FILE ?? dataFile('settings.json');
 const analysisFile = process.env.ANALYSIS_FILE ?? dataFile('analysis.json');
 const gamesFile = pipelineFile('games.ndjson');
-const mastersFile = pipelineFile('masters.json');
 
 // "Update deck" runs updateDeck.ts, with node and tsx, as npm run update-deck does.
 const updateDeck = new DeckUpdateJob(
@@ -179,10 +176,6 @@ function dataApi(): Plugin {
       );
       const readOnly = () => 'Only GET';
       server.middlewares.use('/api/games', handler(readGames, readOnly));
-      server.middlewares.use(
-        '/api/masters',
-        handler(() => readJson(mastersFile, {}), readOnly),
-      );
       server.middlewares.use(
         '/api/update-deck',
         handler(
