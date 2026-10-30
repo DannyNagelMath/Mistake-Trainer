@@ -5,9 +5,9 @@
 
 import './mistakeTrainer.css';
 
-import { loadDeck } from './deck';
 import { finishSignIn } from './lichessAuth';
 import { showSetup } from './setupView';
+import { loadDeck } from './storage';
 import topBar from './topBar';
 import { startTrainer } from './trainer';
 

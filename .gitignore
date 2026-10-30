@@ -10,7 +10,5 @@ dist/
 .env
 
 # Game data, if large or re-downloadable
-pipeline/data/
-web/public/data
 web/public/lila
 web/data

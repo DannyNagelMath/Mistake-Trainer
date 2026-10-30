@@ -1,8 +1,7 @@
-// settings.ts: Not in lila. Your settings, which you change on the settings page (settings.html):
-// which new cards come first, and how cards are scheduled. schedule.ts reads them. They live in
-// data/settings.json (gitignored), which the dev server reads and writes for the pages (see
-// vite.config.ts), like your review history. With no file, everything is at its default, and
-// anything missing or out of range in the file is too.
+// settings.ts: Not in lila. Your settings, which you change in Training settings: which games make
+// cards, which new cards come first, and how cards are scheduled. schedule.ts reads them, and
+// storage.ts keeps them, like your review history. With none saved, everything is at its default,
+// and anything missing or out of range is too.
 
 import { speeds, type Speed } from './gameDownload';
 import { povChances } from './winningChances';
@@ -99,7 +98,7 @@ export function fixProblems(s: Settings, fallback: Settings): Settings {
   return fixed as Settings;
 }
 
-// The settings in `raw` (what data/settings.json holds), with the default for anything missing
+// The settings in `raw` (what's saved), with the default for anything missing
 // or wrong, so a file from an older version, or edited by hand, still works.
 export function parseSettings(raw: unknown): Settings {
   const given = typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
@@ -112,21 +111,3 @@ export function parseSettings(raw: unknown): Settings {
 // An eval in pawns, from your side, as winning chances from -1 to 1, the way cards store them
 // (Card.chancesBefore and chancesAfter): lila's formula, for White, who sees evals as they are.
 export const pawnsToChances = (pawns: number): number => povChances('white', { cp: pawns * 100 });
-
-export async function loadSettings(): Promise<Settings> {
-  const response = await fetch('/api/settings');
-  if (!response.ok) throw new Error(`Couldn't load your settings: ${response.status} ${await response.text()}`);
-  // A dev server started before /api/settings existed answers with the page itself.
-  if (!response.headers.get('content-type')?.includes('json'))
-    throw new Error("The dev server can't load your settings. Restart it (npm run dev) so it reads vite.config.ts.");
-  return parseSettings(await response.json());
-}
-
-export async function saveSettings(s: Settings): Promise<void> {
-  const response = await fetch('/api/settings', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(s),
-  });
-  if (!response.ok) throw new Error(`Couldn't save your settings: ${response.status} ${await response.text()}`);
-}

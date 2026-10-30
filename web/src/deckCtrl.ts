@@ -13,7 +13,7 @@ import { createEmptyCard, type Grade } from 'ts-fsrs';
 import { AnalysisCtrl } from './analysisCtrl';
 import { gameTimesOf, type Card, type Deck } from './deck';
 import type { CardResult, RetroCardOpts } from './retroCtrl';
-import { saveReview, saveSuspension, type ReviewEntry, type ReviewHistory } from './reviews';
+import type { ReviewEntry, ReviewHistory } from './reviews';
 import {
   activeCards,
   canComeUp,
@@ -30,6 +30,7 @@ import {
   type Progress,
 } from './schedule';
 import type { Settings } from './settings';
+import { saveReview, saveSuspension } from './storage';
 
 // Fisher-Yates: a random order, with every order equally likely.
 function shuffle<T>(items: T[]): T[] {

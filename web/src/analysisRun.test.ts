@@ -20,7 +20,7 @@ vi.mock('./localAnalysis', () => ({
   },
 }));
 const saveAnalysis = vi.hoisted(() => vi.fn(async (_gameId: string, _saved: unknown) => {}));
-vi.mock('./analyses', () => ({ saveAnalysis }));
+vi.mock('./storage', () => ({ saveAnalysis }));
 
 const game = real1 as unknown as LichessGameJson;
 

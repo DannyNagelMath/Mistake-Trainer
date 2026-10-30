@@ -4,10 +4,11 @@
 // Lichess hasn't analysed (yourGames.ts).
 // analysisRunView.ts draws it.
 
-import { saveAnalysis, type SavedAnalysis } from './analyses';
+import type { SavedAnalysis } from './analyses';
 import { ENGINE_NAME, GAME_NODES, stopEngines } from './fishnet';
 import { analyseGame } from './localAnalysis';
 import type { LichessAnalysisEntry, LichessGameJson } from './tree';
+import { saveAnalysis } from './storage';
 
 const positionsOf = (game: LichessGameJson): number => game.moves.split(' ').filter(san => san !== '').length + 1;
 

@@ -266,6 +266,10 @@ body:not(.mt-settings-shown) main.mt-settings-page {
 .mt-setup input {
   padding: 0.4em 0.6em;
 }
+/* "Import it", on the first-run screen: a link without an address. */
+.mt-setup__import a {
+  cursor: pointer;
+}
 /* "Sign out" of Lichess, in Your deck (settingsPageView.ts renderSignIn): a link without an address. */
 .mt-your-deck__lichess a {
   cursor: pointer;

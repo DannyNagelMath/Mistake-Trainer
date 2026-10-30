@@ -1,20 +1,21 @@
 // settingsPage.ts: Not in lila. Training settings: your settings, updating your deck (deckUpdate.ts),
 // the computer analysis of your games (yourGames.ts), and your suspended cards.
 // SettingsPageCtrl keeps its state, and settingsPageView.ts draws it with snabbdom. It shows in
-// the trainer's page, over the trainer, which waits hidden as you left it (main.ts makes a new
+// the trainer's page, over the trainer, which waits hidden as you left it (trainer.ts makes a new
 // SettingsPageCtrl each time it opens).
-// The settings are saved in data/settings.json (settings.ts), and passed on to the trainer, which
-// uses them from then on (DeckCtrl.useSettings).
+// The settings are saved (storage.ts), and passed on to the trainer, which uses them from then on
+// (DeckCtrl.useSettings).
 
 import type { Deck } from './deck';
 import type { DeckUpdateCtrl } from './deckUpdate';
 import { signOut } from './lichessAuth';
-import { saveUnsuspension, type ReviewHistory } from './reviews';
-import { defaultSettings, problems, saveSettings, type Settings } from './settings';
+import type { ReviewHistory } from './reviews';
+import { defaultSettings, problems, type Settings } from './settings';
+import { saveSettings, saveUnsuspension } from './storage';
 import type { YourGamesCtrl } from './yourGames';
 
 export class SettingsPageCtrl {
-  saved: Settings; // what's in data/settings.json, or the defaults
+  saved: Settings; // what's saved, or the defaults
   filledIn: Settings; // what the form was last filled in with
   draft: Settings; // what the form says now, which may be wrong (see problems)
   formVersion = 0; // raised to fill the form in again: a new key makes snabbdom make new inputs

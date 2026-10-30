@@ -14,6 +14,8 @@
 //   POST /api/masters   with { fen, moves } saves one (see mastersExplorer.ts)
 //   GET  /api/deck      returns the deck (null until the first is built; see deckUpdate.ts)
 //   POST /api/deck      replaces it
+//   POST /api/import    replaces everything with what an exported file holds (see backup.ts), after
+//                       copying the files there are to data/backups
 // It also serves Stockfish to the page at /stockfish/ (see stockfishFiles below), and makes the
 // pages "cross-origin isolated" so that it can run on several threads (crossOriginIsolation).
 // They only exist in the dev server (npm run dev), which is how this app runs.
@@ -25,7 +27,7 @@
 
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, type Plugin } from 'vite';
 
@@ -61,15 +63,53 @@ const readGames = (): { id: string }[] =>
         .map(line => JSON.parse(line))
     : [];
 
-// Adds games the page downloaded (gameDownload.ts) to the file, leaving out any it has already, in
-// a temporary file renamed over the old one, as writeJson does.
+// The games, one per line, in a temporary file renamed over the old one, as writeJson does.
+function writeGames(games: { id: string }[]): void {
+  mkdirSync(dirname(gamesFile), { recursive: true });
+  writeFileSync(gamesFile + '.tmp', games.map(g => JSON.stringify(g) + '\n').join(''));
+  renameSync(gamesFile + '.tmp', gamesFile);
+}
+
+// Adds games the page downloaded (gameDownload.ts) to the file, leaving out any it has already.
 function addGames(games: { id: string }[]): void {
   const saved = readGames();
   const known = new Set(saved.map(g => g.id));
-  const all = [...saved, ...games.filter(g => !known.has(g.id))];
-  mkdirSync(dirname(gamesFile), { recursive: true });
-  writeFileSync(gamesFile + '.tmp', all.map(g => JSON.stringify(g) + '\n').join(''));
-  renameSync(gamesFile + '.tmp', gamesFile);
+  writeGames([...saved, ...games.filter(g => !known.has(g.id))]);
+}
+
+// The deck, as writeJson would, but without its spacing: it's large.
+function writeDeck(deck: unknown): void {
+  mkdirSync(dirname(deckFile), { recursive: true });
+  writeFileSync(deckFile + '.tmp', JSON.stringify(deck));
+  renameSync(deckFile + '.tmp', deckFile);
+}
+
+// Import (backup.ts): everything replaced with a file's, after copying the files there are now to
+// data/backups/before-import-<date and time>, e.g. before-import-2026-10-30T18-04-33.
+function importAll(data: {
+  reviews: unknown;
+  settings: unknown;
+  analyses: unknown;
+  games: { id: string }[];
+  masters: unknown;
+  deck: unknown;
+}): void {
+  const now = new Date();
+  const [date, time] = [
+    [now.getFullYear(), now.getMonth() + 1, now.getDate()],
+    [now.getHours(), now.getMinutes(), now.getSeconds()],
+  ].map(parts => parts.map(n => String(n).padStart(2, '0')).join('-'));
+  const dir = join(dirname(historyFile), 'backups', `before-import-${date}T${time}`); // your time, as the daily backups
+  mkdirSync(dir, { recursive: true });
+  for (const file of [historyFile, settingsFile, analysisFile, gamesFile, mastersFile, deckFile])
+    if (existsSync(file)) copyFileSync(file, join(dir, basename(file)));
+  writeJson(historyFile, data.reviews);
+  writeJson(settingsFile, data.settings);
+  writeJson(analysisFile, data.analyses);
+  writeJson(mastersFile, data.masters);
+  writeGames(data.games);
+  if (data.deck) writeDeck(data.deck);
+  else rmSync(deckFile, { force: true }); // no deck: the first-run screen builds one
 }
 
 // Backs up your review history once a day: a copy in data/backups, named by the date, made the
@@ -203,9 +243,19 @@ function dataApi(): Plugin {
           () => readJson(deckFile, null),
           body => {
             if (typeof body?.username !== 'string' || !Array.isArray(body.cards)) return 'Expected a deck';
-            mkdirSync(dirname(deckFile), { recursive: true });
-            writeFileSync(deckFile + '.tmp', JSON.stringify(body)); // without writeJson's spacing: it's large
-            renameSync(deckFile + '.tmp', deckFile);
+            writeDeck(body);
+            return undefined;
+          },
+        ),
+      );
+      server.middlewares.use(
+        '/api/import',
+        handler(
+          () => null,
+          body => {
+            const ok = body?.reviews && body.settings && body.analyses && Array.isArray(body.games) && body.masters;
+            if (!ok) return 'Expected everything an export holds';
+            importAll(body);
             return undefined;
           },
         ),

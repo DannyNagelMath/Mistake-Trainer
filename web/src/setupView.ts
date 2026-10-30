@@ -4,12 +4,14 @@
 
 import { init, attributesModule, classModule, eventListenersModule, propsModule, type VNode } from 'snabbdom';
 
+import { importData } from './backup';
 import type { Deck } from './deck';
 import { DeckUpdateCtrl } from './deckUpdate';
 import { signedIn, signOut } from './lichessAuth';
-import { defaultSettings, loadSettings, saveSettings } from './settings';
+import { defaultSettings } from './settings';
 import { checkedGameTypes, renderGameTypes, renderLog, renderSignIn } from './settingsPageView';
 import { hl } from './snabbdom';
+import { loadSettings, saveSettings } from './storage';
 
 const patch = init([classModule, attributesModule, propsModule, eventListenersModule]);
 
@@ -68,6 +70,10 @@ export async function showSetup(deck: Deck | undefined): Promise<void> {
           }),
           hl('button.button', { attrs: { type: 'submit', disabled: running } }, running ? 'Building your deck…' : 'Start'),
         ]),
+      ]),
+      hl('p.mt-setup__import', [
+        'Moving here with a file you exported from Mistake Trainer? ',
+        hl('a', { on: { click: importData } }, 'Import it'),
       ]),
       problem && hl('p.mt-run__error', problem),
       built && !built.cards.length && hl('p.mt-run__error', noCards(built)),

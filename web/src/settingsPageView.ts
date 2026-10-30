@@ -12,6 +12,7 @@ import type { AnalysisRun } from './analysisRun';
 import { renderRun } from './analysisRunView';
 import { clickedOutside } from './analysisSettingsView';
 import { makeShapesFromUci } from './autoShape';
+import { exportData, importData } from './backup';
 import { renderEval, renderIndex } from './components';
 import type { SettingsPageCtrl } from './settingsPage';
 import { gameTimesOf, type Card } from './deck';
@@ -23,6 +24,7 @@ import { activeCards, isAlreadyWon, isCollapse, isOpening, progress, recentGames
 import { fixProblems, newCardOrders, problems, ranges, type NewCardOrder, type NumberKey, type Settings } from './settings';
 import { analysisSource } from './side';
 import { hl, onInsert, type LooseVNodes } from './snabbdom';
+import { inBrowser } from './storage';
 import { buildTree, mainline, type LichessGameJson, type TreeNode } from './tree';
 
 export function view(ctrl: SettingsPageCtrl): VNode {
@@ -33,6 +35,7 @@ export function view(ctrl: SettingsPageCtrl): VNode {
     renderYourDeck(ctrl),
     renderComputerAnalysis(ctrl),
     renderSuspended(ctrl),
+    renderYourData(),
     ctrl.looking && renderLook(ctrl, ctrl.looking),
   ]);
 }
@@ -402,6 +405,31 @@ function renderCategoryCounts(ctrl: SettingsPageCtrl): VNode {
     `Of your ${ctrl.deck.cards.length} cards, ${count(c => isCollapse(c, s))} are collapses, ` +
       `${count(c => isOpening(c, s))} are from the opening, and ${count(isAlreadyWon)} were already won.`,
   );
+}
+
+// Where your data is kept (storage.ts), and Export and Import (backup.ts).
+function renderYourData(): VNode {
+  return hl('section.mt-your-data', [
+    hl('h2', 'Your data'),
+    hl(
+      'p',
+      inBrowser
+        ? 'Everything is kept in this browser: your reviews, settings, games, and analyses. Clearing this ' +
+            'site’s data in your browser deletes it, so export it now and then. Export saves it all in one ' +
+            'file, and Import brings a file back, here or in another browser.'
+        : 'Everything is kept in files in web/data, on your computer, with a copy of your reviews made each ' +
+            'day. Export saves it all in one file, to keep, or to move to the website; Import replaces it ' +
+            'with a file’s, first copying what’s there to web/data/backups.',
+    ),
+    hl('div.mt-settings__actions', [
+      hl(
+        'button.button',
+        { attrs: { type: 'button' }, on: { click: () => exportData().catch(e => alert(e.message)) } },
+        'Export',
+      ),
+      hl('button.button.button-empty', { attrs: { type: 'button' }, on: { click: importData } }, 'Import'),
+    ]),
+  ]);
 }
 
 function renderSuspended(ctrl: SettingsPageCtrl): VNode {

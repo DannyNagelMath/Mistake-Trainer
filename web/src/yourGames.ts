@@ -6,10 +6,10 @@
 // settings opens. So a run goes on while you train, and Training settings shows how far it has got
 // whenever you come back to it.
 
-import { loadAnalyses } from './analyses';
 import { AnalysisRun } from './analysisRun';
-import { loadGames, yourGames } from './deck';
+import { yourGames } from './deck';
 import type { Speed } from './gameDownload';
+import { loadAnalyses, loadGames } from './storage';
 
 export class YourGamesCtrl {
   // Once your games have loaded: how many there are, how many Lichess has analysed, and the run on

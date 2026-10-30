@@ -5,11 +5,11 @@
 // happens in the page; the dev server only keeps the files (vite.config.ts).
 // trainer.ts makes it once, as the page opens, so an update goes on after Training settings closes.
 
-import { loadAnalyses } from './analyses';
-import { buildDeck, loadGames, loadMasters, saveDeck, saveGames, saveMasterMoves, type Deck } from './deck';
+import { buildDeck, type Deck } from './deck';
 import { downloadNewGames, type Speed } from './gameDownload';
 import { signedIn } from './lichessAuth';
 import { GAP, MastersExplorer } from './mastersExplorer';
+import { loadAnalyses, loadGames, loadMasters, saveDeck, saveGames, saveMasterMoves } from './storage';
 
 // e.g. "1 game", "12 games".
 const count = (n: number, noun: string): string => `${n.toLocaleString('en')} ${noun}${n === 1 ? '' : 's'}`;

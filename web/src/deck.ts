@@ -3,7 +3,7 @@
 // found the same way (retroCtrl's findNextNode), including lila's check against the masters
 // database for opening mistakes (see inOpening). buildDeck below builds the deck from your games,
 // with the analyses made here for the games Lichess hasn't analysed (withAnalysis); "Update deck"
-// runs it (deckUpdate.ts), and the dev server keeps the deck in data/deck.json.
+// runs it (deckUpdate.ts), and storage.ts keeps the deck.
 
 import type { Color } from 'chessops';
 import { Chess, normalizeMove } from 'chessops/chess';
@@ -230,50 +230,4 @@ export async function buildDeck(
   for (const id of Object.keys(deck.games)) if (!deck.cards.some(c => c.gameId === id)) delete deck.games[id];
   deck.gameTimes = gameTimes.sort((a, b) => b - a); // newest first
   return { deck, report };
-}
-
-// Loads the games you've downloaded (data/games.ndjson) from the dev server
-// (vite.config.ts), and saves new ones there (gameDownload.ts), leaving out any it has already.
-export const loadGames = (): Promise<LichessGameJson[]> => loadData('/api/games', 'your downloaded games');
-export async function saveGames(games: LichessGameJson[]): Promise<void> {
-  const response = await fetch('/api/games', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ games }),
-  });
-  if (!response.ok) throw new Error(`Couldn't save your games: ${response.status} ${await response.text()}`);
-}
-
-// The masters database's answers, by position, saved on your computer (mastersExplorer.ts), and a
-// new one to save.
-export const loadMasters = (): Promise<Record<string, MasterMove[]>> =>
-  loadData('/api/masters', "the masters database's saved answers");
-export async function saveMasterMoves(fen: string, moves: MasterMove[]): Promise<void> {
-  const response = await fetch('/api/masters', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fen, moves }),
-  });
-  if (!response.ok) throw new Error(`Couldn't save the masters' moves: ${response.status} ${await response.text()}`);
-}
-
-async function loadData<T>(url: string, what: string): Promise<T> {
-  const response = await fetch(url);
-  // A dev server started before these addresses were added answers with the page itself.
-  if (!response.ok || !response.headers.get('content-type')?.includes('json'))
-    throw new Error(`Couldn't load ${what} (${response.status}). Restart the dev server (npm run dev).`);
-  return response.json();
-}
-
-// Loads the deck the page uses, from the dev server: undefined if it hasn't been built yet. And
-// saves a new one there (deckUpdate.ts).
-export const loadDeck = async (): Promise<Deck | undefined> =>
-  (await loadData<Deck | null>('/api/deck', 'your deck')) ?? undefined;
-export async function saveDeck(deck: Deck): Promise<void> {
-  const response = await fetch('/api/deck', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(deck),
-  });
-  if (!response.ok) throw new Error(`Couldn't save your deck: ${response.status} ${await response.text()}`);
 }

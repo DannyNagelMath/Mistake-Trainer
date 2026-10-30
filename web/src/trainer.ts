@@ -2,7 +2,7 @@
 // "Learn from your mistakes" panel in card mode (deckCtrl.ts), and Training settings, which shows in
 // the same page (settingsPage.ts). main.ts starts it.
 // Step 4b: the board's CSS comes from lila's stylesheets, loaded in index.html.
-// Step 9: your review history is in data/reviews.json, and your settings in data/settings.json.
+// Step 9: storage.ts keeps your review history and settings.
 
 import { init, attributesModule, classModule, eventListenersModule, propsModule, type VNode } from 'snabbdom';
 
@@ -13,11 +13,10 @@ import { DeckUpdateCtrl } from './deckUpdate';
 import { onSearching, preload } from './engine';
 import { holdEngines, releaseEngines } from './fishnet';
 import * as keyboard from './keyboard';
-import { loadHistory } from './reviews';
-import { loadSettings } from './settings';
 import { SettingsPageCtrl } from './settingsPage';
 import { view as settingsView } from './settingsPageView';
 import { hl } from './snabbdom';
+import { inBrowser, loadHistory, loadSettings } from './storage';
 import { view } from './view';
 import { YourGamesCtrl } from './yourGames';
 
@@ -70,6 +69,10 @@ export async function startTrainer(element: HTMLElement, deck: Deck): Promise<vo
 
   // Not in lila: "Update deck", in Training settings, which goes on while you train too.
   const deckUpdate = new DeckUpdateCtrl(deck.username, () => deckCtrl.settings.gameTypes, redraw);
+
+  // Not in lila: on the website, ask the browser to keep your data even when it's short of space.
+  // It may ask you, or decide by itself; once it has said yes, this asks nothing.
+  if (inBrowser) navigator.storage?.persisted?.().then(kept => kept || navigator.storage.persist());
 
   // Not in lila: a card you'd got right but not yet rated when you left comes back as you left it.
   deckCtrl.resume();
