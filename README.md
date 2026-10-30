@@ -40,10 +40,7 @@ on Lichess's open-source code, with gratitude: if you find it useful, please con
 You need Node.js and git.
 
 1. Install the page's dependencies: `cd web`, then `npm install`.
-2. Build lila's stylesheets and copy the fonts and images they use. `web/scripts/buildLilaCss.ts`
-   explains how to fetch the parts of lila it needs; then run
-   `npx tsx scripts/buildLilaCss.ts <path to lila>` from `web`.
-3. Start the page with `npm run dev`, open the address it prints, and give your Lichess username:
+2. Start the page with `npm run dev`, open the address it prints, and give your Lichess username:
    the page downloads your games and builds your deck. Everything it saves is in `web/data`.
 
 Later, to add the games you've played since, and the games analysed in Training settings since,
@@ -80,16 +77,12 @@ you must offer them its source code.
   [ts-fsrs](https://github.com/open-spaced-repetition/ts-fsrs) (MIT),
   [stockfish.js](https://github.com/nmrugg/stockfish.js), Stockfish compiled to WebAssembly
   (GPL-3.0), and development tools under MIT or Apache 2.0.
-- lila's stylesheets, fonts, piece set, and board images aren't included either: step 2 above builds
-  them from your own copy of lila, into `web/public/lila` (gitignored). They keep their own licences,
-  listed in lila's
-  [COPYING.md](https://github.com/lichess-org/lila/blob/27ffc8b5f296d180e7a648d6bfdad27eef3f86a2/COPYING.md).
-  The script only copies ones with free licences: the brown board (AGPL-3.0+), the cburnett pieces
-  (GPL-2.0+, Colin M.L. Burnett), the mono pieces (GPL-2.0+, Thibault Duplessis and Colin M.L.
-  Burnett), lila's help videos for the analysis settings (AGPL-3.0+), Noto Sans and Roboto
-  (Apache 2.0), and the icon and chess fonts
-  (OFL, MIT, CC BY 3.0, GPL-2.0+, and AGPL-3.0+). If you change the board or pieces, check their
-  entry in COPYING.md: some of lila's are non-free or non-commercial.
+- lila's stylesheets, fonts, piece sets, board image, and help videos are in `web/public/lila`,
+  built from lila's source by `web/scripts/buildLilaCss.ts`. They keep their own licences, all
+  free: `web/public/lila/README.md` lists each file's authors and licence, and the licences' texts
+  are beside it. If you change the board or pieces, check their entry in lila's
+  [COPYING.md](https://github.com/lichess-org/lila/blob/27ffc8b5f296d180e7a648d6bfdad27eef3f86a2/COPYING.md):
+  some of lila's are non-free or non-commercial.
 - Mistake Trainer doesn't use the Lichess name or logo as its own; lila's COPYING.md reserves the
   logo for referring to lichess.org.
 - The games in `web/fixtures` are from lichess.org, whose game database Lichess releases under

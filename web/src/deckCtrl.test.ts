@@ -56,6 +56,7 @@ vi.mock('./engine', () => ({
   isAnalysing: () => false,
   ANALYSIS_MILLIS: 8000,
   ENGINE_NAME: 'Stockfish',
+  FULL_NETWORK: true,
   MULTI_THREADED: false,
 }));
 

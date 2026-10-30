@@ -1,17 +1,27 @@
 // setupView.ts: Not in lila. The first-run screen, until there's a deck with cards: you give your
 // Lichess username, the page downloads your games and builds your deck (deckUpdate.ts), and then
-// loads again, with the trainer. It shows in Training settings' <main> (index.html), in its style.
+// loads again, with the trainer. If none of your games has computer analysis, it offers to analyse
+// them here first (yourGames.ts). It shows in Training settings' <main> (index.html), in its style.
 
 import { init, attributesModule, classModule, eventListenersModule, propsModule, type VNode } from 'snabbdom';
 
 import { importData } from './backup';
 import type { Deck } from './deck';
 import { DeckUpdateCtrl } from './deckUpdate';
+import type { Speed } from './gameDownload';
 import { signedIn, signOut } from './lichessAuth';
 import { defaultSettings } from './settings';
-import { checkedGameTypes, renderGameTypes, renderLog, renderSignIn } from './settingsPageView';
+import {
+  checkedGameTypes,
+  renderAbout,
+  renderComputerAnalysis,
+  renderGameTypes,
+  renderLog,
+  renderSignIn,
+} from './settingsPageView';
 import { hl } from './snabbdom';
 import { loadSettings, saveSettings } from './storage';
+import { YourGamesCtrl } from './yourGames';
 
 const patch = init([classModule, attributesModule, propsModule, eventListenersModule]);
 
@@ -23,6 +33,12 @@ export async function showSetup(deck: Deck | undefined): Promise<void> {
   let vnode: VNode | Element = document.querySelector('main.mt-settings-page')!;
   let update: DeckUpdateCtrl | undefined;
   let problem = ''; // what's wrong with the form, if anything
+  // With a deck but no cards, as none of your games has computer analysis: analysing them here.
+  let yourGames: YourGamesCtrl | undefined;
+  const analyseHere = (username: string, gameTypes: Speed[]): void => {
+    yourGames = new YourGamesCtrl(username, () => gameTypes, redraw);
+    yourGames.load();
+  };
 
   const redraw = (): void => {
     vnode = patch(vnode, view());
@@ -39,7 +55,8 @@ export async function showSetup(deck: Deck | undefined): Promise<void> {
     if (problem) return redraw();
     await saveSettings({ ...settings, gameTypes });
     update = new DeckUpdateCtrl(username, () => gameTypes, redraw);
-    update.start();
+    await update.start();
+    if (update.built && !update.built.cards.length) analyseHere(username, gameTypes);
   };
 
   const view = (): VNode => {
@@ -68,7 +85,11 @@ export async function showSetup(deck: Deck | undefined): Promise<void> {
           hl('input', {
             attrs: { id: 'username', name: 'username', required: true, value: signedIn()?.username ?? deck?.username ?? '' },
           }),
-          hl('button.button', { attrs: { type: 'submit', disabled: running } }, running ? 'Building your deck…' : 'Start'),
+          hl(
+            'button.button',
+            { attrs: { type: 'submit', disabled: running } },
+            running ? 'Building your deck…' : yourGames ? 'Build my deck' : 'Start',
+          ),
         ]),
       ]),
       hl('p.mt-setup__import', [
@@ -76,12 +97,23 @@ export async function showSetup(deck: Deck | undefined): Promise<void> {
         hl('a', { on: { click: importData } }, 'Import it'),
       ]),
       problem && hl('p.mt-run__error', problem),
-      built && !built.cards.length && hl('p.mt-run__error', noCards(built)),
+      built && !built.cards.length && [
+        hl('p.mt-run__error', noCards(built)),
+        yourGames &&
+          renderComputerAnalysis(
+            yourGames,
+            run =>
+              run.games.some(g => run.saved[g.id]) &&
+              hl('p', 'Once some are analysed, press “Build my deck”, above, to make your cards from them.'),
+          ),
+      ],
       update?.state === 'failed' && hl('p.mt-run__error', update.lines.at(-1)!),
       update && update.lines.length > 0 && renderLog(update.lines),
+      renderAbout(),
     ]);
   };
 
+  if (deck && !deck.cards.length) analyseHere(deck.username, settings.gameTypes);
   redraw();
 }
 
@@ -90,4 +122,4 @@ const noCards = (deck: Deck): string =>
   deck.gameTimes?.length
     ? `None of ${deck.username}’s ${deck.gameTimes.length} games with computer analysis has a mistake by them.`
     : `None of ${deck.username}’s games has computer analysis yet. Lichess analyses a game when you ask it ` +
-      'to, on the game’s page; then press Start again.';
+      'to, on the game’s page, or you can analyse them here, below.';

@@ -1,0 +1,6 @@
+# For the website, on Cloudflare Pages, which reads this file from the build: the two headers that
+# make the page "cross-origin isolated", so that Stockfish can run on several threads. The dev
+# server sends them itself (vite.config.ts crossOriginIsolation).
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp

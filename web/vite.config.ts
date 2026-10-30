@@ -288,8 +288,9 @@ function crossOriginIsolation(): Plugin {
 // `stockfish`, so they're always the installed version. Only files named like its engines, and
 // with the content types the browser needs to run them. The browser may keep them for a day:
 // the full engine is about 100 MB.
+const stockfishDir = fileURLToPath(new URL('./node_modules/stockfish/bin/', import.meta.url));
 function stockfishFiles(): Plugin {
-  const dir = fileURLToPath(new URL('./node_modules/stockfish/bin/', import.meta.url));
+  const dir = stockfishDir;
   return {
     name: 'stockfish-files',
     configureServer(server) {
@@ -304,4 +305,27 @@ function stockfishFiles(): Plugin {
   };
 }
 
-export default defineConfig({ plugins: [crossOriginIsolation(), dataApi(), stockfishFiles()] });
+// For the website (npm run build): the lite engines (src/engine.ts), copied into the build at
+// /stockfish/, with Stockfish's licence, which the GPL asks to go with them.
+function stockfishBuild(): Plugin {
+  const files = {
+    'stockfish-19-lite.js': 'stockfish-19-lite.js',
+    'stockfish-19-lite.wasm': 'stockfish-19-lite.wasm',
+    'stockfish-19-lite-single.js': 'stockfish-19-lite-single.js',
+    'stockfish-19-lite-single.wasm': 'stockfish-19-lite-single.wasm',
+    'Copying.txt': '../Copying.txt', // the GPL's text
+  };
+  return {
+    name: 'stockfish-build',
+    apply: 'build',
+    generateBundle() {
+      for (const [name, from] of Object.entries(files))
+        this.emitFile({ type: 'asset', fileName: `stockfish/${name}`, source: readFileSync(stockfishDir + from) });
+    },
+  };
+}
+
+export default defineConfig({
+  plugins: [crossOriginIsolation(), dataApi(), stockfishFiles(), stockfishBuild()],
+  preview: { headers: ISOLATION }, // npm run preview: the built website, with the headers it has on Cloudflare (public/_headers)
+});

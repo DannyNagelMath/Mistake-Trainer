@@ -9,7 +9,9 @@
 // The engine is stockfish.js (the npm package `stockfish`, GPL-3.0): Stockfish 19 compiled to
 // WebAssembly, with its full network, on several threads, like the engine Lichess users usually
 // run. vite.config.ts serves it at /stockfish/, and makes the pages "cross-origin isolated", as
-// threads need. A page without that gets the small "lite" build, on one thread. The engine runs
+// threads need. A page without that gets the small "lite" build, on one thread. The website (a
+// build) has only the lite builds: the full network's file is 99 MB, too big to host, and too
+// much for every visitor to download; the lite one's is under 2 MB. The engine runs
 // in a Web Worker, so the page doesn't freeze while it thinks, and speaks UCI, the chess engine
 // protocol: we send it lines of text like "go nodes 1000000", and it answers with lines like
 // "info depth 12 ... score cp 35".
@@ -32,10 +34,16 @@ export interface EngineEval {
   bestmove?: string; // once the search has run its course; not if it was stopped early
 }
 
-// The full network on several threads, where the page allows threads; else the lite build.
+// The full network on several threads, where the page allows threads; else the lite build. On the
+// website, the lite build, on several threads where the page allows them.
+export const FULL_NETWORK = import.meta.env.DEV; // running the app yourself, not a build
 export const MULTI_THREADED = typeof crossOriginIsolated !== 'undefined' && crossOriginIsolated;
-export const ENGINE_NAME = MULTI_THREADED ? 'Stockfish 19' : 'Stockfish 19 lite';
-const ENGINE = MULTI_THREADED ? '/stockfish/stockfish-19.js' : '/stockfish/stockfish-19-lite-single.js';
+export const ENGINE_NAME = FULL_NETWORK && MULTI_THREADED ? 'Stockfish 19' : 'Stockfish 19 lite';
+const ENGINE = !MULTI_THREADED
+  ? '/stockfish/stockfish-19-lite-single.js'
+  : FULL_NETWORK
+    ? '/stockfish/stockfish-19.js'
+    : '/stockfish/stockfish-19-lite.js';
 // One thread fewer than the computer has, so the page stays responsive while the engine thinks.
 const THREADS = MULTI_THREADED ? Math.max(1, (navigator.hardwareConcurrency || 2) - 1) : 1;
 // lila judges your move once its engine has searched 1,000,000 positions or for 3 seconds

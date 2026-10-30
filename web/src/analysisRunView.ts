@@ -13,7 +13,7 @@ export function renderRun(run: AnalysisRun): VNode {
   const current = run.current;
   return hl('div.mt-run', [
     hl('p', [
-      `${count(done)} of ${count(run.games.length)} games analysed here.`,
+      `${count(done)} of ${count(run.games.length)} game${run.games.length === 1 ? '' : 's'} analysed here.`,
       current &&
         ` Now game ${count(done + 1)}` +
           (current.game.createdAt ? `, played ${new Date(current.game.createdAt).toLocaleDateString()}` : '') +

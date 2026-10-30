@@ -250,6 +250,13 @@ body:not(.mt-settings-shown) main.mt-settings-page {
   gap: 0.6em;
   margin-top: 1.2em;
 }
+/* What this is, and the link to its source code, at the end of Training settings and the first-run
+   screen (settingsPageView.ts renderAbout). */
+.mt-about {
+  margin-top: 2.5em;
+  color: var(--c-font-dim);
+  font-size: 0.9em;
+}
 /* The first-run screen (setupView.ts): the kinds of games, then your Lichess username, and Start. */
 .mt-setup {
   display: flex;

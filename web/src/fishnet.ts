@@ -12,13 +12,14 @@
 // The engines are stockfish.js's one-thread build (the npm package `stockfish`, GPL-3.0): Stockfish
 // 19 compiled to WebAssembly, with its full network, the version and network fishnet has used since
 // 5 September 2026. vite.config.ts serves it at /stockfish/. Each engine runs in a Web Worker of
-// its own, apart from engine.ts's engine, which checks your moves and analyses live.
+// its own, apart from engine.ts's engine, which checks your moves and analyses live. The website
+// has only the lite build, whose small network's analysis can differ a little from Lichess's.
 // Every change from fishnet's is marked with a comment starting "Trim:".
 
-import { parseInfo, type EngineEval } from './engine';
+import { FULL_NETWORK, parseInfo, type EngineEval } from './engine';
 
-export const ENGINE_NAME = 'Stockfish 19';
-const ENGINE = '/stockfish/stockfish-19-single.js';
+export const ENGINE_NAME = FULL_NETWORK ? 'Stockfish 19' : 'Stockfish 19 lite';
+const ENGINE = FULL_NETWORK ? '/stockfish/stockfish-19-single.js' : '/stockfish/stockfish-19-lite-single.js';
 // Lichess's servers search each position of a game you ask them to analyse for 1,000,000 positions
 // (lila's fishnet Work.Origin.manualRequest).
 export const GAME_NODES = 1_000_000;

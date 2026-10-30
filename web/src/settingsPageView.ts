@@ -17,6 +17,7 @@ import { renderEval, renderIndex } from './components';
 import type { SettingsPageCtrl } from './settingsPage';
 import { gameTimesOf, type Card } from './deck';
 import { speeds, type Speed } from './gameDownload';
+import { FULL_NETWORK } from './engine';
 import { i18n } from './i18n';
 import { signedIn, signIn } from './lichessAuth';
 import { licon } from './licon';
@@ -26,6 +27,7 @@ import { analysisSource } from './side';
 import { hl, onInsert, type LooseVNodes } from './snabbdom';
 import { inBrowser } from './storage';
 import { buildTree, mainline, type LichessGameJson, type TreeNode } from './tree';
+import type { YourGamesCtrl } from './yourGames';
 
 export function view(ctrl: SettingsPageCtrl): VNode {
   return hl('main.page-small.box.box-pad.mt-settings-page', [
@@ -33,9 +35,10 @@ export function view(ctrl: SettingsPageCtrl): VNode {
     renderCounts(ctrl),
     renderSettings(ctrl),
     renderYourDeck(ctrl),
-    renderComputerAnalysis(ctrl),
+    renderComputerAnalysis(ctrl.yourGames, run => renderNotInDeck(ctrl, run)),
     renderSuspended(ctrl),
     renderYourData(),
+    renderAbout(),
     ctrl.looking && renderLook(ctrl, ctrl.looking),
   ]);
 }
@@ -135,10 +138,11 @@ function reloadToTrain(): void {
   location.reload();
 }
 
-// Your games (yourGames.ts): how many Lichess has analysed, the run on the others, here, and whether
-// the deck has the cards from those analysed here yet.
-function renderComputerAnalysis(ctrl: SettingsPageCtrl): VNode {
-  const { loaded, error } = ctrl.yourGames;
+// Your games (yourGames.ts): how many Lichess has analysed, and the run on the others, here; then
+// `after`, e.g. whether the deck has the cards from those analysed here yet. Also on the first-run
+// screen (setupView.ts), for someone none of whose games Lichess has analysed.
+export function renderComputerAnalysis(yourGames: YourGamesCtrl, after: (run: AnalysisRun) => LooseVNodes): VNode {
+  const { loaded, error } = yourGames;
   const count = (n: number) => n.toLocaleString('en');
   return hl('section.mt-computer-analysis', [
     hl('h2', 'Computer analysis'),
@@ -147,14 +151,16 @@ function renderComputerAnalysis(ctrl: SettingsPageCtrl): VNode {
           hl(
             'p',
             `Your cards come from the computer analysis of your games. Lichess has analysed ` +
-              `${count(loaded.byLichess)} of your ${count(loaded.all)} games. The other ` +
-              `${count(loaded.run.games.length)} can be analysed here, on your computer, the way Lichess’s servers ` +
-              'do it, newest first. Each game is saved as soon as it’s done, so you can pause, or close the page, ' +
+              `${count(loaded.byLichess)} of your ${count(loaded.all)} game${loaded.all === 1 ? '' : 's'}. ` +
+              (loaded.run.games.length === 1 ? 'The other one' : `The other ${count(loaded.run.games.length)}`) +
+              ' can be analysed here, on your computer, ' +
+              (FULL_NETWORK ? 'the way Lichess’s servers do it' : 'much as Lichess’s servers do it, with a smaller network') +
+              ', newest first. Each game is saved as soon as it’s done, so you can pause, or close the page, ' +
               'and carry on later. It goes on while you train, stopping whenever the trainer’s own engine is ' +
               'thinking.',
           ),
           renderRun(loaded.run),
-          renderNotInDeck(ctrl, loaded.run),
+          after(loaded.run),
         ]
       : hl('p', error || 'Loading your games…'),
   ]);
@@ -406,6 +412,14 @@ function renderCategoryCounts(ctrl: SettingsPageCtrl): VNode {
       `${count(c => isOpening(c, s))} are from the opening, and ${count(isAlreadyWon)} were already won.`,
   );
 }
+
+// What this is, and where its source code is, which the AGPL asks a website running it to offer.
+// Also on the first-run screen (setupView.ts).
+export const renderAbout = (): VNode =>
+  hl('p.mt-about', [
+    'Mistake Trainer is free software, built on Lichess’s own, and not affiliated with Lichess. ',
+    hl('a', { attrs: { href: 'https://github.com/DannyNagelMath/Mistake-Trainer' } }, 'Source code'),
+  ]);
 
 // Where your data is kept (storage.ts), and Export and Import (backup.ts).
 function renderYourData(): VNode {

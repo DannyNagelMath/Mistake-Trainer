@@ -1,5 +1,7 @@
 // buildLilaCss.ts: compiles the three stylesheets that Lichess's analysis page loads, and the one
 // for its dialogs, into public/lila/css, and copies the fonts and images they use into public/lila.
+// The built files are kept in the repository (public/lila, whose README.md gives their licences), so
+// this is only needed to build them again, e.g. from another lila commit.
 // Run from web: npx tsx scripts/buildLilaCss.ts <path to your lila clone>
 // The lila clone should be checked out at the reference commit, 27ffc8b.
 // Source in lila: ui/.build/src/sass.ts (buildColorWrap, and the options in SASS_ARGS).
