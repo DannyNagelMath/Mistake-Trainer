@@ -53,3 +53,11 @@ test('fixProblems keeps what makes sense and takes the rest from the fallback', 
   const draft = with_({ minGapDays: 100, collapseBefore: -4, openingMoves: 15 }); // -4 isn't above the -2 after it
   expect(fixProblems(draft, saved)).toEqual(with_({ minGapDays: 5, collapseAfter: -3, openingMoves: 15 }));
 });
+
+test("the kinds of games: at least one of Lichess's, kept in Lichess's order", () => {
+  expect(defaultSettings.gameTypes).toEqual(['blitz', 'rapid']);
+  expect(problems({ ...defaultSettings, gameTypes: [] }).gameTypes).toBe('Choose at least one');
+  expect(problems({ ...defaultSettings, gameTypes: ['blitz', 'speedy' as 'blitz'] }).gameTypes).toBe('Choose at least one');
+  expect(parseSettings({ gameTypes: ['correspondence', 'bullet'] }).gameTypes).toEqual(['bullet', 'correspondence']);
+  expect(parseSettings({ gameTypes: [] }).gameTypes).toEqual(['blitz', 'rapid']); // back to the default
+});

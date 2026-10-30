@@ -8,21 +8,19 @@
 //   POST /api/settings  replaces them (see settings.ts, which checks them when a page loads them)
 //   GET  /api/analysis  returns the analyses made on your computer, by game ({} if none yet)
 //   POST /api/analysis  with { gameId, analysis, engine, nodes, at } saves one (see analyses.ts)
-// and one that only reads what ../pipeline/save_my_games.py saved (see deck.ts):
-//   GET  /api/games     returns the games you've downloaded (../pipeline/data/games.ndjson)
-// and one for "Update deck" in Training settings (see deckUpdate.ts):
-//   GET  /api/update-deck   says how it stands (idle, running, done, or failed), with what it has
-//                           printed so far
-//   POST /api/update-deck   starts it, unless it's running already: it runs scripts/updateDeck.ts
-//                           in the background (scripts/deckUpdateJob.ts), as npm run update-deck
-//                           does, which downloads your new games and builds the deck again
+//   GET  /api/games     returns the games downloaded from Lichess (gameDownload.ts), one per line
+//   POST /api/games     with { games } adds those it doesn't have yet
+//   GET  /api/masters   returns the masters database's answers, by position ({} if none yet)
+//   POST /api/masters   with { fen, moves } saves one (see mastersExplorer.ts)
+//   GET  /api/deck      returns the deck (null until the first is built; see deckUpdate.ts)
+//   POST /api/deck      replaces it
 // It also serves Stockfish to the page at /stockfish/ (see stockfishFiles below), and makes the
 // pages "cross-origin isolated" so that it can run on several threads (crossOriginIsolation).
 // They only exist in the dev server (npm run dev), which is how this app runs.
 // To start your review history again, delete data/reviews.json; to go back to the default
 // settings, delete data/settings.json. To use other files, e.g. for testing, set the
-// REVIEWS_FILE, SETTINGS_FILE, and ANALYSIS_FILE environment variables to their paths, and
-// UPDATE_DECK_SCRIPT to the script "Update deck" runs instead of scripts/updateDeck.ts.
+// REVIEWS_FILE, SETTINGS_FILE, ANALYSIS_FILE, GAMES_FILE, MASTERS_FILE, and DECK_FILE environment
+// variables to their paths.
 // Your review history is backed up once a day (backupHistory below).
 
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
@@ -31,23 +29,16 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, type Plugin } from 'vite';
 
-import { DeckUpdateJob } from './scripts/deckUpdateJob.ts';
 import type { SavedAnalysis } from './src/analyses.ts';
 import type { ReviewEntry, ReviewHistory } from './src/reviews.ts';
 
 const dataFile = (name: string) => fileURLToPath(new URL(`./data/${name}`, import.meta.url));
-const pipelineFile = (name: string) => fileURLToPath(new URL(`../pipeline/data/${name}`, import.meta.url));
 const historyFile = process.env.REVIEWS_FILE ?? dataFile('reviews.json');
 const settingsFile = process.env.SETTINGS_FILE ?? dataFile('settings.json');
 const analysisFile = process.env.ANALYSIS_FILE ?? dataFile('analysis.json');
-const gamesFile = pipelineFile('games.ndjson');
-
-// "Update deck" runs updateDeck.ts, with node and tsx, as npm run update-deck does.
-const updateDeck = new DeckUpdateJob(
-  process.execPath,
-  ['--import', 'tsx', process.env.UPDATE_DECK_SCRIPT ?? 'scripts/updateDeck.ts'],
-  fileURLToPath(new URL('.', import.meta.url)),
-);
+const gamesFile = process.env.GAMES_FILE ?? dataFile('games.ndjson');
+const mastersFile = process.env.MASTERS_FILE ?? dataFile('masters.json');
+const deckFile = process.env.DECK_FILE ?? dataFile('deck.json');
 
 const readJson = <T>(file: string, empty: T): T => (existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : empty);
 
@@ -62,13 +53,24 @@ function writeJson(file: string, data: unknown): void {
 const readHistory = (): ReviewHistory => readJson(historyFile, { cards: {}, log: [] });
 
 // NDJSON, as the games are downloaded: one game's JSON per line.
-const readGames = (): unknown[] =>
+const readGames = (): { id: string }[] =>
   existsSync(gamesFile)
     ? readFileSync(gamesFile, 'utf8')
         .split('\n')
         .filter(line => line.trim())
         .map(line => JSON.parse(line))
     : [];
+
+// Adds games the page downloaded (gameDownload.ts) to the file, leaving out any it has already, in
+// a temporary file renamed over the old one, as writeJson does.
+function addGames(games: { id: string }[]): void {
+  const saved = readGames();
+  const known = new Set(saved.map(g => g.id));
+  const all = [...saved, ...games.filter(g => !known.has(g.id))];
+  mkdirSync(dirname(gamesFile), { recursive: true });
+  writeFileSync(gamesFile + '.tmp', all.map(g => JSON.stringify(g) + '\n').join(''));
+  renameSync(gamesFile + '.tmp', gamesFile);
+}
 
 // Backs up your review history once a day: a copy in data/backups, named by the date, made the
 // first time the dev server starts or saves a review that day, before anything changes. The 30
@@ -174,14 +176,36 @@ function dataApi(): Plugin {
           },
         ),
       );
-      const readOnly = () => 'Only GET';
-      server.middlewares.use('/api/games', handler(readGames, readOnly));
       server.middlewares.use(
-        '/api/update-deck',
+        '/api/games',
+        handler(readGames, body => {
+          const { games } = body as { games?: { id: string }[] };
+          if (!Array.isArray(games) || games.some(g => typeof g?.id !== 'string')) return 'Expected { games: [...] }';
+          addGames(games);
+          return undefined;
+        }),
+      );
+      server.middlewares.use(
+        '/api/masters',
         handler(
-          () => updateDeck.status,
-          () => {
-            updateDeck.start();
+          () => readJson(mastersFile, {}),
+          body => {
+            const { fen, moves } = body as { fen?: string; moves?: unknown };
+            if (typeof fen !== 'string' || !Array.isArray(moves)) return 'Expected { fen, moves }';
+            writeJson(mastersFile, { ...readJson<Record<string, unknown>>(mastersFile, {}), [fen]: moves });
+            return undefined;
+          },
+        ),
+      );
+      server.middlewares.use(
+        '/api/deck',
+        handler(
+          () => readJson(deckFile, null),
+          body => {
+            if (typeof body?.username !== 'string' || !Array.isArray(body.cards)) return 'Expected a deck';
+            mkdirSync(dirname(deckFile), { recursive: true });
+            writeFileSync(deckFile + '.tmp', JSON.stringify(body)); // without writeJson's spacing: it's large
+            renameSync(deckFile + '.tmp', deckFile);
             return undefined;
           },
         ),

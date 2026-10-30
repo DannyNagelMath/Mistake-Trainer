@@ -178,7 +178,7 @@ export function make(root: RetroRoot, color: Color): RetroCtrl {
     // Trim: removed the opening explorer lookup. Lichess fetches master games for
     // opening positions, skips the mistake if the played move appears there, and
     // otherwise stores those moves in openingUcis to accept as correct answers.
-    // Step 9: for cards, scripts/buildDeck.ts does that lookup when it builds the deck.
+    // Step 9: for cards, deck.ts buildDeck does that lookup when it builds the deck.
     root.userJump(prev.path);
     safeRedraw();
   }

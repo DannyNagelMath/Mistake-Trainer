@@ -15,8 +15,9 @@ import { makeShapesFromUci } from './autoShape';
 import { renderEval, renderIndex } from './components';
 import type { SettingsPageCtrl } from './settingsPage';
 import { gameTimesOf, type Card } from './deck';
-import { failureReason } from './deckUpdate';
+import { speeds, type Speed } from './gameDownload';
 import { i18n } from './i18n';
+import { signedIn, signIn } from './lichessAuth';
 import { licon } from './licon';
 import { activeCards, isAlreadyWon, isCollapse, isOpening, progress, recentGames } from './schedule';
 import { fixProblems, newCardOrders, problems, ranges, type NewCardOrder, type NumberKey, type Settings } from './settings';
@@ -50,12 +51,11 @@ function renderCounts(ctrl: SettingsPageCtrl): VNode {
 }
 
 // When your deck was built, and "Update deck" (deckUpdate.ts): it downloads the games you've played
-// since and builds the deck again, as npm run update-deck does, showing what it prints as it goes.
-// Once it's done, the page loads again with the new deck when you say so: not by itself, as that
-// would pause the computer analysis, if it's running.
+// since and builds the deck again, showing how it's getting on. Once it's done, the page loads again
+// with the new deck when you say so: not by itself, as that would pause the computer analysis, if
+// it's running.
 function renderYourDeck(ctrl: SettingsPageCtrl): VNode {
   const update = ctrl.deckUpdate;
-  const state = update.status?.state;
   return hl('section.mt-your-deck', [
     hl('h2', 'Your deck'),
     hl(
@@ -64,24 +64,42 @@ function renderYourDeck(ctrl: SettingsPageCtrl): VNode {
         'played since from Lichess, then builds your deck again, with the cards from the new games Lichess has ' +
         'analysed, and from the games analysed here (Computer analysis, below). Your reviews stay as they are.',
     ),
-    update.error && hl('p.mt-run__error', update.error),
-    update.newDeck()
+    renderSignIn(ctrl.signOut),
+    update.state === 'done'
       ? [
           hl('p', doneText(ctrl)),
           hl('button.button', { attrs: { type: 'button' }, on: { click: reloadToTrain } }, 'Reload'),
         ]
       : [
-          state === 'failed' && renderFailure(update.status!.lines),
+          update.state === 'failed' &&
+            hl('p.mt-run__error', ['The update stopped, so your deck is as it was.', hl('br'), update.lines.at(-1)!]),
           hl(
             'button.button',
-            { attrs: { type: 'button', disabled: state === 'running' }, on: { click: update.start } },
-            state === 'running' ? 'Updating…' : 'Update deck',
+            { attrs: { type: 'button', disabled: update.state === 'running' }, on: { click: update.start } },
+            update.state === 'running' ? 'Updating…' : 'Update deck',
           ),
         ],
-    (state === 'running' || state === 'failed' || update.newDeck()) &&
-      update.status!.lines.length > 0 &&
-      renderLog(update.status!.lines),
+    update.lines.length > 0 && renderLog(update.lines),
   ]);
+}
+
+// "Sign in with Lichess" (lichessAuth.ts), which the masters database needs, to check new opening
+// mistakes; or who you're signed in as. Also on the first-run screen (setupView.ts).
+export function renderSignIn(signOut: () => void): VNode {
+  const account = signedIn();
+  return hl(
+    'p.mt-your-deck__lichess',
+    account
+      ? [
+          `Signed in to Lichess as ${account.username}, for the masters database. `,
+          hl('a', { on: { click: signOut } }, 'Sign out'),
+        ]
+      : [
+          'Opening mistakes are checked against the masters database, as on Lichess, which needs you signed in ' +
+            'to Lichess. ',
+          hl('button.button.button-thin', { attrs: { type: 'button' }, on: { click: signIn } }, 'Sign in with Lichess'),
+        ],
+  );
 }
 
 // e.g. "Done: your deck now has 3,762 cards, 12 more than before. Reload the page to train with them."
@@ -92,23 +110,15 @@ function doneText(ctrl: SettingsPageCtrl): string {
   const change = built.cards.length - ctrl.deck.cards.length;
   return (
     `Done: your deck now has ${count(built.cards.length)} cards, ` +
-    (change > 0 ? `${count(change)} more` : change < 0 ? `${count(-change)} fewer` : 'as many') +
-    ' than before. Reload the page to train with them.' +
+    (change > 0 ? `${count(change)} more than` : change < 0 ? `${count(-change)} fewer than` : 'as many as') +
+    ' before. Reload the page to train with them.' +
     (ctrl.yourGames.loaded?.run.running ? ' That pauses the computer analysis below: carry on after.' : '')
   );
 }
 
-// Why the update stopped, if what it printed says, as it may be well up in the box below.
-function renderFailure(lines: string[]): VNode {
-  const reason = failureReason(lines);
-  return hl('p.mt-run__error', [
-    'The update stopped, so your deck is as it was.',
-    reason ? [hl('br'), reason] : ' What it printed is below.',
-  ]);
-}
-
-// What the update has printed, in a box that keeps its latest lines in view.
-const renderLog = (lines: string[]): VNode =>
+// How the update is getting on, in a box that keeps its latest lines in view. Also on the
+// first-run screen (setupView.ts).
+export const renderLog = (lines: string[]): VNode =>
   hl(
     'pre.mt-your-deck__log',
     { hook: { insert: v => scrollToEnd(v.elm), postpatch: (_, v) => scrollToEnd(v.elm) } },
@@ -147,7 +157,7 @@ function renderComputerAnalysis(ctrl: SettingsPageCtrl): VNode {
   ]);
 }
 
-// The games analysed here join the deck when it's built again (scripts/buildDeck.ts), so the ones
+// The games analysed here join the deck when it's built again (Update deck), so the ones
 // analysed since it was built aren't in it yet.
 function renderNotInDeck(ctrl: SettingsPageCtrl, run: AnalysisRun): VNode | undefined {
   const analysed = run.games.filter(g => run.saved[g.id]);
@@ -181,6 +191,7 @@ function readForm(form: HTMLFormElement): Settings {
   const empty = (key: keyof Settings) => input(key).value === '' && !input(key).validity.badInput;
   const noLimit = empty('newCardsPerDay');
   return {
+    gameTypes: checkedGameTypes(form),
     recentGames: empty('recentGames') ? null : num('recentGames'),
     newCardOrder: input('newCardOrder').value as NewCardOrder,
     newCardsPerDay: noLimit ? null : num('newCardsPerDay'),
@@ -193,6 +204,18 @@ function readForm(form: HTMLFormElement): Settings {
     bestMoveOnly: input('bestMoveOnly').checked,
   };
 }
+
+// The kinds of games, by time control, as checkboxes named gameTypes; and which are checked. Also on
+// the first-run screen (setupView.ts).
+export const renderGameTypes = (checked: Speed[]): VNode[] =>
+  speeds.map(speed =>
+    hl('label.mt-setting__choice', [
+      hl('input', { attrs: { type: 'checkbox', name: 'gameTypes', value: speed, checked: checked.includes(speed) } }),
+      i18n.site[speed],
+    ]),
+  );
+export const checkedGameTypes = (form: HTMLFormElement): Speed[] =>
+  [...form.querySelectorAll<HTMLInputElement>('input[name=gameTypes]:checked')].map(input => input.value as Speed);
 
 function renderSettings(ctrl: SettingsPageCtrl): VNode {
   const shown = ctrl.filledIn;
@@ -246,6 +269,13 @@ function renderSettings(ctrl: SettingsPageCtrl): VNode {
     },
     [
       hl('h2', 'New cards'),
+      row(
+        'Games',
+        ['gameTypes'],
+        renderGameTypes(shown.gameTypes),
+        'The kinds of your games that are downloaded and make cards. A change takes effect when you next ' +
+          'update your deck (Your deck, below).',
+      ),
       row(
         'Recent games',
         ['recentGames'],

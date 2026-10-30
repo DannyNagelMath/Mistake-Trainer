@@ -11,8 +11,11 @@ import type { ReviewHistory } from './reviews';
 import { defaultSettings } from './settings';
 import { SettingsPageCtrl } from './settingsPage';
 import { view } from './settingsPageView';
+import type { Speed } from './gameDownload';
 import type { LichessGameJson } from './tree';
 import { YourGamesCtrl } from './yourGames';
+
+const chosen: Speed[] = ['blitz', 'rapid']; // the kinds of games you chose
 
 // The stand-in analysis notes which game it analysed, and finds nothing.
 const analysed = vi.hoisted(() => [] as string[]);
@@ -32,6 +35,7 @@ const games = [
   unanalysed('newest', game.createdAt! + 3 * day),
   unanalysed('newer', game.createdAt! + 2 * day),
   { ...unanalysed('variant', game.createdAt!), variant: 'chess960' }, // not standard chess: left out
+  { ...unanalysed('bullet', game.createdAt! + 4 * day), speed: 'bullet' }, // not of the kinds you chose: left out
 ];
 
 // The dev server: your games, the analyses saved so far (one: 'newer', before the deck was built),
@@ -69,12 +73,12 @@ const deck: Deck = {
 const history: ReviewHistory = { cards: {}, log: [] };
 const section = (yourGames: YourGamesCtrl) =>
   find(
-    view(new SettingsPageCtrl(deck, history, defaultSettings, () => {}, () => {}, yourGames, new DeckUpdateCtrl(deck.builtAt, () => {}))),
+    view(new SettingsPageCtrl(deck, history, defaultSettings, () => {}, () => {}, yourGames, new DeckUpdateCtrl(deck.username, () => chosen, () => {}))),
     'section.mt-computer-analysis',
   );
 
 test('it counts your games, and the ones Lichess has analysed; the others are to analyse here, newest first', async () => {
-  const yourGames = new YourGamesCtrl('mugglesman1982', () => {});
+  const yourGames = new YourGamesCtrl('mugglesman1982', () => chosen, () => {});
   expect(textOf(section(yourGames))).toContain('Loading your games…');
   await yourGames.load();
   expect(yourGames.loaded!.run.games.map(g => g.id)).toEqual(['newest', 'newer', 'older']);
@@ -86,7 +90,7 @@ test('it counts your games, and the ones Lichess has analysed; the others are to
 });
 
 test('carrying on analyses the games not analysed yet, newest first, and saves each', async () => {
-  const yourGames = new YourGamesCtrl('mugglesman1982', () => {});
+  const yourGames = new YourGamesCtrl('mugglesman1982', () => chosen, () => {});
   await yourGames.load();
   await (find(section(yourGames), 'button.button')!.data!.on!.click as () => Promise<void>)();
   expect(analysed).toEqual(['newest', 'older']);
@@ -100,7 +104,7 @@ test('carrying on analyses the games not analysed yet, newest first, and saves e
 
 test("if your games can't load, it says why, and tries again next time", async () => {
   vi.stubGlobal('fetch', vi.fn(async () => new Response('Not found', { status: 404 })));
-  const yourGames = new YourGamesCtrl('mugglesman1982', () => {});
+  const yourGames = new YourGamesCtrl('mugglesman1982', () => chosen, () => {});
   await yourGames.load();
   expect(textOf(section(yourGames))).toContain("Couldn't load your downloaded games (404)");
   vi.unstubAllGlobals();

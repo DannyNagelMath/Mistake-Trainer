@@ -151,6 +151,14 @@ body:not(.mt-settings-shown) main.mt-settings-page {
   align-items: baseline;
   gap: 0.4em;
 }
+/* A choice among several, e.g. the kinds of games: a checkbox and its name. */
+.mt-setting__choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  margin-inline-end: 0.8em;
+  white-space: nowrap;
+}
 .mt-setting input[type='number'] {
   width: 7em;
   padding: 0.4em 0.6em;
@@ -241,6 +249,29 @@ body:not(.mt-settings-shown) main.mt-settings-page {
   flex-wrap: wrap;
   gap: 0.6em;
   margin-top: 1.2em;
+}
+/* The first-run screen (setupView.ts): the kinds of games, then your Lichess username, and Start. */
+.mt-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
+  margin: 1.5em 0;
+}
+.mt-setup__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6em 1em;
+}
+.mt-setup input {
+  padding: 0.4em 0.6em;
+}
+/* "Sign out" of Lichess, in Your deck (settingsPageView.ts renderSignIn): a link without an address. */
+.mt-your-deck__lichess a {
+  cursor: pointer;
+}
+.mt-your-deck__lichess .button {
+  margin-top: 0.4em;
 }
 /* "Update deck" in Training settings (settingsPageView.ts renderYourDeck): what it prints, in a
    box that scrolls. */

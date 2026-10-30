@@ -504,8 +504,8 @@ test('coming back after the right first move, before rating it, shows the card s
 // Training settings shows over the trainer (main.ts), with the trainer's history, and passes on
 // the settings you save. Here, the computer analysis of your games hasn't loaded (yourGames.test.ts
 // tries it), and the dev server hasn't been asked about "Update deck" (deckUpdate.test.ts does).
-const notLoaded = () => new YourGamesCtrl(deck.username, () => {});
-const noUpdate = () => new DeckUpdateCtrl(deck.builtAt, () => {});
+const notLoaded = () => new YourGamesCtrl(deck.username, () => defaultSettings.gameTypes, () => {});
+const noUpdate = () => new DeckUpdateCtrl(deck.username, () => defaultSettings.gameTypes, () => {});
 const trainingSettings = (deckCtrl: DeckCtrl, history: ReviewHistory) =>
   new SettingsPageCtrl(deck, history, deckCtrl.settings, () => {}, deckCtrl.useSettings, notLoaded(), noUpdate());
 
@@ -789,7 +789,10 @@ test('Training settings: "Recent games" says what it takes in, as you type', () 
   expect(counts(1)).toContain(`Your last game, on ${day}, has 3 cards, 3 of them not started.`);
   expect(counts(5)).toContain('That’s all your 2 games.');
   expect(counts(null)).not.toContain('Your last');
-  expect(find(trainingSettingsView(page(null)), 'input')?.data?.attrs).toMatchObject({ id: 'recentGames', value: '' });
+  // The input with the id recentGames: empty, for all your games.
+  const byId = (v: VNode | string | undefined, id: string): VNode | undefined =>
+    typeof v !== 'object' || !v ? undefined : v.data?.attrs?.id === id ? v : (v.children ?? []).map(c => byId(c as VNode, id)).find(Boolean);
+  expect(byId(trainingSettingsView(page(null)), 'recentGames')?.data?.attrs).toMatchObject({ type: 'number', value: '' });
 });
 
 test('"Your stats", from the progress box: how often you found the move; the last 30 days too, once some reviews are older', () => {

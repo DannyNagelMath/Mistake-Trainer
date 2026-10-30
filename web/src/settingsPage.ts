@@ -8,6 +8,7 @@
 
 import type { Deck } from './deck';
 import type { DeckUpdateCtrl } from './deckUpdate';
+import { signOut } from './lichessAuth';
 import { saveUnsuspension, type ReviewHistory } from './reviews';
 import { defaultSettings, problems, saveSettings, type Settings } from './settings';
 import type { YourGamesCtrl } from './yourGames';
@@ -39,7 +40,10 @@ export class SettingsPageCtrl {
     this.redraw();
   };
 
-  changed = (): boolean => (Object.keys(this.saved) as (keyof Settings)[]).some(k => this.draft[k] !== this.saved[k]);
+  changed = (): boolean =>
+    (Object.keys(this.saved) as (keyof Settings)[]).some(
+      k => JSON.stringify(this.draft[k]) !== JSON.stringify(this.saved[k]), // as text: the game types are a list
+    );
 
   canSave = (): boolean => this.changed() && Object.keys(problems(this.draft)).length === 0;
 
@@ -62,6 +66,12 @@ export class SettingsPageCtrl {
     this.draft = this.filledIn = defaultSettings;
     this.formVersion++;
     this.message = '';
+    this.redraw();
+  };
+
+  // Signs out of Lichess (lichessAuth.ts), and shows it.
+  signOut = async (): Promise<void> => {
+    await signOut();
     this.redraw();
   };
 

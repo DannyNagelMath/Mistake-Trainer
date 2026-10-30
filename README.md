@@ -14,14 +14,13 @@ on Lichess's open-source code, with gratitude: if you find it useful, please con
 
 ## How it works
 
-- `pipeline/` (Python) downloads your games, with their computer analysis, from the
-  [Lichess API](https://lichess.org/api) into an NDJSON file.
-- `web/scripts/buildDeck.ts` finds your mistakes in those games, the same way Lichess's "Learn from
-  your mistakes" does, and saves them as a deck of cards. For a game Lichess hasn't analysed, it
-  uses the analysis made on your computer, if there is one (see Training settings below). Like
-  Lichess, it looks opening mistakes up in the [masters database](https://lichess.org/analysis#explorer):
-  a move masters have played isn't a mistake, and their other moves count as right answers. It asks
-  about each position only once, and saves the answers in `pipeline/data/masters.json`.
+- The page downloads your games, with their computer analysis, from the
+  [Lichess API](https://lichess.org/api), and finds your mistakes in them, the same way Lichess's
+  "Learn from your mistakes" does: a card for each. For a game Lichess hasn't analysed, it uses
+  the analysis made on your computer, if there is one (see Training settings below). Like Lichess,
+  it looks opening mistakes up in the [masters database](https://lichess.org/analysis#explorer),
+  if you sign in with Lichess: a move masters have played isn't a mistake, and their other moves
+  count as right answers. It asks about each position only once.
 - `web/` is the review page: Lichess's analysis board and "Learn from your mistakes" panel, ported
   from [lila](https://github.com/lichess-org/lila) (the software behind lichess.org), dealing the
   cards in spaced-repetition order. As on Lichess, a move other than the engine's best is checked by
@@ -38,22 +37,17 @@ on Lichess's open-source code, with gratitude: if you find it useful, please con
 
 ## Running it
 
-You need Node.js, Python 3, git, and a [Lichess API token](https://lichess.org/account/oauth/token).
+You need Node.js and git.
 
 1. Install the page's dependencies: `cd web`, then `npm install`.
 2. Build lila's stylesheets and copy the fonts and images they use. `web/scripts/buildLilaCss.ts`
    explains how to fetch the parts of lila it needs; then run
    `npx tsx scripts/buildLilaCss.ts <path to lila>` from `web`.
-3. Save your games: put `LICHESS_TOKEN=...` in `pipeline/.env` (it's gitignored), set `USERNAME`
-   in `pipeline/save_my_games.py`, and run it from `pipeline` (`python save_my_games.py`; later,
-   `--update` adds only new games). The games go to `pipeline/data/games.ndjson`.
-4. Build the deck, from `web`: `npx tsx scripts/buildDeck.ts <your Lichess username>`. It uses the
-   token from step 3 for the masters database.
-5. Start the page with `npm run dev`, and open the address it prints.
+3. Start the page with `npm run dev`, open the address it prints, and give your Lichess username:
+   the page downloads your games and builds your deck. Everything it saves is in `web/data`.
 
 Later, to add the games you've played since, and the games analysed in Training settings since,
-press **Update deck** in Training settings (or run `npm run update-deck` from `web`): it
-downloads the new games and builds the deck again. Your review history is backed up once a day, in
+press **Update deck** in Training settings: it downloads the new games and builds the deck again. Your review history is backed up once a day, in
 `web/data/backups`; to go back to a backup, stop the page and copy it over `web/data/reviews.json`.
 
 ## Licence
@@ -79,10 +73,9 @@ you must offer them its source code.
 
 - `web/src/mousetrap.ts` is lila's adaptation of [Mousetrap](https://craig.is/killing/mice),
   copyright 2012-2017 Craig Campbell, under the Apache License 2.0 (see the notice in the file).
-- The dependencies that `npm install` and `pip install` fetch aren't included in this repository:
+- The dependencies that `npm install` fetches aren't included in this repository:
   [chessground](https://github.com/lichess-org/chessground) and
   [chessops](https://github.com/niklasf/chessops) (GPL-3.0-or-later),
-  [python-chess](https://github.com/niklasf/python-chess) (GPL-3.0-or-later),
   [snabbdom](https://github.com/snabbdom/snabbdom) and
   [ts-fsrs](https://github.com/open-spaced-repetition/ts-fsrs) (MIT),
   [stockfish.js](https://github.com/nmrugg/stockfish.js), Stockfish compiled to WebAssembly

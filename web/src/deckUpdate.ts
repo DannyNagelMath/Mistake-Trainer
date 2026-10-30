@@ -1,96 +1,85 @@
-// deckUpdate.ts: Not in lila. "Update deck" in Training settings: the dev server downloads your new
-// games and builds the deck again, as npm run update-deck does (vite.config.ts /api/update-deck,
-// scripts/deckUpdateJob.ts), and this follows how it's going.
-// main.ts makes it once, as the page opens, so an update you start goes on being followed after
-// Training settings closes, and shows how it stands whenever you come back to it.
+// deckUpdate.ts: Not in lila. "Update deck" in Training settings, and the first deck, on the
+// first-run screen (setupView.ts): downloads the games you've played since from Lichess
+// (gameDownload.ts), builds the deck again (deck.ts buildDeck), checking new opening mistakes against
+// the masters database if you're signed in to Lichess (mastersExplorer.ts), and saves it. It all
+// happens in the page; the dev server only keeps the files (vite.config.ts).
+// trainer.ts makes it once, as the page opens, so an update goes on after Training settings closes.
 
-import { loadDeck, type Deck } from './deck';
+import { loadAnalyses } from './analyses';
+import { buildDeck, loadGames, loadMasters, saveDeck, saveGames, saveMasterMoves, type Deck } from './deck';
+import { downloadNewGames, type Speed } from './gameDownload';
+import { signedIn } from './lichessAuth';
+import { GAP, MastersExplorer } from './mastersExplorer';
 
-// How the update stands, as the dev server says. `lines`: what it has printed so far.
-export interface DeckUpdate {
-  state: 'idle' | 'running' | 'done' | 'failed';
-  lines: string[];
-  startedAt?: string; // ISO dates
-  endedAt?: string;
-}
-
-const FOLLOW = 1000; // milliseconds between asking how it's going
-
-// The line that says why an update failed, if one does: Node's "Error: ...", or the last line of
-// Python's, e.g. "requests.exceptions.HTTPError: 429 Client Error: Too Many Requests for url: ...".
-export const failureReason = (lines: string[]): string | undefined =>
-  [...lines].reverse().find(line => /^[\w.]*(Error|Exception)\b[^:]*:/.test(line));
-
-export async function loadDeckUpdate(): Promise<DeckUpdate> {
-  const response = await fetch('/api/update-deck');
-  // A dev server started before /api/update-deck was added answers with the page itself.
-  if (!response.ok || !response.headers.get('content-type')?.includes('json'))
-    throw new Error(`Couldn't ask how the deck update stands (${response.status}). Restart the dev server (npm run dev).`);
-  return response.json();
-}
-
-// Starts an update, unless one is running already: then there's nothing to start, and it can be
-// followed all the same.
-export async function startDeckUpdate(): Promise<void> {
-  const response = await fetch('/api/update-deck', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: '{}',
-  });
-  if (!response.ok) throw new Error(`Couldn't update the deck (${response.status}). Restart the dev server (npm run dev).`);
-}
+// e.g. "1 game", "12 games".
+const count = (n: number, noun: string): string => `${n.toLocaleString('en')} ${noun}${n === 1 ? '' : 's'}`;
 
 export class DeckUpdateCtrl {
-  status?: DeckUpdate; // once the dev server has said
-  error = ''; // why the dev server couldn't be asked
-  built?: Deck; // the deck an update built, once it's done, if the page doesn't have it yet
-  private following = false;
+  state: 'idle' | 'running' | 'done' | 'failed' = 'idle';
+  lines: string[] = []; // what it has done so far; after a failure, the last line says why
+  built?: Deck; // the deck it built, once done
 
   constructor(
-    private readonly deckBuiltAt: string, // when the deck the page has was built
+    private readonly username: string,
+    private readonly speeds: () => Speed[], // the kinds of games you chose, as they are when it starts
     private readonly redraw: () => void,
   ) {}
 
-  // Whether an update has built a deck since the page's was built: reloading the page brings it in.
-  newDeck = (): boolean => this.status?.state === 'done' && (this.status.startedAt ?? '') > this.deckBuiltAt;
-
-  // Asks how the update stands: when Training settings opens, and then every second while it runs.
-  load = async (): Promise<void> => {
-    if (this.following) return;
-    if ((await this.ask()) && this.status?.state === 'running') this.follow();
-  };
-
+  // Starts an update, unless one is running already.
   start = async (): Promise<void> => {
+    if (this.state === 'running') return;
+    this.state = 'running';
+    this.lines = [];
     this.built = undefined;
     try {
-      await startDeckUpdate();
+      this.built = await this.update();
+      this.state = 'done';
     } catch (e) {
-      this.error = (e as Error).message;
-      return this.redraw();
+      this.lines.push((e as Error).message);
+      this.state = 'failed';
     }
-    await this.load();
+    this.redraw();
   };
 
-  // Whether the dev server answered.
-  private async ask(): Promise<boolean> {
-    try {
-      this.status = await loadDeckUpdate();
-      this.error = '';
-      if (this.newDeck() && !this.built) this.built = await loadDeck();
-      return true;
-    } catch (e) {
-      this.error = (e as Error).message;
-      return false;
-    } finally {
-      this.redraw();
-    }
+  private async update(): Promise<Deck> {
+    this.say('Downloading your new games from Lichess...');
+    const speeds = this.speeds();
+    const saved = await loadGames();
+    const downloaded = await downloadNewGames(this.username, speeds, saved, n => {
+      if (n % 50 === 0) this.sayInstead(`Downloading your new games from Lichess: ${n}...`);
+    });
+    await saveGames(downloaded);
+    const known = new Set(saved.map(g => g.id));
+    const added = downloaded.filter(g => !known.has(g.id)).length;
+    this.sayInstead(`Downloaded ${count(added, 'new game')} from Lichess.`);
+
+    this.say('Building your deck...');
+    const [games, analyses, answers] = await Promise.all([loadGames(), loadAnalyses(), loadMasters()]);
+    const explorer = new MastersExplorer(answers, signedIn()?.token, saveMasterMoves);
+    const { deck } = await buildDeck(games, analyses, this.username, speeds, explorer, (asked, toAsk) => {
+      const minutes = Math.ceil((toAsk * GAP) / 60_000);
+      if (!asked) this.say(`Asking the masters database about ${count(toAsk, 'new opening position')} (about ${minutes} min)...`);
+      else if (asked % 10 === 0 || asked === toAsk) this.sayInstead(`Asking the masters database: ${asked} of ${toAsk}...`);
+    });
+    await saveDeck(deck);
+    this.say(`Built: ${count(deck.cards.length, 'card')} from ${count(Object.keys(deck.games).length, 'game')}.`);
+    const unchecked = explorer.skipped.size;
+    if (unchecked)
+      this.say(
+        `${count(unchecked, 'new opening position')} ${unchecked === 1 ? 'wasn’t' : 'weren’t'} checked against the masters ` +
+          'database. To check them, sign in with Lichess, then update again.',
+      );
+    return deck;
   }
 
-  private follow(): void {
-    this.following = true;
-    setTimeout(async () => {
-      if ((await this.ask()) && this.status?.state === 'running') this.follow();
-      else this.following = false;
-    }, FOLLOW);
+  private say(line: string): void {
+    this.lines.push(line);
+    this.redraw();
+  }
+
+  // The last line, replaced, as it gets on.
+  private sayInstead(line: string): void {
+    this.lines[this.lines.length - 1] = line;
+    this.redraw();
   }
 }

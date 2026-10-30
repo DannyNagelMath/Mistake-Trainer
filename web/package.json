@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "vite",
     "check": "tsc --noEmit && tsc --noEmit -p scripts",
-    "update-deck": "tsx scripts/updateDeck.ts",
     "test": "vitest run",
     "build": "tsc --noEmit && vite build"
   },

@@ -4,6 +4,7 @@
 // vite.config.ts), like your review history. With no file, everything is at its default, and
 // anything missing or out of range in the file is too.
 
+import { speeds, type Speed } from './gameDownload';
 import { povChances } from './winningChances';
 
 // Which new cards come first, among those not yet started:
@@ -16,6 +17,8 @@ export type NewCardOrder = 'collapses' | 'recent' | 'openings' | 'random';
 export const newCardOrders: NewCardOrder[] = ['collapses', 'recent', 'openings', 'random'];
 
 export interface Settings {
+  // The kinds of your games (by time control) that are downloaded and make cards, in Lichess's order.
+  gameTypes: Speed[];
   // New cards
   // New cards only come from your latest games with computer analysis, this many; null for all.
   // The cards you've started keep coming back, whatever their game (schedule.ts cardsInPlay).
@@ -36,6 +39,7 @@ export interface Settings {
 }
 
 export const defaultSettings: Settings = {
+  gameTypes: ['blitz', 'rapid'],
   recentGames: null, // all your games
   newCardOrder: 'collapses',
   newCardsPerDay: null, // no limit: you do as many as you get around to
@@ -48,7 +52,7 @@ export const defaultSettings: Settings = {
   bestMoveOnly: false, // any move nearly as good counts, as on Lichess
 };
 
-export type NumberKey = Exclude<keyof Settings, 'newCardOrder' | 'bestMoveOnly'>;
+export type NumberKey = Exclude<keyof Settings, 'gameTypes' | 'newCardOrder' | 'bestMoveOnly'>;
 
 // What each number can be. Retention near 1 makes the reviews pile up, as FSRS then schedules
 // every card very soon; much below 0.7 you'd forget most cards before seeing them again. The
@@ -69,6 +73,8 @@ export type Problems = Partial<Record<keyof Settings, string>>;
 // What's wrong with each setting that's wrong, as a message for the settings page; {} if nothing is.
 export function problems(s: Settings): Problems {
   const found: Problems = {};
+  if (!Array.isArray(s.gameTypes) || !s.gameTypes.length || s.gameTypes.some(t => !speeds.includes(t)))
+    found.gameTypes = 'Choose at least one';
   if (!newCardOrders.includes(s.newCardOrder)) found.newCardOrder = 'Choose one of the orders';
   if (typeof s.bestMoveOnly !== 'boolean') found.bestMoveOnly = 'On or off';
   for (const key of Object.keys(ranges) as NumberKey[]) {
@@ -99,7 +105,8 @@ export function parseSettings(raw: unknown): Settings {
   const given = typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
   const s = { ...defaultSettings } as Record<keyof Settings, unknown>;
   for (const key of Object.keys(defaultSettings) as (keyof Settings)[]) if (key in given) s[key] = given[key];
-  return fixProblems(s as Settings, defaultSettings);
+  const fixed = fixProblems(s as Settings, defaultSettings);
+  return { ...fixed, gameTypes: speeds.filter(t => fixed.gameTypes.includes(t)) }; // in Lichess's order, as the form has them
 }
 
 // An eval in pawns, from your side, as winning chances from -1 to 1, the way cards store them
