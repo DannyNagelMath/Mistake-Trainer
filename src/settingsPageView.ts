@@ -446,9 +446,9 @@ function renderYourData(): VNode {
         ? 'Everything is kept in this browser: your reviews, settings, games, and analyses. Clearing this ' +
             'site’s data in your browser deletes it, so export it now and then. Export saves it all in one ' +
             'file, and Import brings a file back, here or in another browser.'
-        : 'Everything is kept in files in web/data, on your computer, with a copy of your reviews made each ' +
+        : 'Everything is kept in files in data, on your computer, with a copy of your reviews made each ' +
             'day. Export saves it all in one file, to keep, or to move to the website; Import replaces it ' +
-            'with a file’s, first copying what’s there to web/data/backups.',
+            'with a file’s, first copying what’s there to data/backups.',
     ),
     hl('div.mt-settings__actions', [
       hl(

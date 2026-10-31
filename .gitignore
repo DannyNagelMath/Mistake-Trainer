@@ -6,4 +6,4 @@ dist/
 .env
 
 # Your data, when you run the app yourself: reviews, settings, games, analyses, and the deck
-web/data
+data/

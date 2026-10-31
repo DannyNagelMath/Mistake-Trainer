@@ -85,7 +85,7 @@ export function importData(): void {
       const replace = confirm(
         `Replace everything here with ${file.name}, exported ${exported}: ${count(backup.reviews.log.length, 'review')} ` +
           `and ${count(backup.games.length, 'game')}? ` +
-          (inBrowser ? 'What’s here now will be gone.' : 'What’s here now is first copied to web/data/backups.'),
+          (inBrowser ? 'What’s here now will be gone.' : 'What’s here now is first copied to data/backups.'),
       );
       if (!replace) return;
       const { reviews, settings, analyses, games, masters, deck } = backup;

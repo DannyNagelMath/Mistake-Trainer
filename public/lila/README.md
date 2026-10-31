@@ -1,7 +1,7 @@
 # lila's stylesheets, fonts, and images
 
 These are built from [lila](https://github.com/lichess-org/lila), the software behind lichess.org,
-at commit 27ffc8b, by `web/scripts/buildLilaCss.ts`, which says how to build them again. They're
+at commit 27ffc8b, by `scripts/buildLilaCss.ts`, which says how to build them again. They're
 only files with free licences, which lila's
 [COPYING.md](https://github.com/lichess-org/lila/blob/27ffc8b5f296d180e7a648d6bfdad27eef3f86a2/COPYING.md)
 lists as follows:
@@ -20,5 +20,5 @@ lists as follows:
 | `video/`, the analysis settings' help videos | the lila authors | AGPL-3.0-or-later |
 
 The licences' texts are in `LICENSES/`, except the AGPL's, which is the repository's own
-[LICENSE](../../../LICENSE). For the MIT-licensed icons in `font/lichess.woff2`, the copyright
+[LICENSE](../../LICENSE). For the MIT-licensed icons in `font/lichess.woff2`, the copyright
 holders are the authors lila's COPYING.md lists for that file.

@@ -1,5 +1,5 @@
 // storage.ts: Not in lila. Where your data is kept, and the functions that load and save it. Running
-// the app yourself (npm run dev), the dev server keeps it in files in web/data (vite.config.ts); on
+// the app yourself (npm run dev), the dev server keeps it in files in data (vite.config.ts); on
 // the website, which has no server of its own, the browser keeps it (browserStorage.ts). A build
 // (npm run build) is for the website; VITE_STORAGE=browser npm run dev tries that with the dev server.
 // Export and Import (backup.ts) move all of it to a file and back, in either.
