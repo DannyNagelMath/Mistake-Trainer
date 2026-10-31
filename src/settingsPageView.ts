@@ -427,12 +427,19 @@ function renderCategoryCounts(ctrl: SettingsPageCtrl): VNode {
   );
 }
 
-// What this is, and where its source code is, which the AGPL asks a website running it to offer.
-// Also on the first-run screen (setupView.ts).
+// What this is, where its source code is, which the AGPL asks a website running it to offer, and
+// where to report a problem or suggest something. Also on the first-run screen (setupView.ts).
+const REPO = 'https://github.com/DannyNagelMath/Mistake-Trainer';
 export const renderAbout = (): VNode =>
   hl('p.mt-about', [
     'Mistake Trainer is free software, built on Lichess’s own, and not affiliated with Lichess. ',
-    hl('a', { attrs: { href: 'https://github.com/DannyNagelMath/Mistake-Trainer' } }, 'Source code'),
+    hl('a', { attrs: { href: REPO } }, 'Source code'),
+    ' · ',
+    hl(
+      'a',
+      { attrs: { href: `${REPO}/issues`, title: 'Report a problem or suggest something, on GitHub' } },
+      'Feedback',
+    ),
   ]);
 
 // Where your data is kept (storage.ts), and Export and Import (backup.ts).
