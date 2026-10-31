@@ -39,7 +39,7 @@ export interface Settings {
 
 export const defaultSettings: Settings = {
   gameTypes: ['blitz', 'rapid'],
-  recentGames: 50, // with 50 or fewer, all your games (schedule.ts recentGames)
+  recentGames: 20, // with 20 or fewer, all your games (schedule.ts recentGames)
   newCardOrder: 'collapses',
   newCardsPerDay: null, // no limit: you do as many as you get around to
   collapseBefore: -1.1,
