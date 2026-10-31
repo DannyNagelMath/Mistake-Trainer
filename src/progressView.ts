@@ -1,11 +1,12 @@
 // progressView.ts: Not in lila. The progress box, in the side panel under the game's details
 // (side.ts): on wide screens, that's the space left of the board, which lila leaves to the chat. It
 // shows how your cards are spread (started, not started, suspended) and how many are due now, or if
-// none are, when the next ones are, with a link to Your stats (statsView.ts).
+// none are, when the next ones are, with links to Your stats (statsView.ts) and How it works.
 
 import type { VNode } from 'snabbdom';
 
 import type { DeckCtrl } from './deckCtrl';
+import { showHowItWorks } from './howItWorks';
 import { yourLastGames, type Progress } from './schedule';
 import { hl } from './snabbdom';
 
@@ -41,6 +42,10 @@ export function renderProgress(deck: DeckCtrl): VNode {
       hl('div', `Due now: ${p.dueNow}`),
       p.dueNow === 0 && p.nextDue && hl('div', describeNext(p.nextDue, new Date())),
     ]),
-    hl('a.mt-progress__stats', { on: { click: deck.openStats } }, 'Your stats'),
+    hl('div.mt-progress__links', [
+      hl('a.mt-progress__stats', { on: { click: deck.openStats } }, 'Your stats'),
+      ' · ',
+      hl('a', { on: { click: showHowItWorks } }, 'How it works'),
+    ]),
   ]);
 }

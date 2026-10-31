@@ -8,11 +8,13 @@ import './mistakeTrainer.css';
 import { finishSignIn } from './lichessAuth';
 import { showSetup } from './setupView';
 import { loadDeck } from './storage';
+import { followSystem } from './theme';
 import topBar from './topBar';
 import { startTrainer } from './trainer';
 
 // From lila's site script: the header, as the page scrolls.
 topBar();
+followSystem(); // the background, with System, as your computer's changes (theme.ts)
 
 const signInProblem = await finishSignIn();
 if (signInProblem) alert(signInProblem);

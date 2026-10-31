@@ -2,13 +2,22 @@
 <!--
   The page around the app, like lila's app/views/base/page.scala (27ffc8b) with lila's default
   preferences. The files in /lila come from scripts/buildLilaCss.ts.
-  Trim: no CSP, favicons, preloads, or lila's scripts; always dark (lila's default follows the system).
+  Trim: no CSP, favicons, preloads, or lila's scripts.
 -->
 <html lang="en" class="dark" style="---ui-roundness:7px;---bg-opacity:100;">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, viewport-fit=cover" />
     <title>Mistake Trainer</title>
+    <!-- Not in lila, whose server writes the class: the background you chose, Light, Dark, or
+         System (theme.ts, which does the same), before the page draws. -->
+    <script>
+      try {
+        const chosen = localStorage.getItem('mistakeTrainer.background');
+        const light = chosen === 'light' || (chosen !== 'dark' && matchMedia('(prefers-color-scheme: light)').matches);
+        document.documentElement.className = light ? 'light' : 'dark';
+      } catch {}
+    </script>
     <!-- The stylesheets of lila's analysis page, in the same order. -->
     <link rel="stylesheet" href="/lila/css/lib.theme.all.css" />
     <link rel="stylesheet" href="/lila/css/site.css" />
@@ -45,7 +54,6 @@
   <!-- ---zoom is lila's page zoom setting (0-100, default 80); it scales the board. -->
   <body
     class="coords-in"
-    data-theme="dark"
     data-board="brown"
     data-piece-set="cburnett"
     style="---board-opacity:100;---board-brightness:100;---board-contrast:100;---board-hue:0;---zoom:80;"

@@ -12,6 +12,7 @@ import type { SettingKey } from './analysisSettings';
 import { i18n } from './i18n';
 import { licon } from './licon';
 import { hl, onInsert } from './snabbdom';
+import { background, backgrounds, setBackground, type Background } from './theme';
 
 interface Setting {
   label: string;
@@ -148,16 +149,29 @@ export function view(ctrl: AnalysisCtrl): VNode {
 }
 
 function settingsView(ctrl: AnalysisCtrl): VNode {
-  const grouped = (group: string) =>
+  const grouped = (group: string, ...more: VNode[]) =>
     hl('fieldset', [
       hl('legend', group),
       (Object.keys(settings) as SettingKey[]).filter(key => settings[key].group === group).map(key => toggle(ctrl, key)),
+      ...more,
     ]);
   return hl('div.analysis-settings-view', [
-    hl('div.column', [helpView(), grouped(i18n.preferences.generalSettings)]),
+    hl('div.column', [helpView(), grouped(i18n.preferences.generalSettings, backgroundChoice())]),
     hl('div.column', [grouped(i18n.preferences.moveListSettings), grouped(i18n.preferences.boardSettings)]),
   ]);
 }
+
+// Not in lila, whose account menu has it: the page's background (theme.ts).
+const backgroundLabels: Record<Background, string> = { light: 'Light', dark: 'Dark', system: 'System' };
+const backgroundChoice = (): VNode =>
+  hl('span.setting', [
+    hl('label', { attrs: { for: 'background' } }, 'Background'),
+    hl(
+      'select',
+      { attrs: { id: 'background' }, on: { change: e => setBackground((e.target as HTMLSelectElement).value as Background) } },
+      backgrounds.map(b => hl('option', { attrs: { value: b }, props: { selected: background() === b } }, backgroundLabels[b])),
+    ),
+  ]);
 
 // lila's defaultToggleHtml and defaultToggleListener: a label, and lila's on/off switch, which is
 // a checkbox styled by its CSS.

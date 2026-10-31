@@ -5,12 +5,30 @@
 
 import type { Deck } from './deck';
 import type { DeckUpdateCtrl } from './deckUpdate';
-import type { Speed } from './gameDownload';
+import { speeds, type Speed } from './gameDownload';
 import { signOut } from './lichessAuth';
 import type { ReviewHistory } from './reviews';
 import { defaultSettings, problems, type Settings } from './settings';
 import { saveSettings, saveUnsuspension } from './storage';
 import type { YourGamesCtrl } from './yourGames';
+
+// The kinds of games ticked beside "Update deck" but not applied yet, kept for this browser tab
+// (sessionStorage), so that they're still ticked after signing in, which goes to Lichess and back.
+const UNAPPLIED_KEY = 'mistakeTrainer.gameTypes';
+function unapplied(): Speed[] | undefined {
+  try {
+    const kept: unknown = JSON.parse(sessionStorage.getItem(UNAPPLIED_KEY) ?? 'null');
+    return Array.isArray(kept) ? speeds.filter(s => kept.includes(s)) : undefined;
+  } catch {
+    return undefined; // no storage, as in the tests
+  }
+}
+function keepUnapplied(gameTypes: Speed[] | undefined): void {
+  try {
+    if (gameTypes) sessionStorage.setItem(UNAPPLIED_KEY, JSON.stringify(gameTypes));
+    else sessionStorage.removeItem(UNAPPLIED_KEY);
+  } catch {}
+}
 
 export class SettingsPageCtrl {
   saved: Settings; // what's saved, or the defaults
@@ -32,7 +50,7 @@ export class SettingsPageCtrl {
     readonly deckUpdate: DeckUpdateCtrl, // the same: an update goes on too
   ) {
     this.saved = this.filledIn = this.draft = settings;
-    this.gameTypes = settings.gameTypes;
+    this.gameTypes = unapplied() ?? settings.gameTypes;
   }
 
   // On every change in the form, which has every setting but the kinds of games.
@@ -71,6 +89,7 @@ export class SettingsPageCtrl {
   // The kinds of games ticked beside "Update deck".
   chooseGameTypes = (gameTypes: Speed[]): void => {
     this.gameTypes = gameTypes;
+    keepUnapplied(this.gameTypesChanged() ? gameTypes : undefined);
     this.redraw();
   };
   gameTypesChanged = (): boolean => JSON.stringify(this.gameTypes) !== JSON.stringify(this.saved.gameTypes);
@@ -91,6 +110,7 @@ export class SettingsPageCtrl {
       this.saved = settings;
       this.draft = { ...this.draft, gameTypes: this.gameTypes };
       this.onSave(settings);
+      keepUnapplied(undefined);
     }
     await this.deckUpdate.start();
   };

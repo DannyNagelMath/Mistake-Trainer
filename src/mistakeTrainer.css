@@ -90,9 +90,15 @@ body:not(.mt-settings-shown) main.mt-settings-page {
 .mt-progress__now {
   color: var(--c-font-dim);
 }
-.mt-progress__stats {
+.mt-progress__links {
   align-self: flex-start;
+}
+.mt-progress__links a {
   cursor: pointer;
+}
+.mt-how-it-works .dialog-content {
+  max-width: 40em;
+  text-align: start;
 }
 
 /* The settings page (settings.html, settingsPageView.ts). lila's own settings pages use its form
@@ -273,8 +279,16 @@ body:not(.mt-settings-shown) main.mt-settings-page {
 .mt-setup input {
   padding: 0.4em 0.6em;
 }
-/* "Try a sample deck" and "Import it", on the first-run screen: links without an address. */
-.mt-setup__import a {
+.mt-setup input[type='number'] {
+  width: 6em;
+}
+.mt-setup__note {
+  color: var(--c-font-dim);
+  font-size: 0.9em;
+}
+/* "How it works", "Try a sample deck", and "Import it": links without an address. */
+.mt-setup__import a,
+a.mt-how {
   cursor: pointer;
 }
 /* "Sign out" of Lichess, in Your deck (settingsPageView.ts renderSignIn): a link without an address. */

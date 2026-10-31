@@ -190,3 +190,22 @@ test('signed in, Update deck downloads with your token, which Lichess answers fa
   const lichess = vi.mocked(fetch).mock.calls.find(c => String(c[0]).startsWith('https://lichess.org'))!;
   expect((lichess[1]!.headers as Record<string, string>).Authorization).toBe('Bearer lio_T');
 });
+
+test('kinds of games ticked but not applied stay ticked across signing in, which loads the page again', async () => {
+  const kept: Record<string, string> = {};
+  vi.stubGlobal('sessionStorage', {
+    getItem: (k: string) => kept[k] ?? null,
+    setItem: (k: string, v: string) => void (kept[k] = v),
+    removeItem: (k: string) => void delete kept[k],
+  });
+  const page = () => new SettingsPageCtrl(deck, history, defaultSettings, () => {}, () => {}, new YourGamesCtrl(deck.username, () => defaultSettings.gameTypes, () => {}), update());
+  page().chooseGameTypes(['bullet']);
+  const again = page(); // after Lichess's page
+  expect(again.gameTypes).toEqual(['bullet']);
+  expect(textOf(find(view(again), 'section.mt-your-deck'))).toContain('Press “Update deck” to apply your choice.');
+  await again.updateDeck(); // applied: not kept any more
+  expect(kept).toEqual({});
+  again.chooseGameTypes(['blitz']);
+  again.chooseGameTypes(['bullet']); // back to what's saved now: nothing to keep
+  expect(kept).toEqual({});
+});
