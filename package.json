@@ -3,6 +3,9 @@
   "private": true,
   "license": "AGPL-3.0-or-later",
   "type": "module",
+  "engines": {
+    "node": ">=22.12"
+  },
   "scripts": {
     "dev": "vite",
     "check": "tsc --noEmit && tsc --noEmit -p scripts",
