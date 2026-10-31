@@ -2,7 +2,7 @@
 // answers for), and what Import accepts (readBackup).
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
-import { collectBackup, readBackup, type Backup } from './backup';
+import { collectBackup, exportFileName, readBackup, type Backup } from './backup';
 import { defaultSettings } from './settings';
 
 const kept: Record<string, unknown> = {
@@ -34,6 +34,11 @@ test('Export collects everything: reviews, settings, analyses, games, masters, a
     deck: null,
   });
   expect(Date.now() - new Date(backup.exportedAt).getTime()).toBeLessThan(5000);
+});
+
+test("the exported file is named with the date where you are, even late in the evening", () => {
+  expect(exportFileName(new Date(2026, 9, 30, 23, 59))).toBe('mistake-trainer-2026-10-30.json'); // 11:59 PM, your time
+  expect(exportFileName(new Date(2026, 0, 5, 0, 1))).toBe('mistake-trainer-2026-01-05.json');
 });
 
 test("Import takes an exported file, and nothing else", async () => {

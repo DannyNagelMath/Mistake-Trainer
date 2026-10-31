@@ -35,13 +35,18 @@ export async function collectBackup(): Promise<Backup> {
   return { app: APP, version: 1, exportedAt: new Date().toISOString(), reviews, settings, analyses, games, masters, deck: deck ?? null };
 }
 
-// Export: everything, in a file the browser downloads, e.g. "mistake-trainer-2026-10-30.json".
+// The exported file's name, with the date where you are (exportedAt is in UTC, which can already be
+// tomorrow), e.g. "mistake-trainer-2026-10-30.json".
+export const exportFileName = (at: Date): string =>
+  `mistake-trainer-${[at.getFullYear(), at.getMonth() + 1, at.getDate()].map(n => String(n).padStart(2, '0')).join('-')}.json`;
+
+// Export: everything, in a file the browser downloads.
 export async function exportData(): Promise<void> {
   const backup = await collectBackup();
   const url = URL.createObjectURL(new Blob([JSON.stringify(backup)], { type: 'application/json' }));
   const link = document.createElement('a');
   link.href = url;
-  link.download = `mistake-trainer-${backup.exportedAt.slice(0, 10)}.json`;
+  link.download = exportFileName(new Date(backup.exportedAt));
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 60_000); // once the download has surely started
 }
