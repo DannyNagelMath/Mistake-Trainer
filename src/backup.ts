@@ -1,5 +1,6 @@
 // backup.ts: Not in lila. Export and Import: everything the app keeps (storage.ts), in one file, and
-// back. On the website, that file is the only copy outside the browser.
+// back. On the website, that file is the only copy outside the browser. Also the sample deck, which
+// is such a file, and Start over.
 
 import { parseSettings } from './settings';
 import {
@@ -91,12 +92,48 @@ export function importData(): void {
           (inBrowser ? 'What’s here now will be gone.' : 'What’s here now is first copied to data/backups.'),
       );
       if (!replace) return;
-      const { reviews, settings, analyses, games, masters, deck } = backup;
-      await replaceAll({ reviews, settings: parseSettings(settings), analyses, games, masters, deck: deck ?? null });
-      location.reload();
+      await replaceWith(backup);
     } catch (e) {
       alert((e as Error).message);
     }
   };
   input.click();
+}
+
+// The sample deck, on the first-run screen: an export made from 20 of the author's analysed games
+// (public/sample.json, which scripts/buildSample.ts makes), to try the trainer without an account.
+export async function trySample(): Promise<void> {
+  try {
+    const response = await fetch('/sample.json');
+    if (!response.ok) throw new Error(`Couldn't load the sample deck (${response.status}).`);
+    await replaceWith(readBackup(await response.text()));
+  } catch (e) {
+    alert((e as Error).message);
+  }
+}
+
+// Start over, in Training settings: everything emptied but your settings, and the masters database's
+// answers, which are anyone's; then the first-run screen, for another account or after the sample.
+export async function startOver(): Promise<void> {
+  const ok = confirm(
+    'Start over? Your deck, your reviews, your games, and the analyses made here will be gone; your settings ' +
+      'stay. ' +
+      (inBrowser ? 'Export first to keep a copy.' : 'What’s here now is first copied to data/backups.'),
+  );
+  if (!ok) return;
+  try {
+    const [settings, masters] = await Promise.all([loadSettings(), loadMasters()]);
+    await replaceWith({ reviews: { cards: {}, log: [] }, settings, analyses: {}, games: [], masters, deck: null });
+  } catch (e) {
+    alert((e as Error).message);
+  }
+}
+
+// Everything replaced with `data`, then the page loads again with it: the trainer, or with no deck,
+// the first-run screen. Without #settings, so that a new deck opens on the trainer.
+async function replaceWith(data: AllData): Promise<void> {
+  const { reviews, settings, analyses, games, masters, deck } = data;
+  await replaceAll({ reviews, settings: parseSettings(settings), analyses, games, masters, deck: deck ?? null });
+  history.replaceState(null, '', location.pathname);
+  location.reload();
 }

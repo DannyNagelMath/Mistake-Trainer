@@ -5,7 +5,7 @@
 
 import { init, attributesModule, classModule, eventListenersModule, propsModule, type VNode } from 'snabbdom';
 
-import { importData } from './backup';
+import { importData, trySample } from './backup';
 import type { Deck } from './deck';
 import { DeckUpdateCtrl } from './deckUpdate';
 import type { Speed } from './gameDownload';
@@ -92,6 +92,13 @@ export async function showSetup(deck: Deck | undefined): Promise<void> {
           ),
         ]),
       ]),
+      // Only before there's a deck: a deck without cards has your account, and maybe analyses made here.
+      !deck &&
+        hl('p.mt-setup__import', [
+          'Just looking? ',
+          hl('a', { on: { click: trySample } }, 'Try a sample deck'),
+          ', made from 20 of the author’s Lichess games.',
+        ]),
       hl('p.mt-setup__import', [
         'Moving here with a file you exported from Mistake Trainer? ',
         hl('a', { on: { click: importData } }, 'Import it'),

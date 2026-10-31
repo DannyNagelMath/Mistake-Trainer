@@ -114,3 +114,19 @@ test("if your games can't load, it says why, and tries again next time", async (
   expect(yourGames.loaded?.all).toBe(4);
   expect(textOf(section(yourGames))).not.toContain('your deck'); // nothing analysed here yet
 });
+
+test('when Lichess has analysed all your games, it says so, with nothing to analyse here; with none, that too', async () => {
+  const only = (saved: LichessGameJson[]) =>
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => Response.json(url === '/api/games' ? saved : {})));
+  only([game]);
+  const yourGames = new YourGamesCtrl('mugglesman1982', () => chosen, () => {});
+  await yourGames.load();
+  const text = textOf(section(yourGames));
+  expect(text).toContain('Lichess has analysed all of them.');
+  expect(text).not.toContain('analysed here');
+  expect(find(section(yourGames), 'button.button')).toBeUndefined();
+  only([]);
+  const none = new YourGamesCtrl('mugglesman1982', () => chosen, () => {});
+  await none.load();
+  expect(textOf(section(none))).toContain('You have no games of the kinds you chose.');
+});

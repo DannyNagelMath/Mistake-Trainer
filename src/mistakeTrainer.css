@@ -273,7 +273,7 @@ body:not(.mt-settings-shown) main.mt-settings-page {
 .mt-setup input {
   padding: 0.4em 0.6em;
 }
-/* "Import it", on the first-run screen: a link without an address. */
+/* "Try a sample deck" and "Import it", on the first-run screen: links without an address. */
 .mt-setup__import a {
   cursor: pointer;
 }

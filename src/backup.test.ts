@@ -1,8 +1,9 @@
 // backup.test.ts: checks Export's file (collectBackup, from the dev server's files, which a stand-in
-// answers for), and what Import accepts (readBackup).
+// answers for), what Import accepts (readBackup), the sample deck, and Start over.
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
-import { collectBackup, exportFileName, readBackup, type Backup } from './backup';
+import sample from '../public/sample.json';
+import { collectBackup, exportFileName, readBackup, startOver, trySample, type Backup } from './backup';
 import { defaultSettings } from './settings';
 
 const kept: Record<string, unknown> = {
@@ -51,4 +52,67 @@ test("Import takes an exported file, and nothing else", async () => {
   const { games: _, ...noGames } = backup;
   not(JSON.stringify(noGames));
   not(JSON.stringify({ ...backup, reviews: { cards: {} } } as unknown as Backup));
+});
+
+// What the page sent the dev server to replace everything with, and whether it then loaded again.
+function replacing(answers: Record<string, unknown>) {
+  const sent: unknown[] = [];
+  const reload = vi.fn();
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        sent.push({ url, body: JSON.parse(init.body as string) });
+        return new Response(null, { status: 204 });
+      }
+      return Response.json(answers[url]);
+    }),
+  );
+  vi.stubGlobal('location', { pathname: '/', reload });
+  vi.stubGlobal('history', { replaceState: vi.fn() });
+  vi.stubGlobal('confirm', () => true);
+  vi.stubGlobal('alert', (message: string) => sent.push({ alert: message }));
+  return { sent, reload };
+}
+
+test("the sample deck is an export with a deck, and nothing of its owner's but the games: no reviews, default settings", () => {
+  const backup = readBackup(JSON.stringify(sample));
+  expect(backup.deck!.cards.length).toBeGreaterThan(0);
+  expect(backup.reviews).toEqual({ cards: {}, log: [] });
+  expect(backup.settings).toEqual(defaultSettings);
+});
+
+test('"Try a sample deck" replaces everything with it, then loads the page again', async () => {
+  const { sent, reload } = replacing({ '/sample.json': sample });
+  await trySample();
+  const { reviews, settings, analyses, games, masters, deck } = sample;
+  expect(sent).toEqual([{ url: '/api/import', body: { reviews, settings, analyses, games, masters, deck } }]);
+  expect(reload).toHaveBeenCalled();
+});
+
+test('"Start over" empties everything but your settings and the masters database\'s answers, then loads the page again', async () => {
+  const { sent, reload } = replacing(kept);
+  await startOver();
+  expect(sent).toEqual([
+    {
+      url: '/api/import',
+      body: {
+        reviews: { cards: {}, log: [] },
+        settings: { ...defaultSettings, minGapDays: 5 },
+        analyses: {},
+        games: [],
+        masters: kept['/api/masters'],
+        deck: null,
+      },
+    },
+  ]);
+  expect(reload).toHaveBeenCalled();
+});
+
+test('"Start over" does nothing unless you say yes', async () => {
+  const { sent, reload } = replacing(kept);
+  vi.stubGlobal('confirm', () => false);
+  await startOver();
+  expect(sent).toEqual([]);
+  expect(reload).not.toHaveBeenCalled();
 });

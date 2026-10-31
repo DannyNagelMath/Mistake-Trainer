@@ -12,7 +12,7 @@ import type { AnalysisRun } from './analysisRun';
 import { renderRun } from './analysisRunView';
 import { clickedOutside } from './analysisSettingsView';
 import { makeShapesFromUci } from './autoShape';
-import { exportData, importData } from './backup';
+import { exportData, importData, startOver } from './backup';
 import { renderEval, renderIndex } from './components';
 import type { SettingsPageCtrl } from './settingsPage';
 import type { Card } from './deck';
@@ -115,8 +115,9 @@ export function renderSignIn(signOut: () => void): VNode {
           hl('a', { on: { click: signOut } }, 'Sign out'),
         ]
       : [
-          'Opening mistakes are checked against the masters database, as on Lichess, which needs you signed in ' +
-            'to Lichess. ',
+          'Optional: sign in with Lichess, so that opening mistakes are checked against the masters database, ' +
+            'as on Lichess. Lichess’s own page asks you to allow it; Mistake Trainer gets no permissions, only ' +
+            'your username. ',
           hl('button.button.button-thin', { attrs: { type: 'button' }, on: { click: signIn } }, 'Sign in with Lichess'),
         ],
   );
@@ -160,7 +161,14 @@ export function renderComputerAnalysis(yourGames: YourGamesCtrl, after: (run: An
   const count = (n: number) => n.toLocaleString('en');
   return hl('section.mt-computer-analysis', [
     hl('h2', 'Computer analysis'),
-    loaded
+    loaded && !loaded.run.games.length
+      ? hl(
+          'p',
+          loaded.all
+            ? 'Your cards come from the computer analysis of your games. Lichess has analysed all of them.'
+            : 'You have no games of the kinds you chose.',
+        )
+      : loaded
       ? [
           hl(
             'p',
@@ -171,7 +179,11 @@ export function renderComputerAnalysis(yourGames: YourGamesCtrl, after: (run: An
               (FULL_NETWORK ? 'the way Lichess’s servers do it' : 'much as Lichess’s servers do it, with a smaller network') +
               ', newest first. Each game is saved as soon as it’s done, so you can pause, or close the page, ' +
               'and carry on later. It goes on while you train, stopping whenever the trainer’s own engine is ' +
-              'thinking.',
+              'thinking.' +
+              (FULL_NETWORK
+                ? ''
+                : ' Running Mistake Trainer on your own computer instead (see Source code, below) uses the ' +
+                  'full network.'),
           ),
           renderRun(loaded.run),
           after(loaded.run),
@@ -442,7 +454,7 @@ export const renderAbout = (): VNode =>
     ),
   ]);
 
-// Where your data is kept (storage.ts), and Export and Import (backup.ts).
+// Where your data is kept (storage.ts), and Export, Import, and Start over (backup.ts).
 function renderYourData(): VNode {
   return hl('section.mt-your-data', [
     hl('h2', 'Your data'),
@@ -451,11 +463,14 @@ function renderYourData(): VNode {
       inBrowser
         ? 'Everything is kept in this browser: your reviews, settings, games, and analyses. Clearing this ' +
             'site’s data in your browser deletes it, so export it now and then. Export saves it all in one ' +
-            'file, and Import brings a file back, here or in another browser.'
+            'file, and Import brings a file back, here or in another browser. Running Mistake Trainer on your ' +
+            'own computer instead (see Source code, below) keeps it all in files, with a copy of your reviews ' +
+            'made each day.'
         : 'Everything is kept in files in data, on your computer, with a copy of your reviews made each ' +
             'day. Export saves it all in one file, to keep, or to move to the website; Import replaces it ' +
             'with a file’s, first copying what’s there to data/backups.',
     ),
+    hl('p', 'Start over empties it all but your settings: for another Lichess account, or after the sample deck.'),
     hl('div.mt-settings__actions', [
       hl(
         'button.button',
@@ -463,6 +478,7 @@ function renderYourData(): VNode {
         'Export',
       ),
       hl('button.button.button-empty', { attrs: { type: 'button' }, on: { click: importData } }, 'Import'),
+      hl('button.button.button-red.button-empty', { attrs: { type: 'button' }, on: { click: startOver } }, 'Start over'),
     ]),
   ]);
 }
