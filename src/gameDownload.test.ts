@@ -20,13 +20,14 @@ const answer = (status: number, pieces: string[] = []) => {
   });
   return new Response(status === 200 ? body : '{}', { status });
 };
-const asked: { url: string; accept: string }[] = [];
+const asked: { url: string; accept: string; auth?: string }[] = [];
 const lichess = (...answers: Response[]) => {
   asked.length = 0;
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: string, init: RequestInit) => {
-      asked.push({ url, accept: (init.headers as Record<string, string>).Accept });
+      const headers = init.headers as Record<string, string>;
+      asked.push({ url, accept: headers.Accept, auth: headers.Authorization });
       return answers.shift()!;
     }),
   );
@@ -38,7 +39,7 @@ test('one request for your games of the given kinds, with their analysis, read a
   const lines = ['{"id":"a1","players":{"white":{"user":{"name":"Zoë', '"}}}}\n{"id":"b2"}\n{"id":"c', '3"}\n'];
   lichess(answer(200, lines));
   const counts: number[] = [];
-  const games = await downloadGames('Muggles Man', ['blitz', 'rapid'], undefined, n => counts.push(n));
+  const games = await downloadGames('Muggles Man', ['blitz', 'rapid'], { onGame: n => counts.push(n) });
   expect(games.map(g => g.id)).toEqual(['a1', 'b2', 'c3']);
   expect(games[0].players?.white.user?.name).toBe('Zoë'); // a letter split between two pieces
   expect(counts).toEqual([1, 2, 3]);
@@ -54,6 +55,7 @@ test('one request for your games of the given kinds, with their analysis, read a
     division: 'true',
   });
   expect(asked[0].accept).toBe('application/x-ndjson');
+  expect(asked[0].auth).toBeUndefined(); // no token: anonymously
 });
 
 test('an update asks only for the games since the newest you have', async () => {
@@ -61,7 +63,7 @@ test('an update asks only for the games since the newest you have', async () => 
   expect(sinceNewest(have)).toBe(3001);
   expect(sinceNewest([])).toBeUndefined();
   lichess(answer(200, []));
-  expect(await downloadGames('x', ['blitz'], 3001)).toEqual([]);
+  expect(await downloadGames('x', ['blitz'], { since: 3001 })).toEqual([]);
   expect(new URL(asked[0].url).searchParams.get('since')).toBe('3001');
 });
 
@@ -69,10 +71,10 @@ test('"Too many requests": a minute later it tries once more, then gives up', as
   const waits: number[] = [];
   const wait = async (ms: number) => void waits.push(ms);
   lichess(answer(429), answer(200, ['{"id":"a1"}\n']));
-  expect((await downloadGames('x', ['blitz'], undefined, undefined, wait)).map(g => g.id)).toEqual(['a1']);
+  expect((await downloadGames('x', ['blitz'], { wait })).map(g => g.id)).toEqual(['a1']);
   expect(waits).toEqual([60_000]);
   lichess(answer(429), answer(429));
-  await expect(downloadGames('x', ['blitz'], undefined, undefined, wait)).rejects.toThrow(
+  await expect(downloadGames('x', ['blitz'], { wait })).rejects.toThrow(
     'Lichess says too many requests. Try again in a few minutes.',
   );
   expect(asked).toHaveLength(2); // and no more
@@ -93,7 +95,7 @@ test('"Update deck": the games since your newest of each kind; all of a kind you
   ] as LichessGameJson[];
   lichess(answer(200, ['{"id":"b2"}\n']), answer(200, ['{"id":"c1"}\n{"id":"c2"}\n']));
   const counts: number[] = [];
-  const games = await downloadNewGames('x', ['blitz', 'rapid', 'classical'], saved, n => counts.push(n));
+  const games = await downloadNewGames('x', ['blitz', 'rapid', 'classical'], saved, { onGame: n => counts.push(n) });
   expect(games.map(g => g.id)).toEqual(['b2', 'c1', 'c2']);
   expect(counts).toEqual([1, 2, 3]);
   const [recent, all] = asked.map(a => Object.fromEntries(new URL(a.url).searchParams));
@@ -104,4 +106,19 @@ test('"Update deck": the games since your newest of each kind; all of a kind you
   await downloadNewGames('x', ['blitz', 'rapid'], []);
   expect(asked).toHaveLength(1);
   expect(Object.fromEntries(new URL(asked[0].url).searchParams)).not.toHaveProperty('since');
+});
+
+test('signed in, the token goes with every request, which Lichess answers faster', async () => {
+  lichess(answer(200, ['{"id":"b2"}\n']), answer(200, ['{"id":"c1"}\n']));
+  const saved = [{ id: 'b1', speed: 'blitz', createdAt: 5000 }] as LichessGameJson[];
+  await downloadNewGames('x', ['blitz', 'classical'], saved, { token: 'lio_T' });
+  expect(asked.map(a => a.auth)).toEqual(['Bearer lio_T', 'Bearer lio_T']);
+});
+
+test('a token Lichess no longer accepts (401), e.g. cancelled on Lichess: the download goes on without it', async () => {
+  lichess(answer(401), answer(200, ['{"id":"a1"}\n']));
+  expect((await downloadGames('x', ['blitz'], { token: 'lio_OLD' })).map(g => g.id)).toEqual(['a1']);
+  expect(asked.map(a => a.auth)).toEqual(['Bearer lio_OLD', undefined]);
+  lichess(answer(401)); // without a token, a 401 is just an error
+  await expect(downloadGames('x', ['blitz'])).rejects.toThrow("Couldn't download your games from Lichess (401).");
 });

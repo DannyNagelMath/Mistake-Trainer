@@ -1,5 +1,7 @@
 // gameDownload.ts: Not in lila. Downloads your games from Lichess's API, in the browser, with
-// their computer analysis when Lichess has made one. No token is needed: they're public games.
+// their computer analysis when Lichess has made one. No token is needed, as they're public games;
+// with the one from signing in (lichessAuth.ts), Lichess sends them faster: 30 games a second
+// rather than 20, and 60 for your own (its API documentation, "Export games of a user").
 // Being gentle with Lichess's servers, as its API documentation asks (https://lichess.org/api,
 // "Rate limiting"): one request at a time, streamed; on 429 (too many requests), wait a full
 // minute and try once more; and for an update, only the games since the newest you have.
@@ -19,14 +21,18 @@ export function sinceNewest(games: LichessGameJson[]): number | undefined {
   return newest ? newest + 1 : undefined;
 }
 
-// Your games of the given kinds, newest first, from `since` if given. `onGame` hears how many
-// have arrived so far, as they do. `wait` is for the tests.
+export interface DownloadOptions {
+  since?: number; // only the games from then on
+  token?: string; // from signing in, for a faster download
+  onGame?: (count: number) => void; // how many have arrived so far, as they do
+  wait?: (ms: number) => Promise<unknown>; // for the tests
+}
+
+// Your games of the given kinds, newest first.
 export async function downloadGames(
   username: string,
   speeds: Speed[],
-  since?: number,
-  onGame: (count: number) => void = () => {},
-  wait = sleep,
+  { since, token, onGame = () => {}, wait = sleep }: DownloadOptions = {},
 ): Promise<LichessGameJson[]> {
   const params = new URLSearchParams({
     perfType: speeds.join(','),
@@ -38,9 +44,17 @@ export async function downloadGames(
   });
   if (since !== undefined) params.set('since', String(since));
   const url = `https://lichess.org/api/games/user/${encodeURIComponent(username)}?${params}`;
-  for (let attempt = 1; ; attempt++) {
-    const response = await fetch(url, { headers: { Accept: 'application/x-ndjson' } });
-    if (response.status === 429 && attempt === 1) {
+  let waited = false;
+  for (;;) {
+    const headers: Record<string, string> = { Accept: 'application/x-ndjson' };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const response = await fetch(url, { headers });
+    if (response.status === 401 && token) {
+      token = undefined; // a sign-in Lichess no longer accepts, e.g. one cancelled there: download without it
+      continue;
+    }
+    if (response.status === 429 && !waited) {
+      waited = true;
       await wait(60_000);
       continue;
     }
@@ -59,13 +73,13 @@ export async function downloadNewGames(
   username: string,
   speeds: Speed[],
   saved: LichessGameJson[],
-  onGame: (count: number) => void = () => {},
+  { token, onGame = () => {} }: Pick<DownloadOptions, 'token' | 'onGame'> = {},
 ): Promise<LichessGameJson[]> {
   const have = speeds.filter(s => saved.some(g => g.speed === s));
   const none = speeds.filter(s => !have.includes(s));
   const since = Math.min(...have.map(s => sinceNewest(saved.filter(g => g.speed === s))!));
-  const recent = have.length ? await downloadGames(username, have, since, onGame) : [];
-  const all = none.length ? await downloadGames(username, none, undefined, n => onGame(recent.length + n)) : [];
+  const recent = have.length ? await downloadGames(username, have, { since, token, onGame }) : [];
+  const all = none.length ? await downloadGames(username, none, { token, onGame: n => onGame(recent.length + n) }) : [];
   return [...recent, ...all];
 }
 

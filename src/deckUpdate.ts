@@ -4,6 +4,7 @@
 
 import { buildDeck, type Deck } from './deck';
 import { downloadNewGames, type Speed } from './gameDownload';
+import { signedIn } from './lichessAuth';
 import { loadAnalyses, loadGames, loadMasters, saveDeck, saveGames } from './storage';
 
 // e.g. "1 game", "12 games".
@@ -40,8 +41,11 @@ export class DeckUpdateCtrl {
     this.say('Downloading your new games from Lichess...');
     const speeds = this.speeds();
     const saved = await loadGames();
-    const downloaded = await downloadNewGames(this.username, speeds, saved, n => {
-      if (n % 50 === 0) this.sayInstead(`Downloading your new games from Lichess: ${n}...`);
+    const downloaded = await downloadNewGames(this.username, speeds, saved, {
+      token: signedIn()?.token, // faster, when you're signed in
+      onGame: n => {
+        if (n % 50 === 0) this.sayInstead(`Downloading your new games from Lichess: ${n}...`);
+      },
     });
     await saveGames(downloaded);
     const known = new Set(saved.map(g => g.id));

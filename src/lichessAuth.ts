@@ -1,9 +1,10 @@
 // lichessAuth.ts: Not in lila. "Sign in with Lichess", for the masters database, which only answers
-// someone signed in (mastersExplorer.ts). It's Lichess's OAuth with PKCE, which Lichess's API
-// documentation describes for apps that run in the browser: no registration and no secret. The page
-// sends you to Lichess's own sign-in page, and Lichess sends you back with a code, which the page
-// swaps for a token. The token asks for no permissions, so it can't read or change anything of
-// yours. This browser keeps it (localStorage) until you sign out.
+// someone signed in (mastersExplorer.ts), and for faster game downloads (gameDownload.ts). It's
+// Lichess's OAuth with PKCE, which Lichess's API documentation describes for apps that run in the
+// browser: no registration and no secret. The page sends you to Lichess's own sign-in page, and
+// Lichess sends you back with a code, which the page swaps for a token. The token asks for no
+// permissions, so it can't read or change anything of yours. This browser keeps it (localStorage)
+// until you sign out.
 
 const LICHESS = 'https://lichess.org';
 const CLIENT_ID = 'mistake-trainer'; // Lichess only asks that it name the app

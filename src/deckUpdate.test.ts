@@ -182,3 +182,11 @@ test('Games, beside Update deck: what you tick is saved, and passed to the train
   expect(lichess.map(a => new URL(a).searchParams.get('perfType'))).toEqual(['rapid']);
   expect(textOf(yourDeck())).not.toContain('to apply your choice');
 });
+
+test('signed in, Update deck downloads with your token, which Lichess answers faster', async () => {
+  const account = JSON.stringify({ token: 'lio_T', username: 'mugglesman1982' });
+  vi.stubGlobal('localStorage', { getItem: (key: string) => (key === 'mistakeTrainer.lichess' ? account : null) });
+  await update().start();
+  const lichess = vi.mocked(fetch).mock.calls.find(c => String(c[0]).startsWith('https://lichess.org'))!;
+  expect((lichess[1]!.headers as Record<string, string>).Authorization).toBe('Bearer lio_T');
+});

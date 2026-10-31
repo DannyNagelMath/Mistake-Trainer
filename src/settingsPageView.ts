@@ -104,20 +104,21 @@ function renderYourDeck(ctrl: SettingsPageCtrl): VNode {
 }
 
 // "Sign in with Lichess" (lichessAuth.ts), which the masters database needs, to check new opening
-// mistakes; or who you're signed in as. Also on the first-run screen (setupView.ts).
+// mistakes, and which makes downloads faster; or who you're signed in as. Also on the first-run
+// screen (setupView.ts).
 export function renderSignIn(signOut: () => void): VNode {
   const account = signedIn();
   return hl(
     'p.mt-your-deck__lichess',
     account
       ? [
-          `Signed in to Lichess as ${account.username}, for the masters database. `,
+          `Signed in to Lichess as ${account.username}, for the masters database and faster downloads. `,
           hl('a', { on: { click: signOut } }, 'Sign out'),
         ]
       : [
           'Optional: sign in with Lichess, so that opening mistakes are checked against the masters database, ' +
-            'as on Lichess. Lichess’s own page asks you to allow it; Mistake Trainer gets no permissions, only ' +
-            'your username. ',
+            'as on Lichess, and your games download faster. Lichess’s own page asks you to allow it; Mistake ' +
+            'Trainer gets no permissions, only your username. ',
           hl('button.button.button-thin', { attrs: { type: 'button' }, on: { click: signIn } }, 'Sign in with Lichess'),
         ],
   );
