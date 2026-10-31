@@ -1,4 +1,4 @@
-// schedule.test.ts: Step 9. Checks which card schedule.ts picks next.
+// schedule.test.ts: checks which card schedule.ts picks next.
 import { createEmptyCard, Rating, State, type CardInput, type Grade } from 'ts-fsrs';
 import { expect, test } from 'vitest';
 

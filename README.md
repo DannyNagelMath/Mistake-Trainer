@@ -61,7 +61,7 @@ because much of it is ported from lila, which is licensed the same way.
 Each file ported from lila says which lila file it comes from, at lila commit
 [27ffc8b](https://github.com/lichess-org/lila/tree/27ffc8b5f296d180e7a648d6bfdad27eef3f86a2). Every
 change from lila's version is marked in the code with a comment: `Trim:` where something was
-removed or simplified, `Fix:` for a bug fix, and `Step N:` for additions.
+removed or simplified, `Fix:` for a bug fix, and `Not in lila:` for additions.
 
 The AGPL also covers use over a network: if you run Mistake Trainer as a service for other people,
 you must offer them its source code.

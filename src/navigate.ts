@@ -1,6 +1,5 @@
 // navigate.ts: stepping through the moves, for the buttons under the move list, the keyboard, and
-// the scroll wheel. From lila's ui/analyse/src/navigate.ts (master, commit 27ffc8b).
-// Every change from lila's version is marked with a comment starting "Trim:".
+// the scroll wheel. From lila's ui/analyse/src/navigate.ts (27ffc8b).
 
 import type { AnalysisCtrl } from './analysisCtrl';
 import type { TreeNode } from './tree';

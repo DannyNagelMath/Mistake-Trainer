@@ -119,7 +119,7 @@ export async function showSetup(deck: Deck | undefined): Promise<void> {
 
 // Why a deck has no cards.
 const noCards = (deck: Deck): string =>
-  deck.gameTimes?.length
+  deck.gameTimes.length
     ? `None of ${deck.username}’s ${deck.gameTimes.length} games with computer analysis has a mistake by them.`
     : `None of ${deck.username}’s games has computer analysis yet. Lichess analyses a game when you ask it ` +
       'to, on the game’s page, or you can analyse them here, below.';

@@ -1,5 +1,5 @@
-// mousetrap.ts: keyboard shortcuts, copied from lila's ui/site/src/mousetrap.ts (master,
-// commit 27ffc8b), where it's the global site.mousetrap. lila adapted it from Mousetrap, whose
+// mousetrap.ts: keyboard shortcuts, copied from lila's ui/site/src/mousetrap.ts (27ffc8b),
+// where it's the global site.mousetrap. lila adapted it from Mousetrap, whose
 // licence follows. The changes are marked "Trim:".
 //
 // Usage: new Mousetrap().bind(['left', 'k'], callback). A binding is a key name, optionally after
@@ -138,7 +138,7 @@ const getKeyInfo = (combination: string, action?: Action): KeyInfo => {
 export default class Mousetrap {
   private readonly bindings: Record<string, Binding[]> = {};
   // Not in lila: while paused, keys do nothing here, and do what they normally do in the page.
-  // main.ts pauses the trainer's while Training settings shows over it.
+  // trainer.ts pauses the trainer's while Training settings shows over it.
   paused = false;
 
   // Trim: lila's also accepts an HTMLElement. Our TypeScript then can't tell that the events will be

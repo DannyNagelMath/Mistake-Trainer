@@ -1,7 +1,6 @@
 // retroView.ts: the "Learn from your mistakes" panel, from lila's
-// ui/analyse/src/retrospect/retroView.ts (master, commit 27ffc8b).
-// Every change from lila's version is marked with a comment starting "Trim:", except card
-// mode (see retroCtrl.ts), whose additions are marked "Step 9:".
+// ui/analyse/src/retrospect/retroView.ts (27ffc8b).
+// Not in lila: card mode (see retroCtrl.ts): every part that uses `ctrl.card`.
 
 import { opposite, type Color } from 'chessops';
 import type { VNode } from 'snabbdom';
@@ -34,7 +33,7 @@ const skipOrViewSolution = (ctrl: RetroCtrl): VNode =>
 const jumpToNext = (ctrl: RetroCtrl): VNode =>
   hl('a.half.continue', { hook: bind('click', ctrl.jumpToNext) }, [icon(licon.PlayTriangle), i18n.site.next]);
 
-// Step 9: in card mode, after the right first move, the buttons for how it went, in place of Next
+// In card mode, after the right first move, the buttons for how it went, in place of Next
 // until you choose. The labels aren't lila's.
 const renderRatingChoices = (choices: { label: string; rate: () => void }[]): VNode =>
   hl(
@@ -42,7 +41,7 @@ const renderRatingChoices = (choices: { label: string; rate: () => void }[]): VN
     choices.map(c => hl('button.button', { hook: bind('click', c.rate) }, c.label)),
   );
 
-// Step 9: once you've answered a card that has come up before, how you did last time, e.g.
+// Once you've answered a card that has come up before, how you did last time, e.g.
 // "Last time (Oct 12): wrong, you played Qh4." Not while you're still looking for the move, when it
 // could give the answer away. Reviews from before October 29, 2026 didn't save the move.
 function renderLastTime(ctrl: RetroCtrl): VNode | undefined {
@@ -130,7 +129,7 @@ const feedback = {
     ];
   },
   win(ctrl: RetroCtrl): VNode[] {
-    const choices = ctrl.card?.ratingChoices(); // Step 9
+    const choices = ctrl.card?.ratingChoices();
     return [
       hl(
         'div.half.top',
@@ -139,7 +138,7 @@ const feedback = {
           hl('div.instruction', [
             hl('strong', i18n.study.goodMove),
             choices && hl('em', 'How did you find it?'),
-            renderLastTime(ctrl), // Step 9
+            renderLastTime(ctrl),
           ]),
         ]),
       ),
@@ -158,7 +157,7 @@ const feedback = {
               'em',
               i18n.site.bestWasX.asArray(hl('strong', renderIndexAndMove(ctrl.current()!.solution.node, false, false))),
             ),
-            renderLastTime(ctrl), // Step 9
+            renderLastTime(ctrl),
           ]),
         ]),
       ),
@@ -181,12 +180,11 @@ const feedback = {
       return [
         hl(
           'div.half.top',
-          // Trim: lila shows its loading spinner in div.icon. It needs an SVG mask from lila's page,
-          // and we only load games that come with their analysis, so this never shows anyway.
+          // Trim: no loading spinner, which needs an SVG mask from lila's page; our games come analysed, so it never shows.
           hl('div.player', [hl('div.icon'), hl('div.instruction', i18n.site.waitingForAnalysis)]),
         ),
       ];
-    // Step 9: in card mode, nothing more is due. The text isn't one of lila's translations.
+    // In card mode, nothing more is due. The text isn't one of lila's translations.
     if (ctrl.card)
       return [
         hl('div.player', [
@@ -250,7 +248,7 @@ export default function (root: AnalysisCtrl): VNode | undefined {
     completion = ctrl.completion();
   return hl('div.retro-box.training-box.sub-box', [
     hl('div.title', [
-      // Step 9: for cards, neither the title nor the count (the progress box has the numbers): the
+      // For cards, neither the title nor the count (the progress box has the numbers): the
       // bar only holds "Suspend card".
       !ctrl.card && [
         hl('span', i18n.site.learnFromYourMistakes),
@@ -270,7 +268,7 @@ export default function (root: AnalysisCtrl): VNode | undefined {
           { attrs: { title: 'The move you played in the game, as a red arrow' }, hook: bind('click', root.toggleBadMoveArrow) },
           root.showBadMoveArrow() ? 'Hide my move' : 'Show my move',
         ),
-      // Step 9: in card mode, while a card is shown, suspend it. It asks first, as undoing it means
+      // In card mode, while a card is shown, suspend it. It asks first, as undoing it means
       // going to Training settings.
       ctrl.card &&
         ctrl.current() &&

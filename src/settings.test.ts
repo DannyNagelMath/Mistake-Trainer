@@ -1,4 +1,4 @@
-// settings.test.ts: checks how settings.ts reads data/settings.json, and what it says is wrong
+// settings.test.ts: checks how settings.ts reads your saved settings, and what it says is wrong
 // with a setting.
 import { expect, test } from 'vitest';
 

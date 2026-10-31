@@ -1,5 +1,5 @@
 // keyboard.ts: keyboard shortcuts for the analysis page. From lila's ui/analyse/src/keyboard.ts
-// (master, commit 27ffc8b). Every change from lila's version is marked with a comment starting "Trim:".
+// (27ffc8b).
 //
 //   left or k: previous move         right or j: next move
 //   up, 0, or home: first move       down, $, or end: last move
@@ -75,7 +75,7 @@ export const bind = (ctrl: AnalysisCtrl): Mousetrap => {
 // A tap of shift on its own, with no other key or click while it's down, selects the next
 // continuation, as the down key does (fork.ts); the variation arrows show which one.
 // Trim: lila's also folds variations on a tap of ctrl, and skips shift while you type in the chat.
-// Not in lila: nothing while kbd is paused (main.ts), as these listen on the page outside it.
+// Not in lila: nothing while kbd is paused (trainer.ts), as these listen on the page outside it.
 function addModifierKeyListeners(ctrl: AnalysisCtrl, kbd: Mousetrap) {
   let modifierOnly = false;
 

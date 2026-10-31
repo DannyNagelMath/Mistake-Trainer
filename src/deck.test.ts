@@ -1,11 +1,11 @@
-// deck.test.ts: Step 9. Checks that the deck finds the same mistakes as "Learn from your mistakes".
+// deck.test.ts: checks that the deck finds the same mistakes as "Learn from your mistakes".
 // The expected plies are the mistakes retroCtrl quizzes in these games.
 import { expect, test } from 'vitest';
 
 import real1 from '../fixtures/real1.json';
 import real2 from '../fixtures/real2.json';
 import real3 from '../fixtures/real3.json';
-import { buildDeck, cardsOfGame, colorOf, gameTimesOf, inOpening, mistakeOf, withAnalysis, withMasterMoves, yourGames, type MasterMove } from './deck';
+import { buildDeck, cardsOfGame, colorOf, inOpening, mistakeOf, withAnalysis, withMasterMoves, yourGames, type MasterMove } from './deck';
 import type { LichessGameJson } from './tree';
 
 const fixtures: Record<string, unknown> = { real1, real2, real3 };
@@ -106,15 +106,6 @@ test('castling matches, however the masters database writes it (not in lila)', (
   expect(withMasterMoves(card, { fen, uci: 'd2d3' }, [masterMove('e1g1', 9)])).toEqual({ ...card, masterMoves: ['e1h1'] });
 });
 
-test("gameTimesOf: when each of your games started, newest first; for an older deck, only its games with cards", () => {
-  const game = real1 as unknown as LichessGameJson;
-  const newer = { ...game, id: 'newer', createdAt: 2000 };
-  const older = { ...game, id: 'older', createdAt: 1000 };
-  const deck = { username: 'mugglesman1982', builtAt: '', games: { older, newer }, cards: [] };
-  expect(gameTimesOf(deck)).toEqual([2000, 1000]); // built before Deck.gameTimes
-  expect(gameTimesOf({ ...deck, gameTimes: [3000, 2000, 1500, 1000] })).toEqual([3000, 2000, 1500, 1000]);
-});
-
 test('buildDeck: a card for each of your mistakes in your analysed games, then the saved masters answers for opening ones', async () => {
   // real1's middlegame starting at ply 50 makes two of its mistakes, at plies 39 and 41, opening ones.
   const g1 = { ...fixture('real1'), division: { middle: 50, end: 80 } };
@@ -131,15 +122,10 @@ test('buildDeck: a card for each of your mistakes in your analysed games, then t
   expect(opening.length).toBe(2);
   const book = mistakeOf(games[opening[0].gameId], opening[0]);
   const answers: Record<string, MasterMove[]> = { [book.fen]: [{ uci: book.uci, white: 2, draws: 0, black: 0 }] };
-  const { deck, report } = await buildDeck(downloaded, {}, 'MugglesMan1982', ['blitz', 'rapid'], answers);
+  const deck = await buildDeck(downloaded, {}, 'MugglesMan1982', ['blitz', 'rapid'], answers);
 
   expect(deck.cards.map(c => c.id)).toEqual(expected.filter(c => c !== opening[0]).map(c => c.id));
   expect(deck.cards.find(c => c.id === opening[1].id)!.masterMoves).toBeUndefined();
   expect(Object.keys(deck.games).sort()).toEqual([g1.id, g2.id, g3.id].sort());
   expect(deck.gameTimes).toEqual([g1, g2, g3].map(g => g.createdAt).sort((a, b) => b! - a!));
-  expect(report).toEqual({
-    skipped: { 'not yours, not standard chess, or saved twice': 2, 'not of the kinds you chose': 1, 'no computer analysis': 1 },
-    opening: 2,
-    bookMoves: 1,
-  });
 });

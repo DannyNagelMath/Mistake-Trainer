@@ -1,8 +1,7 @@
-// retroCtrl.ts: the "Learn from your mistakes" state machine, trimmed from lila's
-// ui/analyse/src/retrospect/retroCtrl.ts (master, commit 27ffc8b).
-// Every change from lila's version is marked with a comment starting "Trim:", except card
-// mode (reviewing a single mistake from the deck), whose additions are marked "Step 9:", and
-// other additions, marked "Not in lila:".
+// retroCtrl.ts: the "Learn from your mistakes" state machine, from lila's
+// ui/analyse/src/retrospect/retroCtrl.ts (27ffc8b).
+// Not in lila: card mode, for reviewing one mistake from the deck: RetroCardOpts, and every line
+// that uses `card`.
 
 import type { Color } from 'chessops';
 
@@ -35,10 +34,8 @@ const prop = <A>(initialValue: A): Prop<A> => {
 };
 const isEmpty = <T>(a: T[] | undefined): boolean => !a || a.length === 0;
 
-// Trim: lila passes its whole AnalyseCtrl as `root`. This interface lists only what
-// retroCtrl uses; your adapter (step 1c) provides it.
-// Note: retroCtrl stores root.redraw and root.toggleRetro and calls them later on
-// their own, so the adapter must define them as arrow functions (as lila does).
+// Trim: lila passes its whole AnalyseCtrl as `root`; this lists only what retroCtrl uses (AnalysisCtrl
+// provides it). redraw and toggleRetro are called on their own, so they must be arrow functions, as in lila.
 export interface RetroRoot {
   mainline: TreeNode[]; // the root node, then one node per game move
   node: TreeNode; // the node currently shown on the board
@@ -57,11 +54,11 @@ export interface RetroRoot {
   // Not in lila, whose engine evaluates every position the board shows: start Stockfish on a
   // move to check. It sets node.ceval as it searches, and calls retro.onCeval each time.
   evaluateNode(node: TreeNode): void;
-  card?: RetroCardOpts; // Step 9: set when reviewing a card, rather than a whole game
+  card?: RetroCardOpts; // set when reviewing a card, rather than a whole game
   game: LichessGameJson; // lila's root.data.game, for the opening explorer lookup
 }
 
-// Step 9: not in lila. In card mode, retroCtrl shows one given mistake. The game's other
+// In card mode, retroCtrl shows one given mistake. The game's other
 // mistakes still count as candidates, so their engine lines stay hidden in the move list.
 // When the card is done (solved, solution viewed, or skipped), "Next" deals the next card.
 export interface RetroCardOpts {
@@ -85,7 +82,7 @@ export interface RetroCardOpts {
   lastTime?: ReviewEntry; // the card's last review, if it's had one, for the panel once you've answered
 }
 
-export type CardResult = 'win' | 'fail' | 'view' | 'skip'; // Step 9
+export type CardResult = 'win' | 'fail' | 'view' | 'skip';
 
 // ---------- Everything below is lila's code except where marked ----------
 
@@ -111,7 +108,7 @@ export interface RetroCtrl {
   node(): TreeNode;
   redraw: Redraw;
   forceCeval(): boolean;
-  card?: RetroCardOpts; // Step 9
+  card?: RetroCardOpts;
 }
 
 interface NodeWithPath {
@@ -135,7 +132,7 @@ export function make(root: RetroRoot, color: Color): RetroCtrl {
   let solvedPlies: number[] = [];
   const current = prop<Retrospection | null>(null);
   const feedback = prop<Feedback>('find');
-  const card = root.card; // Step 9
+  const card = root.card;
 
   function safeRedraw() {
     root.redraw(); // Trim: lila skips this in blind mode.
@@ -151,14 +148,14 @@ export function make(root: RetroRoot, color: Color): RetroCtrl {
       root.mainline,
       n => n.ply % 2 === colorModulo && !explorerCancelPlies.includes(n.ply),
     );
-    return candidateNodes.find(n => !isPlySolved(n.ply) && (!card || n.ply === card.ply)); // Step 9: in card mode, only the card's
+    return candidateNodes.find(n => !isPlySolved(n.ply) && (!card || n.ply === card.ply)); // in card mode, only the card's
   }
 
   function jumpToNext(): void {
     feedback('find');
     const node = findNextNode();
     if (!node) {
-      if (card?.next()) return; // Step 9: this card is done; the next one takes over
+      if (card?.next()) return; // this card is done; the next one takes over
       current(null);
       return safeRedraw();
     }
@@ -179,11 +176,11 @@ export function make(root: RetroRoot, color: Color): RetroCtrl {
         node: solutionNode,
         path: prevPath + solutionNode.id,
       },
-      openingUcis: card?.openingUcis ?? [], // Step 9: a card brings the saved ones (deck.ts masterMoves)
+      openingUcis: card?.openingUcis ?? [], // a card brings the saved ones (deck.ts masterMoves)
     });
     // fetch opening explorer moves
-    // Step 9: only for a card, from the deck's masters database. Trim: lila reads game.variant.key; the
-    // game export's variant is a name, and may be missing for standard chess.
+    // Only for a card, which brings the masters database. Trim: lila reads game.variant.key; the game
+    // export's variant is a name, and may be missing for standard chess.
     if (
       card &&
       (game.variant ?? 'standard') === 'standard' &&
@@ -194,17 +191,16 @@ export function make(root: RetroRoot, color: Color): RetroCtrl {
         .fetchMasterOpening(prev.node.fen)
         .then(res => {
           const cur = current();
-          if (cur?.fault !== fault) return; // Step 9: the panel has moved on since
+          if (cur?.fault !== fault) return; // the panel has moved on since
           const ucis: Uci[] = [];
           res.moves.forEach(m => {
             if (m.white + m.draws + m.black > 1) ucis.push(m.uci);
           });
           if (ucis.includes(fault.node.uci!)) {
-            // Step 9: unless you've answered already: then the card stays, and the next deck build
-            // leaves it out.
+            // Unless you've answered already: then the card stays, and the next deck build leaves it out.
             if (feedback() !== 'find') return;
             explorerCancelPlies.push(fault.node.ply);
-            card.bookMove(); // Step 9
+            card.bookMove();
             setTimeout(jumpToNext, 100);
           } else {
             cur.openingUcis = ucis;
@@ -260,11 +256,9 @@ export function make(root: RetroRoot, color: Color): RetroCtrl {
     const node = root.node,
       cur = current();
     if (!cur || feedback() !== 'eval' || cur.fault.node.ply !== node.ply) return;
-    // Not in lila, which compares the move with the game's computer analysis of the position before
-    // it (prev.node.eval): here, with our engine's evaluation of that position, searched as far as
-    // the move. Our engine doesn't always agree with the computer analysis, which was another search,
-    // and the difference alone could decide whether a move counts; with the same engine on both
-    // sides, it can't.
+    // Not in lila, which compares the move with the game's analysis of the position before it
+    // (prev.node.eval): here, with our engine's eval of that position, searched as far, so that both
+    // sides come from the same engine, and a difference between two searches can't decide it.
     if (isCevalReady(node) && isCevalReady(cur.prev.node)) {
       const diff = winningChances.povDiff(color, node.ceval!, cur.prev.node.ceval!);
       if (diff > -0.04) onWin();
@@ -273,7 +267,7 @@ export function make(root: RetroRoot, color: Color): RetroCtrl {
   }
 
   function onWin(): void {
-    card?.onResult('win'); // Step 9
+    card?.onResult('win');
     solveCurrent();
     // Trim: removed `if (site.blindMode) jumpToNext();`
     feedback('win');
@@ -281,7 +275,7 @@ export function make(root: RetroRoot, color: Color): RetroCtrl {
   }
 
   function onFail(): void {
-    card?.onResult('fail'); // Step 9
+    card?.onResult('fail');
     feedback('fail');
     const bad = {
       node: root.node,
@@ -293,14 +287,14 @@ export function make(root: RetroRoot, color: Color): RetroCtrl {
   }
 
   function viewSolution() {
-    card?.onResult('view'); // Step 9
+    card?.onResult('view');
     feedback('view');
     root.userJump(current()!.solution.path);
     solveCurrent();
   }
 
   function skip() {
-    card?.onResult('skip'); // Step 9
+    card?.onResult('skip');
     solveCurrent();
     jumpToNext();
   }
@@ -309,7 +303,7 @@ export function make(root: RetroRoot, color: Color): RetroCtrl {
     if (current()) solvedPlies.push(current()!.fault.node.ply);
   }
 
-  // Step 9: in card mode, only the card's own mistake, until it's solved. The game's other mistakes
+  // In card mode, only the card's own mistake, until it's solved. The game's other mistakes
   // are other cards, but once this card is done, their analysis shows like the rest of the game's.
   const hideComputerLine = (node: TreeNode): boolean =>
     isPlyLearnCandidate(node.ply) && !isPlySolved(node.ply) && (!card || node.ply === card.ply);
@@ -357,6 +351,6 @@ export function make(root: RetroRoot, color: Color): RetroCtrl {
     node: () => root.node,
     redraw: root.redraw,
     forceCeval: () => feedback() === 'eval',
-    card, // Step 9
+    card,
   };
 }

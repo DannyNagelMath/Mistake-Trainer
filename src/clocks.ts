@@ -1,6 +1,5 @@
-// clocks.ts: Step 8. Each player's clock at the position on the board, from the times recorded
-// in the game. From lila's ui/analyse/src/view/clocks.ts (master, commit 27ffc8b).
-// Every change from lila's version is marked with a comment starting "Trim:".
+// clocks.ts: each player's clock at the position on the board, from the times recorded
+// in the game. From lila's ui/analyse/src/view/clocks.ts (27ffc8b).
 
 import { h, type VNode } from 'snabbdom';
 

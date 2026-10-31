@@ -1,29 +1,11 @@
-// vite.config.ts: Vite's settings. Step 9: adds addresses to the dev server, so the pages can keep
-// your data in files in data/ (gitignored), instead of in the browser:
-//   GET  /api/reviews   returns your review history (an empty one if the file doesn't exist yet)
-//   POST /api/reviews   with { card, entry } saves one review: the card's new schedule and its
-//                       log entry; with { suspend, at } suspends the card with that id, and with
-//                       { unsuspend } brings it back (see reviews.ts)
-//   GET  /api/settings  returns your settings ({} if you haven't saved any yet)
-//   POST /api/settings  replaces them (see settings.ts, which checks them when a page loads them)
-//   GET  /api/analysis  returns the analyses made on your computer, by game ({} if none yet)
-//   POST /api/analysis  with { gameId, analysis, engine, nodes, at } saves one (see analyses.ts)
-//   GET  /api/games     returns the games downloaded from Lichess (gameDownload.ts), one per line
-//   POST /api/games     with { games } adds those it doesn't have yet
-//   GET  /api/masters   returns the masters database's answers, by position ({} if none yet)
-//   POST /api/masters   with { fen, moves } saves one (see mastersExplorer.ts)
-//   GET  /api/deck      returns the deck (null until the first is built; see deckUpdate.ts)
-//   POST /api/deck      replaces it
-//   POST /api/import    replaces everything with what an exported file holds (see backup.ts), after
-//                       copying the files there are to data/backups
-// It also serves Stockfish to the page at /stockfish/ (see stockfishFiles below), and makes the
-// pages "cross-origin isolated" so that it can run on several threads (crossOriginIsolation).
-// They only exist in the dev server (npm run dev), which is how this app runs.
-// To start your review history again, delete data/reviews.json; to go back to the default
-// settings, delete data/settings.json. To use other files, e.g. for testing, set the
-// REVIEWS_FILE, SETTINGS_FILE, ANALYSIS_FILE, GAMES_FILE, MASTERS_FILE, and DECK_FILE environment
-// variables to their paths.
-// Your review history is backed up once a day (backupHistory below).
+// vite.config.ts: Vite's settings. Running the app yourself (npm run dev), the dev server keeps your
+// data in files in data/ (gitignored): it adds an address under /api/ for each of storage.ts's loads
+// and saves (dataApi below). Import (/api/import) first copies the files there are to data/backups,
+// and your review history is backed up once a day (backupHistory). To use other files, e.g. for
+// testing, set REVIEWS_FILE, SETTINGS_FILE, ANALYSIS_FILE, GAMES_FILE, MASTERS_FILE, and DECK_FILE.
+// It also serves Stockfish at /stockfish/ (stockfishFiles), and makes the pages cross-origin
+// isolated so that it can run on several threads. The website build (npm run build) keeps your data
+// in the browser instead, and copies the lite engine into the build (stockfishBuild).
 
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
@@ -290,16 +272,15 @@ function crossOriginIsolation(): Plugin {
 // the full engine is about 100 MB.
 const stockfishDir = fileURLToPath(new URL('./node_modules/stockfish/bin/', import.meta.url));
 function stockfishFiles(): Plugin {
-  const dir = stockfishDir;
   return {
     name: 'stockfish-files',
     configureServer(server) {
       server.middlewares.use('/stockfish/', (req, res, next) => {
         const name = (req.url ?? '').split('?')[0].replace(/^\//, '');
-        if (!/^stockfish-[\w.-]+\.(js|wasm)$/.test(name) || !existsSync(dir + name)) return next();
+        if (!/^stockfish-[\w.-]+\.(js|wasm)$/.test(name) || !existsSync(stockfishDir + name)) return next();
         res.setHeader('Content-Type', name.endsWith('.wasm') ? 'application/wasm' : 'text/javascript');
         res.setHeader('Cache-Control', 'max-age=86400');
-        res.end(readFileSync(dir + name));
+        res.end(readFileSync(stockfishDir + name));
       });
     },
   };

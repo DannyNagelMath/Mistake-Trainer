@@ -1,12 +1,12 @@
-// nodeFinder.ts: copied from lila's ui/analyse/src/nodeFinder.ts (only what retrospect and, since step 8,
-// the advice summary need).
+// nodeFinder.ts: from lila's ui/analyse/src/nodeFinder.ts (27ffc8b): what "Learn from your mistakes"
+// and the advice summary use.
 
 import type { TreeNode } from './tree';
 import * as winningChances from './winningChances';
 
 const hasCompChild = (node: TreeNode): boolean => node.children.some(c => !!c.comp);
 
-// Step 8: the next move by `color` with the glyph `symbol` (e.g. '??'), after `fromPly` and
+// The next move by `color` with the glyph `symbol` (e.g. '??'), after `fromPly` and
 // going round to the start of the game again, for the advice summary.
 export const nextGlyphSymbol = (
   color: 'white' | 'black',

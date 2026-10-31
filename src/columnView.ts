@@ -1,7 +1,6 @@
 // columnView.ts: the default move list, with White's and Black's moves in two columns and
 // variations and comments breaking in between. From lila's ui/analyse/src/treeView/columnView.ts
-// (master, commit 27ffc8b). It reuses InlineView for variations, comments, and single moves.
-// Every change from lila's version is marked with a comment starting "Trim:".
+// (27ffc8b). It reuses InlineView for variations, comments, and single moves.
 
 import type { VNode } from 'snabbdom';
 

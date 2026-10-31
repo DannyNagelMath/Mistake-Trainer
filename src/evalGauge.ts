@@ -1,6 +1,5 @@
 // evalGauge.ts: the evaluation gauge, the bar beside the board that shows who's better. From
-// lila's ui/lib/src/ceval/view/main.ts (master, commit 27ffc8b), renderGauge and getBestEval.
-// Every change from lila's version is marked with a comment starting "Trim:".
+// lila's ui/lib/src/ceval/view/main.ts (27ffc8b), renderGauge and getBestEval.
 
 import type { VNode } from 'snabbdom';
 

@@ -1,6 +1,6 @@
 // deckUpdate.test.ts: checks "Update deck" (deckUpdate.ts, and in Training settings,
 // settingsPageView.ts renderYourDeck): downloading your new games, building the deck in the page,
-// the masters check when you're signed in, and what the page says. The dev server, Lichess, and the
+// that it asks the masters database nothing, and what the page says. The dev server, Lichess, and the
 // masters database are stand-ins.
 import type { VNode } from 'snabbdom';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
@@ -17,7 +17,7 @@ import type { LichessGameJson } from './tree';
 import { YourGamesCtrl } from './yourGames';
 
 const game = real1 as unknown as LichessGameJson; // a blitz game; your mistakes at plies 39, 41, and 63
-const deck: Deck = { username: 'mugglesman1982', builtAt: '2026-10-28T17:33:10.000Z', games: { [game.id]: game }, cards: cardsOfGame(game, 'white') };
+const deck: Deck = { username: 'mugglesman1982', builtAt: '2026-10-28T17:33:10.000Z', games: { [game.id]: game }, cards: cardsOfGame(game, 'white'), gameTimes: [game.createdAt!] };
 
 // What the dev server has, what Lichess sends, and what the page asked for and saved.
 let saved: LichessGameJson[];

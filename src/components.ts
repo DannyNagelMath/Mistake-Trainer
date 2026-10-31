@@ -1,6 +1,6 @@
 // components.ts: moves written out as text, like "15...Qh4?", and the game's result. Copied from
 // lila's ui/analyse/src/view/components.ts (renderResult, renderIndexAndMove, renderIndex,
-// renderMoveNodes; master, commit 27ffc8b), with plyToTurn from ui/lib/src/game/chess.ts and
+// renderMoveNodes; 27ffc8b), with plyToTurn from ui/lib/src/game/chess.ts and
 // renderEval from ui/lib/src/ceval/util.ts. Used by the retro panel and the move list.
 
 import { h, type VNode } from 'snabbdom';
@@ -17,7 +17,7 @@ type Glyph = NonNullable<TreeNode['glyphs']>[number];
 // menu (contextMenu.ts, pgnExport.ts).
 export const plyToTurn = (ply: number): number => Math.floor((ply - 1) / 2) + 1;
 
-// Centipawns as pawns, e.g. -153 as "-1.5". Step 8: exported for the eval chart.
+// Centipawns as pawns, e.g. -153 as "-1.5". Exported for the engine's box and Training settings.
 export function renderEval(e: number): string {
   e = Math.max(Math.min(Math.round(e / 10) / 10, 99), -99);
   return (e > 0 ? '+' : '') + e.toFixed(1);
@@ -56,7 +56,7 @@ export function renderMoveNodes(
   return nodes;
 }
 
-// Step 6: the result and how the game ended, under the move list, e.g. "0-1" and
+// The result and how the game ended, under the move list, e.g. "0-1" and
 // "White resigned • Black is victorious".
 // Trim: lila also shows a study chapter's result, and its Termination tag.
 export function renderResult(ctrl: AnalysisCtrl): VNode[] {

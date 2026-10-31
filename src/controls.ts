@@ -1,6 +1,5 @@
 // controls.ts: the bar under the move list, with the first / previous / next / last buttons and
-// the menu button. From lila's ui/analyse/src/view/controls.ts (master, commit 27ffc8b).
-// Every change from lila's version is marked with a comment starting "Trim:".
+// the menu button. From lila's ui/analyse/src/view/controls.ts (27ffc8b).
 
 import type { VNode } from 'snabbdom';
 

@@ -1,10 +1,7 @@
 // settingsPage.ts: Not in lila. Training settings: your settings, updating your deck (deckUpdate.ts),
-// the computer analysis of your games (yourGames.ts), and your suspended cards.
-// SettingsPageCtrl keeps its state, and settingsPageView.ts draws it with snabbdom. It shows in
-// the trainer's page, over the trainer, which waits hidden as you left it (trainer.ts makes a new
-// SettingsPageCtrl each time it opens).
-// The settings are saved (storage.ts), and passed on to the trainer, which uses them from then on
-// (DeckCtrl.useSettings).
+// the computer analysis of your games (yourGames.ts), and your suspended cards. settingsPageView.ts
+// draws it. trainer.ts makes a new SettingsPageCtrl each time it opens; saved settings go to the
+// trainer too (DeckCtrl.useSettings).
 
 import type { Deck } from './deck';
 import type { DeckUpdateCtrl } from './deckUpdate';

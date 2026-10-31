@@ -1,9 +1,7 @@
 // idbTree.ts: which variations are folded away in the move list ("Enable variation hiding", lila's
-// disclosure mode), remembered for each game. From lila's ui/analyse/src/idbTree.ts (master,
-// commit 27ffc8b). Every change from lila's version is marked with a comment starting "Trim:".
-// Trim: lila's IdbTree also saves the moves you add to a game and the engine's evals, so they're
-// still there next time, and has stepLine (shift+up/down), which we don't have. Only the folding is
-// here.
+// disclosure mode), remembered for each game. From lila's ui/analyse/src/idbTree.ts (27ffc8b).
+// Trim: only the folding; lila's also saves the moves you add and the engine's evals, and has
+// stepLine (shift+up/down).
 
 import type { AnalysisCtrl } from './analysisCtrl';
 import { hasBranching, type TreeNode } from './tree';

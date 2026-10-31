@@ -1,7 +1,7 @@
-// deckCtrl.test.ts: checks how DeckCtrl grades a card. A wrong first move, "View the solution",
-// or "Skip" is Again at once; the right first move waits for you to choose Hard, Good, or Easy.
-// Moves are played through the controller, the way the board plays them. Saving is stubbed out,
-// so nothing is written anywhere, and Stockfish, which needs a browser, has a stand-in.
+// deckCtrl.test.ts: checks a training session (DeckCtrl): grading cards, what shows while you solve
+// and once you're done, Stockfish's and the masters' answers, suspending, coming back to the page,
+// Training settings, Recent games, and Your stats. Moves are played through the controller, the
+// way the board plays them. Saving is stubbed out, and Stockfish, which needs a browser, has a stand-in.
 import { makeUci } from 'chessops';
 import { Chess } from 'chessops/chess';
 import { parseFen } from 'chessops/fen';
@@ -61,7 +61,7 @@ vi.mock('./engine', () => ({
 }));
 
 const game = real1 as unknown as LichessGameJson;
-const deck: Deck = { username: 'mugglesman1982', builtAt: '', games: { [game.id]: game }, cards: cardsOfGame(game, 'white') };
+const deck: Deck = { username: 'mugglesman1982', builtAt: '', games: { [game.id]: game }, cards: cardsOfGame(game, 'white'), gameTimes: [game.createdAt!] };
 
 let saved: unknown[]; // what the page sent to save
 beforeEach(() => {
@@ -92,7 +92,7 @@ const standIn = (stored: Record<string, string>) => ({
   removeItem: (key: string) => delete stored[key],
 });
 
-// A session on an empty history, with the panel open on the first card, as main.ts does it.
+// A session on an empty history, with the panel open on the first card, as trainer.ts does it.
 function start(settings: Settings = defaultSettings) {
   const history: ReviewHistory = { cards: {}, log: [] };
   const deckCtrl = new DeckCtrl(deck, history, settings, () => {});
@@ -486,7 +486,7 @@ test('coming back after the right first move, before rating it, shows the card s
   const open = () => {
     const deckCtrl = new DeckCtrl(deck, history, defaultSettings, () => {});
     deckCtrl.analysis.toggleRetro();
-    deckCtrl.resume(); // as main.ts does
+    deckCtrl.resume(); // as trainer.ts does
     return deckCtrl.analysis;
   };
   const first = open();
@@ -502,7 +502,7 @@ test('coming back after the right first move, before rating it, shows the card s
   expect(later.retro!.current()?.fault.node.ply).not.toBe(first.retro!.card!.ply);
 });
 
-// Training settings shows over the trainer (main.ts), with the trainer's history, and passes on
+// Training settings shows over the trainer (trainer.ts), with the trainer's history, and passes on
 // the settings you save. Here, the computer analysis of your games hasn't loaded (yourGames.test.ts
 // tries it), and the dev server hasn't been asked about "Update deck" (deckUpdate.test.ts does).
 const notLoaded = () => new YourGamesCtrl(deck.username, () => defaultSettings.gameTypes, () => {});
@@ -767,6 +767,16 @@ test('with "Recent games" at 1, new cards only come from your last game, and the
   ctrl.retro!.card!.restart();
   expect(ctrl.game.id).toBe(older.id);
   expect(deckCtrl.progress().notStarted).toBe(3); // the one on screen too, until you answer it
+});
+
+test('the end of the session counts the new cards left, one in the singular', () => {
+  const deckCtrl = new DeckCtrl(deck, { cards: {}, log: [] }, { ...defaultSettings, newCardsPerDay: 2, gameRestDays: 0 }, () => {});
+  const ctrl = deckCtrl.analysis;
+  ctrl.toggleRetro();
+  ctrl.retro!.skip();
+  ctrl.retro!.skip(); // the limit reached
+  expect(ctrl.retro!.current()).toBeNull();
+  expect(ctrl.retro!.card!.summary()).toContain("1 new card hasn't been started yet (up to 2 in any 24 hours).");
 });
 
 test('a card you started from an older game keeps coming back, whatever "Recent games" says', () => {

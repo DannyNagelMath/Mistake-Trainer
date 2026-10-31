@@ -1,10 +1,7 @@
-// reviews.ts: Step 9. Your review history: each reviewed card's spaced-repetition schedule, and
-// a log of every review. storage.ts keeps it: in data/reviews.json when you run the app yourself,
-// or in the browser on the website.
-//
-// The schedules come from FSRS (the ts-fsrs library), the algorithm Anki uses. FSRS works out
-// when to show a card again from how you've done on it so far, aiming for a 90% chance that
-// you'll still get it right by then.
+// reviews.ts: Not in lila. Your review history: each reviewed card's spaced-repetition schedule, and
+// a log of every review. The schedules come from FSRS (the ts-fsrs library), the algorithm Anki
+// uses: it works out when to show a card again from how you've done on it so far, aiming for a 90%
+// chance that you'll still get it right by then.
 
 import type { CardInput, ReviewLog } from 'ts-fsrs';
 
@@ -26,11 +23,11 @@ export interface ReviewHistory {
   cards: Record<string, CardInput>; // FSRS schedule by card id, for every card reviewed at least once
   log: ReviewEntry[]; // oldest first
   // Cards you've suspended ("Suspend card"): when, by card id. They never come up again, unless
-  // you unsuspend them on the settings page. Older files don't have this.
+  // you unsuspend them in Training settings.
   suspended?: Record<string, string>;
 }
 
-// How often you found the move, for Training settings: on each card's first review, and when cards
+// How often you found the move, for Your stats (statsView.ts): on each card's first review, and when cards
 // came back, split by how the card went the time before. Only the right first move counts as right;
 // a wrong one, "View the solution", and "Skip" don't. With `since`, only the reviews from then on,
 // each still split by the review before it, whenever that was.

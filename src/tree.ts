@@ -1,5 +1,5 @@
-// tree.ts: build a lila-style analysis tree from one game exported by the Lichess API as JSON
-// (e.g. GET /game/export/{id} with Accept: application/json and evals=true).
+// tree.ts: Not in lila, whose server builds the tree (modules/tree TreeBuilder): lila's analysis
+// tree, built in the browser from a game as Lichess's API exports it, with its computer analysis.
 
 import { Chess, type Position } from 'chessops/chess';
 import { makeFen, parseFen } from 'chessops/fen';
@@ -31,17 +31,17 @@ export interface LichessGameJson {
   moves: string; // space-separated SAN
   initialFen?: string; // present only for games started from a custom position
   analysis?: LichessAnalysisEntry[]; // analysis[i] describes the position after moves[i]
-  status?: string; // Step 6: how the game ended, e.g. 'mate', 'resign', 'outoftime' (lila's StatusName)
-  winner?: 'white' | 'black'; // Step 6: absent for draws
-  variant?: string; // Step 9: e.g. 'standard' or 'chess960'
-  players?: { white: LichessPlayer; black: LichessPlayer }; // Step 9
-  // Step 8: for the player strips and the side panel.
+  status?: string; // how the game ended, e.g. 'mate', 'resign', 'outoftime' (lila's StatusName)
+  winner?: 'white' | 'black'; // absent for draws
+  variant?: string; // e.g. 'standard' or 'chess960'
+  players?: { white: LichessPlayer; black: LichessPlayer };
+  // For the player strips and the side panel.
   clocks?: number[]; // clocks[i]: the clock of whoever played moves[i], just after it, in centiseconds
   clock?: { initial: number; increment: number }; // the time control, in seconds
   createdAt?: number; // milliseconds since 1970
   speed?: string; // e.g. 'blitz'
   rated?: boolean;
-  // Step 9: the plies where the middlegame and the endgame start, from lila's analysis. Either is
+  // The plies where the middlegame and the endgame start, from lila's analysis. Either is
   // missing if the game never got there.
   division?: { middle?: number; end?: number };
   // Not in Lichess's export: for a game Lichess hasn't analysed, how and when the analysis in
@@ -50,19 +50,19 @@ export interface LichessGameJson {
   analysedHere?: Omit<SavedAnalysis, 'analysis'>;
 }
 
-// Step 9: `user` is absent for the computer and anonymous players.
+// `user` is absent for the computer and anonymous players.
 export interface LichessPlayer {
   user?: { id: string; name: string }; // id is the lowercase username
   rating?: number;
-  ratingDiff?: number; // Step 8: how much the game changed the rating
-  provisional?: boolean; // Step 8: a rating with few games behind it, shown with a "?"
-  aiLevel?: number; // Step 8: for Stockfish
-  analysis?: { inaccuracy: number; mistake: number; blunder: number; acpl: number; accuracy?: number }; // Step 8
+  ratingDiff?: number; // how much the game changed the rating
+  provisional?: boolean; // a rating with few games behind it, shown with a "?"
+  aiLevel?: number; // for Stockfish
+  analysis?: { inaccuracy: number; mistake: number; blunder: number; acpl: number; accuracy?: number };
 }
 
 // ---------- Output: the subset of lila's TreeNode that retrospect and the move list read ----------
 
-// Step 6: lila's TreeComment has an id too, and `by` can be a study member.
+// lila's TreeComment has an id too, and `by` can be a study member.
 export interface TreeComment {
   by: string;
   text: string;
@@ -87,8 +87,8 @@ export interface TreeNode {
   // the move list's menu), although it's still children[0]. Only one move at a time has it.
   forceVariation?: boolean;
   glyphs?: { id: number; symbol: string; name: string }[];
-  comments?: TreeComment[]; // Step 6: e.g. "Mistake. Nf3 was best." by 'lichess', on the judged move
-  clock?: number; // Step 8: the clock of whoever just moved, in centiseconds; at the root, the starting time
+  comments?: TreeComment[]; // e.g. "Mistake. Nf3 was best." by 'lichess', on the judged move
+  clock?: number; // the clock of whoever just moved, in centiseconds; at the root, the starting time
   children: TreeNode[]; // children[0] is always the mainline continuation
 }
 
@@ -101,7 +101,7 @@ export function buildTree(game: LichessGameJson): TreeNode {
     // ply 0 for a normal game; games from a custom position start later
     ply: (pos.fullmoves - 1) * 2 + (pos.turn === 'white' ? 0 : 1),
     fen: makeFen(pos.toSetup()),
-    clock: game.clock && game.clock.initial * 100, // Step 8: like lila's, the starting time
+    clock: game.clock && game.clock.initial * 100, // like lila's, the starting time
     children: [],
   };
 
@@ -111,11 +111,11 @@ export function buildTree(game: LichessGameJson): TreeNode {
     const before = pos.clone(); // kept in case an engine line starts from here
     const node = playSan(pos, sans[i], parent.ply + 1); // mutates pos
 
-    node.clock = game.clocks?.[i]; // Step 8
+    node.clock = game.clocks?.[i];
     const entry = game.analysis?.[i];
     if (entry) node.eval = toEval(entry);
     if (entry?.judgment) node.glyphs = [GLYPHS[entry.judgment.name]];
-    // Step 6: lila's server adds the same text as a comment by 'lichess' (modules/tree TreeBuilder).
+    // lila's server adds the same text as a comment by 'lichess' (modules/tree TreeBuilder).
     if (entry?.judgment) node.comments = [{ by: 'lichess', text: entry.judgment.comment }];
 
     parent.children.push(node); // pushed first, so it's children[0]
@@ -168,7 +168,7 @@ function buildCompLine(before: Position, variation: string, firstPly: number): T
   return first;
 }
 
-// ---------- Reading: what the adapter will expose as root.mainline, etc. ----------
+// ---------- Reading ----------
 
 // The root followed by each mainline node, in order (lila's mainline includes the root).
 export function mainline(root: TreeNode): TreeNode[] {
@@ -198,7 +198,8 @@ export function nodeAtPath(root: TreeNode, path: string): TreeNode {
   }
   return node;
 }
-// ---------- Step 6: helpers from lila's ui/lib/src/tree/ops.ts, for the move list ----------
+
+// ---------- Helpers from lila's ui/lib/src/tree/ops.ts, for the move list ----------
 
 // True if there's a variation within maxDepth moves of `node`, or the line is longer than that.
 export const hasBranching = (node: TreeNode, maxDepth: number): boolean =>

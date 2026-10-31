@@ -69,6 +69,7 @@ const deck: Deck = {
   builtAt: '2026-10-01T12:00:00.000Z',
   games: { [game.id]: game },
   cards: cardsOfGame(game, 'white'),
+  gameTimes: [game.createdAt!],
 };
 const history: ReviewHistory = { cards: {}, log: [] };
 const section = (yourGames: YourGamesCtrl) =>

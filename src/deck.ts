@@ -1,9 +1,6 @@
-// deck.ts: Step 9. The cards to review: one for each mistake you made in your saved games.
-// A card is a mistake that lila's "Learn from your mistakes" would show you in that game,
-// found the same way (retroCtrl's findNextNode), including lila's check against the masters
-// database for opening mistakes (see inOpening). buildDeck below builds the deck from your games,
-// with the analyses made here for the games Lichess hasn't analysed (withAnalysis); "Update deck"
-// runs it (deckUpdate.ts), and storage.ts keeps the deck.
+// deck.ts: Not in lila. The cards: one for each mistake in your games that lila's "Learn from your
+// mistakes" would show you, found the same way (retroCtrl's findNextNode). buildDeck builds the
+// deck, from your games and their analyses; "Update deck" runs it (deckUpdate.ts).
 
 import type { Color } from 'chessops';
 import { Chess, normalizeMove } from 'chessops/chess';
@@ -46,14 +43,9 @@ export interface Deck {
   games: Record<string, LichessGameJson>; // by game id; only games with at least one card
   cards: Card[];
   // When each of your games with computer analysis started, newest first, mistakes or not, for
-  // "Recent games" in Training settings. Decks built before October 29, 2026 don't have it.
-  gameTimes?: number[];
+  // "Recent games" in Training settings.
+  gameTimes: number[];
 }
-
-// Deck.gameTimes, or for a deck built without it, when each of its games started, newest first:
-// only the games with cards, as those are all it has.
-export const gameTimesOf = (deck: Deck): number[] =>
-  deck.gameTimes ?? Object.values(deck.games).map(g => g.createdAt ?? 0).sort((a, b) => b - a);
 
 // Your color in the game, or undefined if you didn't play in it.
 export function colorOf(game: LichessGameJson, username: string): Color | undefined {
@@ -76,7 +68,7 @@ export function yourGames(games: LichessGameJson[], username: string): LichessGa
   return [...yours.values()];
 }
 
-// Not in lila: the game with the computer analysis its cards come from. Lichess's comes first; for
+// The game with the computer analysis its cards come from. Lichess's comes first; for
 // a game Lichess hasn't analysed, the one made here, on your computer (localAnalysis.ts), if there
 // is one, and the game says so (analysedHere). Undefined if there's neither.
 export function withAnalysis(game: LichessGameJson, saved: SavedAnalysis | undefined): LichessGameJson | undefined {
@@ -123,7 +115,7 @@ export function mistakeOf(game: LichessGameJson, card: Card): { fen: string; uci
   return { fen: line[line.indexOf(played) - 1].fen, uci: played.uci! };
 }
 
-// Not in lila: the masters' moves, written as chessops writes moves, as yours is (see mistakeOf):
+// The masters' moves, written as chessops writes moves, as yours is (see mistakeOf):
 // castling as the king taking its own rook (e1h1), where the masters database may write it the
 // usual way (e1g1). Otherwise castling would never match. For withMasterMoves, and for the trainer,
 // which asks about a position when its card comes up (deckCtrl.ts).
@@ -146,78 +138,49 @@ export function withMasterMoves(card: Card, mistake: { fen: string; uci: string 
   return book.length ? { ...card, masterMoves: book } : card;
 }
 
-// What buildDeck did, for reporting.
-export interface DeckReport {
-  skipped: Record<string, number>; // games left out: reason -> how many
-  opening: number; // opening mistakes, checked against the masters database's saved answers
-  bookMoves: number; // of those, left out as book moves
-}
-
 // A moment for the page to respond, between parts of a long job.
 const pause = () => new Promise(resolve => setTimeout(resolve));
 
 // Builds the deck from your downloaded games of the kinds you chose: a card for each of your
-// mistakes, from Lichess's computer analysis, or for a game Lichess hasn't analysed, from the one
-// made here (withAnalysis).
-// Then lila's check of opening mistakes against the masters database (inOpening), with the answers
-// saved so far (mastersExplorer.ts): a book move's card goes, and the others keep the masters'
-// moves, which count as right answers. A position without an answer yet is asked about when its
-// card comes up (retroCtrl's jumpToNext), as lila asks when it gets to the mistake.
+// mistakes (withAnalysis says from whose analysis). Then lila's check of opening mistakes against
+// the masters database (inOpening), with the answers saved so far: a book move's card goes. A
+// position not asked about yet is asked about when its card comes up (retroCtrl's jumpToNext).
 export async function buildDeck(
   downloaded: LichessGameJson[],
   analyses: Record<string, SavedAnalysis>,
   username: string,
   speeds: Speed[], // the kinds of games you chose (settings.ts gameTypes)
   answers: Record<string, MasterMove[]>, // the masters database's, saved so far, by position
-): Promise<{ deck: Deck; report: DeckReport }> {
-  const deck: Deck = { username, builtAt: new Date().toISOString(), games: {}, cards: [] };
-  const report: DeckReport = { skipped: {}, opening: 0, bookMoves: 0 };
-  const skip = (reason: string) => (report.skipped[reason] = (report.skipped[reason] ?? 0) + 1);
-  const gameTimes: number[] = [];
-
-  // The standard games you played, each once: a game saved twice is taken with Lichess's analysis,
-  // if either copy has it, so that Lichess's analysis always comes first (withAnalysis).
-  const yours = yourGames(downloaded, username);
-  if (downloaded.length > yours.length)
-    report.skipped['not yours, not standard chess, or saved twice'] = downloaded.length - yours.length;
-  const games = yours.filter(g => speeds.includes(g.speed as Speed));
-  if (yours.length > games.length) report.skipped['not of the kinds you chose'] = yours.length - games.length;
+): Promise<Deck> {
+  const deck: Deck = { username, builtAt: new Date().toISOString(), games: {}, cards: [], gameTimes: [] };
+  const games = yourGames(downloaded, username).filter(g => speeds.includes(g.speed as Speed));
   for (const [i, g] of games.entries()) {
     if (i % 20 === 19) await pause();
     const game = withAnalysis(g, analyses[g.id]);
-    if (!game) {
-      skip('no computer analysis');
-      continue;
-    }
+    if (!game) continue;
     let cards: Card[];
     try {
       cards = cardsOfGame(game, colorOf(game, username)!);
-    } catch (e) {
-      skip(`couldn't read the moves (${(e as Error).message})`);
-      continue;
+    } catch {
+      continue; // moves it couldn't read
     }
-    gameTimes.push(game.createdAt ?? 0); // mistakes or not
-    if (!cards.length) {
-      skip('no mistakes');
-      continue;
-    }
+    deck.gameTimes.push(game.createdAt ?? 0); // mistakes or not
+    if (!cards.length) continue;
     deck.games[game.id] = game;
     deck.cards.push(...cards);
   }
 
   const opening = deck.cards.filter(c => inOpening(deck.games[c.gameId], c));
-  report.opening = opening.length;
   for (const [i, card] of opening.entries()) {
     if (i % 20 === 19) await pause();
     const mistake = mistakeOf(deck.games[card.gameId], card); // builds the game's whole tree
     const saved = answers[mistake.fen];
     if (!saved) continue;
     const checked = withMasterMoves(card, mistake, saved);
-    if (!checked) report.bookMoves++;
     deck.cards.splice(deck.cards.indexOf(card), 1, ...(checked ? [checked] : []));
   }
   // The deck only keeps games that still have a card.
   for (const id of Object.keys(deck.games)) if (!deck.cards.some(c => c.gameId === id)) delete deck.games[id];
-  deck.gameTimes = gameTimes.sort((a, b) => b - a); // newest first
-  return { deck, report };
+  deck.gameTimes.sort((a, b) => b - a); // newest first
+  return deck;
 }

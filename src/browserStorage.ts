@@ -1,13 +1,10 @@
-// browserStorage.ts: Not in lila. Your data kept in the browser, for the website (storage.ts), in
-// IndexedDB, which holds far more than localStorage's few megabytes. One database: your review
-// history, settings, and deck, one entry each, in "data"; and your games, the analyses made here, and
-// the masters database's answers, one entry per game or position, in stores of their own, so that
-// saving one doesn't rewrite the rest. It stays until you clear this site's data in your browser;
-// Export (backup.ts) keeps a copy in a file.
+// browserStorage.ts: Not in lila. Your data on the website, in the browser's IndexedDB, which holds
+// far more than localStorage. Reviews, settings, and the deck are one entry each in "data"; games,
+// analyses, and the masters' answers have a store each, with an entry per game or position.
 
 import type { ReviewHistory } from './reviews';
 import { parseSettings } from './settings';
-import type { AllData, Storage } from './storage';
+import type { Storage } from './storage';
 
 type StoreName = 'data' | 'games' | 'analyses' | 'masters';
 const STORES: StoreName[] = ['data', 'games', 'analyses', 'masters'];
@@ -87,7 +84,7 @@ export const browserStorage: Storage = {
   saveMasterMoves: (fen, moves) => putOne('masters', fen, moves),
   loadDeck: () => getOne('data', 'deck'),
   saveDeck: deck => putOne('data', 'deck', deck),
-  replaceAll: (data: AllData) =>
+  replaceAll: data =>
     transaction(STORES, 'readwrite', async s => {
       for (const name of STORES) s(name).clear();
       s('data').put(data.reviews, 'reviews');

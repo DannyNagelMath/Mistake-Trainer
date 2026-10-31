@@ -1,4 +1,4 @@
-// reviews.test.ts: checks answerRates, how often you found the move, for Training settings.
+// reviews.test.ts: checks answerRates, how often you found the move, for Your stats.
 import { expect, test } from 'vitest';
 
 import type { CardResult } from './retroCtrl';

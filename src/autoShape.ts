@@ -1,6 +1,5 @@
 // autoShape.ts: what the board draws by itself: arrows and annotations. From lila's
-// ui/analyse/src/autoShape.ts (master, commit 27ffc8b), makeShapesFromUci and compute.
-// Every change from lila's version is marked with a comment starting "Trim:".
+// ui/analyse/src/autoShape.ts (27ffc8b), makeShapesFromUci and compute.
 
 import type { DrawModifiers, DrawShape } from '@lichess-org/chessground/draw';
 import type { Key } from '@lichess-org/chessground/types';
@@ -24,7 +23,7 @@ export function makeShapesFromUci(uci: string | undefined, brush: string, modifi
 // engine's other lines and threats, and maneuver arrows.
 export function compute(ctrl: AnalysisCtrl): DrawShape[] {
   let shapes: DrawShape[] = [];
-  // Step 3c: the move you played in the game, as lila's pale red arrow. While you're solving, it's
+  // The move you played in the game, as lila's pale red arrow. While you're solving, it's
   // the only arrow (lila's showBadNode). Not in lila: only when you ask for it ("Show my move"),
   // and once the card is done, also whenever you're back at its position, beside the others.
   if (ctrl.showBadMoveArrow()) {

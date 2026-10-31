@@ -1,5 +1,5 @@
 // glyphs.ts: draws a move's annotations (??, ?!, ...) on the square it went to, from lila's
-// ui/lib/src/game/glyphs.ts (master, commit 27ffc8b): annotationShapes, and the pictures for the
+// ui/lib/src/game/glyphs.ts (27ffc8b): annotationShapes, and the pictures for the
 // board marks (analysisGlyphs, motif.ts). The pictures come with chessground.
 
 import type { DrawShape } from '@lichess-org/chessground/draw';

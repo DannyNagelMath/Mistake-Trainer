@@ -1,20 +1,12 @@
 // fishnet.ts: Not in lila. What fishnet, the program volunteers run to analyse games for Lichess,
-// does on their computers, for localAnalysis.ts (github.com/lichess-org/fishnet, master:
-// src/queue.rs, src/stockfish.rs, and src/main.rs). It splits a game's positions into batches of
-// five, and several Stockfish engines search them side by side, a batch at a time, each engine on
-// one thread.
-//
-// So a game's analysis comes out the same every time, whichever engine searches which batch, and
-// however many engines there are: each batch starts with an empty memory ("ucinewgame"), and
-// Stockfish on one thread always searches a position the same way from the same memory. (On
-// several threads, how the threads happen to keep pace with each other changes what a search finds.)
-//
-// The engines are stockfish.js's one-thread build (the npm package `stockfish`, GPL-3.0): Stockfish
-// 19 compiled to WebAssembly, with its full network, the version and network fishnet has used since
-// 5 September 2026. vite.config.ts serves it at /stockfish/. Each engine runs in a Web Worker of
-// its own, apart from engine.ts's engine, which checks your moves and analyses live. The website
-// has only the lite build, whose small network's analysis can differ a little from Lichess's.
-// Every change from fishnet's is marked with a comment starting "Trim:".
+// does on their computers (github.com/lichess-org/fishnet: src/queue.rs, stockfish.rs, main.rs), for
+// localAnalysis.ts: it splits a game's positions into batches of five, and several Stockfish
+// engines, one thread each, search them side by side. Each batch starts from an empty memory
+// ("ucinewgame"), and one thread searches the same way every time, so a game's analysis comes out
+// the same whichever engine searches which batch.
+// The engines are stockfish.js's one-thread build (npm `stockfish`, GPL-3.0): Stockfish 19 with its
+// full network, as fishnet has used since 5 September 2026; the website has only the lite build,
+// whose analysis can differ a little from Lichess's. Every change from fishnet's is marked "Trim:".
 
 import { FULL_NETWORK, parseInfo, type EngineEval } from './engine';
 
@@ -159,7 +151,7 @@ export function stopEngines(): void {
   }
 }
 
-// Not in fishnet: the trainer's own engine comes first, as it checks your moves (main.ts holds
+// Not in fishnet: the trainer's own engine comes first, as it checks your moves (trainer.ts holds
 // these engines while engine.ts searches). They stop at once ("stop"), and the batches they were
 // searching wait, with the others, until releaseEngines. A batch that was stopped is searched again
 // in full, from an empty memory, so it comes out just as it would have.

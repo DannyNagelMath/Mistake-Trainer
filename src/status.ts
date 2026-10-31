@@ -1,6 +1,6 @@
 // status.ts: how a game ended, in words, for the line under the move list. From lila's
 // ui/lib/src/game/status.ts (the status ids) and ui/lib/src/game/view/status.ts (statusOf),
-// master, commit 27ffc8b. Every change from lila's version is marked with a comment starting "Trim:".
+// 27ffc8b.
 
 import { opposite, type Color } from 'chessops';
 

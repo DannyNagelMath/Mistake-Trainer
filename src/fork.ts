@@ -1,7 +1,7 @@
 // fork.ts: when the position on the board has more than one continuation (say the game move and
 // the engine's line), a box under the move list offers each of them. Press "next" to follow the
 // selected one; the up and down keys change the selection. From lila's ui/analyse/src/fork.ts
-// (master, commit 27ffc8b). Every change from lila's version is marked with a comment starting "Trim:".
+// (27ffc8b).
 
 import type { VNode } from 'snabbdom';
 
@@ -46,8 +46,7 @@ export class ForkCtrl {
     return true;
   }
 
-  // Trim: lila's hover() and highlight() draw an arrow for the continuation under the mouse.
-  // They go through the opening explorer, which we don't have.
+  // Trim: no hover() or highlight(), lila's arrow for the move under the mouse, which needs the opening explorer.
 
   proceed(it?: number) {
     if (this.isVisible) {

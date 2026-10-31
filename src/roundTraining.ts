@@ -1,7 +1,7 @@
-// roundTraining.ts: Step 8. Under the controls: each player's inaccuracies, mistakes, and blunders,
+// roundTraining.ts: under the controls: each player's inaccuracies, mistakes, and blunders,
 // and their average centipawn loss, with the "Learn from your mistakes" button between them.
 // Clicking a count jumps to the next such move. From lila's ui/analyse/src/view/roundTraining.ts
-// (master, commit 27ffc8b). Every change from lila's version is marked with a comment starting "Trim:".
+// (27ffc8b).
 
 import type { Color } from 'chessops';
 import { h, thunk, type VNode } from 'snabbdom';
@@ -104,7 +104,7 @@ export function render(ctrl: AnalysisCtrl): VNode | undefined {
   if (ctrl.card || !players?.white.analysis || !players.black.analysis || !ctrl.settings.showStaticAnalysis)
     return h('div.analyse__round-training');
 
-  // thunk only renders the summary again when the key changes. Step 9: the key includes
+  // thunk only renders the summary again when the key changes. The key includes
   // cgVersion, which changes when a card loads another game.
   const cacheKey = String(!!ctrl.retro) + ctrl.cgVersion;
 

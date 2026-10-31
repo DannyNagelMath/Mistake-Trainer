@@ -1,9 +1,7 @@
 // analysisSettings.ts: the analysis board's own settings, which "Settings" in the ☰ menu changes
 // (analysisSettingsView.ts): what the move list and the board show. Not your training settings
-// (settings.ts). From lila's ui/analyse/src/settingsCtrl.ts (master, commit 27ffc8b); every
-// change from lila's version is marked with a comment starting "Trim:".
-// Like lila, the browser remembers them (localStorage), for this address: a dev server on another
-// port starts again from the defaults.
+// (settings.ts). From lila's ui/analyse/src/settingsCtrl.ts (27ffc8b). Like lila, the browser
+// remembers them (localStorage).
 
 // lila's defaults, in lila's order.
 // Trim: lila also has showLiveAnnotations and showManeuverMoveArrows, for things we don't have.

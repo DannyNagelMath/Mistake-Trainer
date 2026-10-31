@@ -45,8 +45,7 @@ export async function downloadGames(
       continue;
     }
     if (response.status === 429) throw new Error('Lichess says too many requests. Try again in a few minutes.');
-    // Lichess answers 404 for a name it has no player for, but also, it seems, to some automated
-    // clients, such as a browser driven by a test script, so this doesn't claim to know which.
+    // 404 is also what Lichess answers some automated clients, so this doesn't claim the name is wrong.
     if (response.status === 404) throw new Error(`Lichess didn't find games for ${username}. Is the name right?`);
     if (!response.ok || !response.body) throw new Error(`Couldn't download your games from Lichess (${response.status}).`);
     return readGames(response.body, onGame);

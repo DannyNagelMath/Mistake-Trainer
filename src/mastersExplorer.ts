@@ -1,17 +1,12 @@
-// mastersExplorer.ts: Step 9. Looks positions up in Lichess's masters database (the opening
-// explorer), for a card's mistake in the opening when it comes up (retroCtrl's jumpToNext, through
-// deckCtrl.ts), as lila's "Learn from your mistakes" does for opening mistakes
-// (lila's ui/analyse/src/explorer/explorerCtrl.ts fetchMasterOpening, master, commit 27ffc8b).
-//
-// Being gentle with Lichess's servers, as its API documentation asks
-// (https://lichess.org/api, "Rate limiting"):
-//   - each position is looked up once, ever: the answers are saved and reused;
-//   - one request at a time, at least 3 seconds apart (a second apart, the explorer once answered
-//     429 within the first 60 requests);
+// mastersExplorer.ts: Not in lila. Looks positions up in Lichess's masters database when an opening
+// mistake's card comes up (retroCtrl's jumpToNext), as lila's "Learn from your mistakes" does
+// (ui/analyse/src/explorer/explorerCtrl.ts fetchMasterOpening, 27ffc8b). Gentle with Lichess's
+// servers, as its API documentation asks (https://lichess.org/api, "Rate limiting"):
+//   - each position is looked up once, ever: the answers are saved;
+//   - one request at a time, at least 3 seconds apart (a second apart once got a 429 within 60);
 //   - only the moves, without the lists of games (topGames=0), as lila asks;
-//   - if Lichess answers 429 (too many requests), wait a full minute and try once more, then stop.
-// The explorer needs a Lichess token, from signing in to Lichess (lichessAuth.ts). Without one, a new
-// position isn't checked: its card comes up as it is.
+//   - on 429 (too many requests), wait a full minute and try once more, then stop.
+// It needs a token from signing in (lichessAuth.ts). Without one, a new position isn't checked.
 
 import type { MasterMove } from './deck';
 
@@ -26,7 +21,7 @@ export class MastersExplorer {
   constructor(
     private readonly answers: Record<string, MasterMove[]>, // the saved answers, by FEN; new ones join them
     private readonly token: string | undefined,
-    // Saves a new answer, after every one, so that stopping halfway loses nothing.
+    // Saves a new answer.
     private readonly save: (fen: string, moves: MasterMove[]) => void | Promise<void>,
     private readonly wait = sleep,
   ) {}
@@ -51,7 +46,7 @@ export class MastersExplorer {
     const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
     this.lastRequest = Date.now();
     if (response.status === 429) {
-      if (!retry) throw new Error('Lichess asked to slow down again (429). Stopping; the answers so far are saved.');
+      if (!retry) throw new Error('Lichess asked to slow down again (429).');
       await this.wait(60_000);
       return this.ask(fen, token, false);
     }

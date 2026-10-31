@@ -1,8 +1,7 @@
 // pgnExport.ts: moves written out as PGN, for "Copy main line PGN" and "Copy variation PGN" in the
 // move list's menu (contextMenu.ts). From lila's ui/analyse/src/pgnExport.ts (renderPgnTags and
-// renderNodesPgn; master, commit 27ffc8b), with plyPrefix and renderNodesTxt from
+// renderNodesPgn; 27ffc8b), with plyPrefix and renderNodesTxt from
 // ui/lib/src/game/nodePGN.ts.
-// Every change from lila's version is marked with a comment starting "Trim:".
 // Trim: lila removes the P from crazyhouse pawn drops (fixCrazySan) wherever it writes a move.
 
 import { INITIAL_FEN } from 'chessops/fen';

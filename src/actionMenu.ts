@@ -1,6 +1,5 @@
 // actionMenu.ts: the menu that the ☰ button opens over the move list. From lila's
-// ui/analyse/src/view/actionMenu.ts (master, commit 27ffc8b), keeping only what works here.
-// Every change from lila's version is marked with a comment starting "Trim:".
+// ui/analyse/src/view/actionMenu.ts (27ffc8b), keeping only what works here.
 
 import type { VNode } from 'snabbdom';
 

@@ -1,9 +1,8 @@
 // motif.ts: the board marks you can switch on in the analysis board's Settings: pinned pieces,
 // undefended pieces (ones the other side can win), and a king that can be checked. Worked out
-// from the position alone. From lila's ui/analyse/src/motif/ (master, commit 27ffc8b):
+// from the position alone. From lila's ui/analyse/src/motif/ (27ffc8b):
 // interfaces.ts, boardAnalysis.ts, and motifCtrl.ts. autoShape.ts draws the marks, and only where
-// the engine is allowed, so not while you solve a card. Every change from lila's version is marked
-// with a comment starting "Trim:".
+// the engine is allowed, so not while you solve a card.
 
 import {
   attacks,

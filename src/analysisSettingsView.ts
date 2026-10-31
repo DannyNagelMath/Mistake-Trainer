@@ -1,7 +1,7 @@
 // analysisSettingsView.ts: the analysis board's Settings dialog, which "Settings" in the ☰ menu
 // opens. From lila's ui/analyse/src/view/settingsView.ts, in lila's dialog (snabDialog in
-// ui/lib/src/view/dialog.ts) (master, commit 27ffc8b): the same elements and classes, so lila's
-// CSS lays it out. Every change from lila's version is marked with a comment starting "Trim:".
+// ui/lib/src/view/dialog.ts) (27ffc8b): the same elements and classes, so lila's
+// CSS lays it out.
 // Trim: lila builds the dialog from HTML strings with its dialog helper; this is snabbdom, like
 // the rest of the page, and AnalysisCtrl.settingsOpen says whether it shows.
 

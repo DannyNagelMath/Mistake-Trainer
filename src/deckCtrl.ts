@@ -1,17 +1,13 @@
-// deckCtrl.ts: Step 9. Deals the deck's cards into the analysis page in spaced-repetition order
-// (schedule.ts), and records how you did on each one (reviews.ts), with your settings
-// (settings.ts). Training settings, which shows in the same page, passes on any you save
-// (useSettings).
-//
-// There's one AnalysisCtrl for the whole session. Each card loads its game into it
-// (loadGame, like lila changing a study chapter), then opens "Learn from your mistakes" in card
-// mode at the card's mistake. retroCtrl reports what you do (onResult), and when the card is done,
-// the panel's "Next" calls `next` below.
+// deckCtrl.ts: Not in lila. Deals the deck's cards in spaced-repetition order (schedule.ts) and
+// records how you did on each (reviews.ts). There's one AnalysisCtrl for the whole session: each
+// card loads its game into it (loadGame, like lila changing a study chapter), then opens "Learn
+// from your mistakes" in card mode at the card's mistake. retroCtrl reports what you do
+// (onResult), and the panel's "Next" calls `next`.
 
 import { createEmptyCard, type Grade } from 'ts-fsrs';
 
 import { AnalysisCtrl } from './analysisCtrl';
-import { gameTimesOf, withChessopsCastling, type Card, type Deck } from './deck';
+import { withChessopsCastling, type Card, type Deck } from './deck';
 import type { MastersExplorer } from './mastersExplorer';
 import type { CardResult, RetroCardOpts } from './retroCtrl';
 import type { ReviewEntry, ReviewHistory } from './reviews';
@@ -102,7 +98,7 @@ export class DeckCtrl {
   private reviewed = 0; // reviews recorded this session
   statsOpen = false; // whether "Your stats" is showing (statsView.ts)
 
-  // The deck must have at least one card. This sets up the first card; main.ts opens the panel
+  // The deck must have at least one card. This sets up the first card; trainer.ts opens the panel
   // on it after the first render (opening it redraws, and the page needs this object for that).
   constructor(
     readonly deck: Deck,
@@ -135,11 +131,11 @@ export class DeckCtrl {
   // The cards in play (schedule.ts cardsInPlay), in the order new cards are introduced: random among
   // cards the order ties.
   private inOrder(settings: Settings): Card[] {
-    return orderNewCards(cardsInPlay(this.shuffled, this.history, gameTimesOf(this.deck), settings), settings);
+    return orderNewCards(cardsInPlay(this.shuffled, this.history, this.deck.gameTimes, settings), settings);
   }
 
   // "Recent games", for the progress box and the end of the session.
-  recent = (): ReturnType<typeof recentGames> => recentGames(gameTimesOf(this.deck), this.settings);
+  recent = (): ReturnType<typeof recentGames> => recentGames(this.deck.gameTimes, this.settings);
 
   private lastReviewed(): Card | undefined {
     const last = this.history.log.at(-1);
@@ -231,7 +227,7 @@ export class DeckCtrl {
     } else this.record(result, gradeOf(result));
   };
 
-  // After the page opens (main.ts): if the card on screen was waiting for your rating when you
+  // After the page opens (trainer.ts): if the card on screen was waiting for your rating when you
   // left, play your move again, so it's as you left it: solved, with the rating buttons. A move
   // the engine had to check is checked again.
   resume = (): void => {
@@ -303,7 +299,7 @@ export class DeckCtrl {
       `Nothing more to review right now (${this.reviewed} reviewed this session).`,
       next && `The next card comes up ${describeTime(next)}.`,
       unstarted
-        ? `${unstarted} new cards${fromRecent} haven't been started yet` +
+        ? `${unstarted} new card${unstarted === 1 ? '' : 's'}${fromRecent} ${unstarted === 1 ? "hasn't" : "haven't"} been started yet` +
           (limit === null ? '.' : ` (up to ${limit} in any 24 hours).`)
         : recent &&
           `You've started all the cards${fromRecent}. For more, raise that number in Training settings ` +

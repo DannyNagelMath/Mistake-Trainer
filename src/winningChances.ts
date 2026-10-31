@@ -1,8 +1,8 @@
-// winningChances.ts: copied from lila's ui/lib/src/ceval/winningChances.ts (only what povDiff needs).
+// winningChances.ts: copied from lila's ui/lib/src/ceval/winningChances.ts (27ffc8b): what povDiff needs.
 
 import type { Color } from 'chessops';
 
-// lila declares these globally; here they're local.
+// Trim: lila declares these globally.
 type WinningChances = number; // from -1 (certainly losing) to 1 (certainly winning)
 export interface EvalScore {
   cp?: number;

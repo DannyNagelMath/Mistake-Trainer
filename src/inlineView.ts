@@ -1,7 +1,6 @@
 // inlineView.ts: the move list written as a paragraph, with variations in brackets. From lila's
-// ui/analyse/src/treeView/inlineView.ts (master, commit 27ffc8b). lila shows it when you choose
+// ui/analyse/src/treeView/inlineView.ts (27ffc8b). lila shows it when you choose
 // "inline notation"; the default two-column list (columnView.ts) is built on top of it.
-// Every change from lila's version is marked with a comment starting "Trim:".
 //
 // This is where engine lines stay hidden while you solve: the list only shows the moves that
 // ctrl.visibleChildren returns, and commentNodes swaps "Mistake. Nf3 was best." for

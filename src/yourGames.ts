@@ -1,10 +1,7 @@
-// yourGames.ts: Not in lila. Your games of the kinds you chose, for "Computer analysis" in Training
-// settings: how many Lichess has analysed, and a run of analyses (analysisRun.ts) on the others,
-// newest first, here on your computer. Their cards join the deck when it's next built (Update deck,
-// deckUpdate.ts).
-// trainer.ts makes it once, as the page opens, and it loads your games the first time Training
-// settings opens. So a run goes on while you train, and Training settings shows how far it has got
-// whenever you come back to it.
+// yourGames.ts: Not in lila. "Computer analysis" in Training settings: how many of your games of the
+// kinds you chose Lichess has analysed, and a run of analyses on the others, newest first, on your
+// computer (analysisRun.ts); their cards join the deck at the next Update deck. trainer.ts makes it
+// once, so a run goes on while you train.
 
 import { AnalysisRun } from './analysisRun';
 import { yourGames } from './deck';

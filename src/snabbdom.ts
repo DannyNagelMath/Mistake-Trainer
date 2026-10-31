@@ -1,5 +1,5 @@
 // snabbdom.ts: lila's helpers for writing views, copied from ui/lib/src/view/snabbdom.ts
-// (master, commit 27ffc8b). Only what we use.
+// (27ffc8b). Only what we use.
 
 import { h, type Hooks, type VNode, type VNodeChildElement, type VNodeData } from 'snabbdom';
 

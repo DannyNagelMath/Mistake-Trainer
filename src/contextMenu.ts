@@ -1,8 +1,7 @@
 // contextMenu.ts: the menu that opens when you right-click a move in the move list (or double-tap
 // it, or press and hold it, on a touch screen); treeView.ts opens it. From lila's
-// ui/analyse/src/treeView/contextMenu.ts (master, commit 27ffc8b), with nodeFullName and patch
+// ui/analyse/src/treeView/contextMenu.ts (27ffc8b), with nodeFullName and patch
 // from ui/analyse/src/view/util.ts.
-// Every change from lila's version is marked with a comment starting "Trim:".
 // Trim: lila uses cash ($), a small jQuery, to find and change the menu's element.
 
 import { init, attributesModule, classModule, eventListenersModule, propsModule, type VNode } from 'snabbdom';

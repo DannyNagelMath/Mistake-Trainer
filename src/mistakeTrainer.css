@@ -1,5 +1,5 @@
 /* mistakeTrainer.css: Mistake Trainer's own styles, for the few things lila's stylesheets don't
-   cover. main.ts and settingsPage.ts import it, and Vite adds it to the page after lila's. */
+   cover. main.ts imports it, and Vite adds it to the page after lila's. */
 
 /* The site name in the header is plain text, not a link as in lila (index.html), so it doesn't
    light up when you point at it. */
@@ -8,8 +8,8 @@ div.site-title:hover {
 }
 
 /* Training settings and the trainer are in the same page, each in its own <main> (index.html).
-   While Training settings shows, main.ts adds this class to the page: the trainer is only hidden,
-   so coming back finds it exactly as you left it. */
+   While Training settings or the first-run screen shows, trainer.ts or setupView.ts adds this
+   class to the page: the trainer is only hidden, so coming back finds it exactly as you left it. */
 body.mt-settings-shown main.analyse,
 body:not(.mt-settings-shown) main.mt-settings-page {
   display: none;

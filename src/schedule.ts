@@ -1,21 +1,13 @@
-// schedule.ts: Step 9. Which card to review next, from the deck and your review history.
-// The rules follow Anki's:
+// schedule.ts: Not in lila. Which card to review next, from the deck and your review history, with
+// your settings (`s`, settings.ts). The rules follow Anki's:
 //   1. cards that are due now, the most overdue first;
-//   2. then new cards (never reviewed), in the order orderNewCards puts them in, up to the
-//      new-card limit if you've set one, and only from your recent games if you've set that
-//      (cardsInPlay, which callers apply to the deck first).
-// A card is due once FSRS's due time for it has passed, to the millisecond. Every review goes
-// through reviewCard below: FSRS schedules it, and a card never comes back within the minimum gap.
-// "A day" always means 24 hours counted from a review, never a calendar day:
-//   - with a new-card limit, at most that many new cards in any 24 hours;
-//   - after you review a card, the other cards from its game wait (s.gameRestDays, a day to begin
-//     with), so you don't see two positions from one game too close together. They only wait in
-//     the queue: their FSRS schedules don't change.
-// Suspended cards never come up.
-// The numbers come from your settings (settings.ts, changed on the settings page), which most
-// functions here take as `s`.
-// This file also has the grades for what you do on a card (gradeOf and winRatings). They're
-// plain functions and values, so schedule.test.ts can check them without a page.
+//   2. then new cards, in the order orderNewCards puts them in, up to the new-card limit if you've
+//      set one, and only from your recent games if you've set that (cardsInPlay).
+// A card is due once FSRS's due time has passed; reviewCard keeps it away for the minimum gap.
+// "A day" always means 24 hours from a review, never a calendar day: with a new-card limit, at most
+// that many new cards in any 24 hours; and after you review a card, the other cards from its game
+// wait (s.gameRestDays), only in the queue: their FSRS schedules don't change.
+// Suspended cards never come up. Also here: the grades for what you do on a card (gradeOf, winRatings).
 
 import { fsrs, Rating, State, type Card as FsrsCard, type CardInput, type Grade, type RecordLogItem } from 'ts-fsrs';
 
@@ -122,7 +114,7 @@ function gameRestEnds(history: ReviewHistory, s: Settings): Map<string, number> 
 
 // "Recent games" (s.recentGames): how many of your latest games new cards come from, and when the
 // oldest of them started; undefined when that takes in all your games. `gameTimes`: when each of
-// your games started, newest first (deck.ts gameTimesOf).
+// your games started, newest first (Deck.gameTimes).
 export function recentGames(gameTimes: number[], s: Settings): { games: number; since: number } | undefined {
   const n = s.recentGames;
   return n !== null && n < gameTimes.length ? { games: n, since: gameTimes[n - 1] } : undefined;

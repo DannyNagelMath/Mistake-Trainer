@@ -1,25 +1,13 @@
-// engine.ts: Not in lila. Stockfish, running in the browser, for two things:
-//   - checking a move you try that is neither the engine's best nor a master move (evaluate, for
-//     retroCtrl's checkCeval);
-//   - live analysis of the position on the board, once a card is done and you've switched the
-//     engine on (analyse, for the evaluation, the best move arrow, and the engine's line).
-// lila's analysis board has a whole engine module for this (ui/lib/src/ceval); this does what we
-// need of it, reporting as each search goes deeper, as lila's does.
-//
-// The engine is stockfish.js (the npm package `stockfish`, GPL-3.0): Stockfish 19 compiled to
-// WebAssembly, with its full network, on several threads, like the engine Lichess users usually
-// run. vite.config.ts serves it at /stockfish/, and makes the pages "cross-origin isolated", as
-// threads need. A page without that gets the small "lite" build, on one thread. The website (a
-// build) has only the lite builds: the full network's file is 99 MB, too big to host, and too
-// much for every visitor to download; the lite one's is under 2 MB. The engine runs
-// in a Web Worker, so the page doesn't freeze while it thinks, and speaks UCI, the chess engine
-// protocol: we send it lines of text like "go nodes 1000000", and it answers with lines like
-// "info depth 12 ... score cp 35".
-//
-// There's one engine, so one search at a time. Move checks come first, and wait their turn. Live
-// analysis only ever needs the latest position: asking for another stops the one running ("stop",
-// which makes Stockfish answer at once), and a move check stops it too. While it searches, the
-// engines analysing your games wait (onSearching).
+// engine.ts: Not in lila, whose analysis board has a whole engine module (ui/lib/src/ceval).
+// Stockfish in the browser, for two things: checking a move you try that is neither the engine's
+// best nor a master move (evaluate, for retroCtrl's checkCeval); and live analysis of the position
+// once a card is done and you've switched the engine on (analyse).
+// The engine is stockfish.js (npm `stockfish`, GPL-3.0), in a Web Worker, spoken to in UCI. Running
+// the app yourself, it's Stockfish 19 with its full network on several threads (vite.config.ts
+// serves it, cross-origin isolated, as threads need); the website has the lite build (the full
+// network is 99 MB). One search at a time: move checks first; live analysis only ever needs the
+// latest position, so a new request stops the one running. While it searches, the engines
+// analysing your games wait (onSearching).
 
 // An evaluation, from White's side like all of lila's: cp in centipawns, or mate in moves
 // (negative when Black mates). depth, nodes, and millis say how far the search got; pv is the
@@ -73,7 +61,7 @@ let searching = false;
 let searchingListener: (searching: boolean) => void = () => {};
 
 // Tells `listener` when the engine starts searching (true), and when it has nothing left to search
-// (false). main.ts holds the engines analysing your games meanwhile (fishnet.ts), so that they
+// (false). trainer.ts holds the engines analysing your games meanwhile (fishnet.ts), so that they
 // don't slow down a move check, or change what it finds in its 3 seconds.
 export function onSearching(listener: (searching: boolean) => void): void {
   searchingListener = listener;
@@ -189,7 +177,7 @@ function start(): Promise<void> {
   });
 }
 
-// Loads the engine in the background, as the page opens (main.ts), so that the first check
+// Loads the engine in the background, as the page opens (trainer.ts), so that the first check
 // doesn't wait for the full engine to load, which takes a few seconds. If it fails, the first
 // search reports it.
 export function preload(): void {

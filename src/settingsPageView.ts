@@ -15,7 +15,7 @@ import { makeShapesFromUci } from './autoShape';
 import { exportData, importData } from './backup';
 import { renderEval, renderIndex } from './components';
 import type { SettingsPageCtrl } from './settingsPage';
-import { gameTimesOf, type Card } from './deck';
+import type { Card } from './deck';
 import { speeds, type Speed } from './gameDownload';
 import { FULL_NETWORK } from './engine';
 import { i18n } from './i18n';
@@ -56,10 +56,9 @@ function renderCounts(ctrl: SettingsPageCtrl): VNode {
   ]);
 }
 
-// When your deck was built, the kinds of games it's made from, and "Update deck" (deckUpdate.ts): it
-// downloads the games you've played since and builds the deck again, showing how it's getting on. Once it's done, the page loads again
-// with the new deck when you say so: not by itself, as that would pause the computer analysis, if
-// it's running.
+// When your deck was built, the kinds of games it's made from, and "Update deck" (deckUpdate.ts),
+// showing how it's getting on. Once it's done, the page loads the new deck when you say so, not by
+// itself, which would pause the computer analysis if it's running.
 function renderYourDeck(ctrl: SettingsPageCtrl): VNode {
   const update = ctrl.deckUpdate;
   return hl('section.mt-your-deck', [
@@ -394,7 +393,7 @@ function renderSettings(ctrl: SettingsPageCtrl): VNode {
 function renderRecentCounts(ctrl: SettingsPageCtrl): VNode | undefined {
   const s = preview(ctrl);
   if (s.recentGames === null) return;
-  const times = gameTimesOf(ctrl.deck);
+  const times = ctrl.deck.gameTimes;
   const recent = recentGames(times, s);
   if (!recent)
     return hl(
@@ -511,7 +510,7 @@ const positionBefore = (game: LichessGameJson, card: Card): TreeNode =>
   mainline(buildTree(game)).find(n => n.ply === card.ply - 1)!;
 
 // A position, with the move before it highlighted, and any arrows. Like lila's mini boards
-// (ui/lib/src/view/miniBoard.ts initMiniBoardWith, master, commit 27ffc8b).
+// (ui/lib/src/view/miniBoard.ts initMiniBoardWith, 27ffc8b).
 // Chessground draws the arrows for the board's size. In the closer look, the board is put in the
 // page before its dialog opens (snabbdom runs a dialog's insert hook after its contents'), so it
 // has no size yet then, and waits for the next frame.

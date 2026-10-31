@@ -1,8 +1,7 @@
 // cevalView.ts: the engine's box above the move list (its switch, evaluation, name, and depth),
 // and its line under it. From lila's ui/lib/src/ceval/view/main.ts (renderCeval,
 // renderCevalSwitch, localEvalNodes, localInfo, engineName, renderPvs, renderPv, renderPvMoves)
-// and ui/lib/src/view/cmn-toggle.ts (master, commit 27ffc8b). Every change from lila's version is
-// marked with a comment starting "Trim:".
+// and ui/lib/src/view/cmn-toggle.ts (27ffc8b).
 // Trim: no engine settings (lila's gear), threat mode, "go deeper", positions per second, analyses
 // from the cloud, several lines, or the small board that shows a line's position as you point
 // at its moves.

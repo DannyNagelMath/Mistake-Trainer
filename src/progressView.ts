@@ -1,7 +1,7 @@
-// progressView.ts: the progress box, in the side panel under the game's details (side.ts): on
-// wide screens, that's the space left of the board, which lila leaves to the chat. It shows how
-// your cards are spread (started, not started, suspended) and how many are due now, or if none
-// are, when the next ones are, with a link to Your stats (statsView.ts). Not in lila.
+// progressView.ts: Not in lila. The progress box, in the side panel under the game's details
+// (side.ts): on wide screens, that's the space left of the board, which lila leaves to the chat. It
+// shows how your cards are spread (started, not started, suspended) and how many are due now, or if
+// none are, when the next ones are, with a link to Your stats (statsView.ts).
 
 import type { VNode } from 'snabbdom';
 

@@ -1,7 +1,5 @@
-// backup.ts: Not in lila. Export and Import, in Training settings (Import is on the first-run screen
-// too): everything the app keeps (storage.ts), in one file, and back. On the website, where the
-// browser keeps it all, that file is the only copy outside the browser; running the app yourself,
-// it's a way to move everything to the website, or back.
+// backup.ts: Not in lila. Export and Import: everything the app keeps (storage.ts), in one file, and
+// back. On the website, that file is the only copy outside the browser.
 
 import { parseSettings } from './settings';
 import {

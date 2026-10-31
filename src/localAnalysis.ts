@@ -8,7 +8,7 @@
 //   - lila turns what fishnet found into evaluations, judgments such as "Mistake. Nb5 was best.",
 //     and engine lines (modules/fishnet/src/main/AnalysisBuilder.scala and UciToSan.scala,
 //     modules/tree/src/main/Info.scala, Analysis.scala, and Advice.scala, and
-//     modules/analyse/src/main/JsonView.scala; master, commit 27ffc8b).
+//     modules/analyse/src/main/JsonView.scala; 27ffc8b).
 // Every change from theirs is marked with a comment starting "Trim:".
 
 import { Chess, type Position } from 'chessops/chess';

@@ -1,8 +1,6 @@
-// deckUpdate.ts: Not in lila. "Update deck" in Training settings, and the first deck, on the
-// first-run screen (setupView.ts): downloads the games you've played since from Lichess
-// (gameDownload.ts), builds the deck again (deck.ts buildDeck), and saves it. It all happens in the
-// page; the dev server only keeps the files (vite.config.ts).
-// trainer.ts makes it once, as the page opens, so an update goes on after Training settings closes.
+// deckUpdate.ts: Not in lila. "Update deck" in Training settings, and the first deck on the first-run
+// screen: downloads your new games from Lichess (gameDownload.ts), builds the deck again (deck.ts),
+// and saves it. trainer.ts makes it once, so an update goes on after Training settings closes.
 
 import { buildDeck, type Deck } from './deck';
 import { downloadNewGames, type Speed } from './gameDownload';
@@ -52,7 +50,7 @@ export class DeckUpdateCtrl {
 
     this.say('Building your deck...');
     const [games, analyses, answers] = await Promise.all([loadGames(), loadAnalyses(), loadMasters()]);
-    const { deck } = await buildDeck(games, analyses, this.username, speeds, answers);
+    const deck = await buildDeck(games, analyses, this.username, speeds, answers);
     await saveDeck(deck);
     this.say(`Built: ${count(deck.cards.length, 'card')} from ${count(Object.keys(deck.games).length, 'game')}.`);
     return deck;

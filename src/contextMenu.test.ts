@@ -295,7 +295,7 @@ test('how the game ended stays as it was, whatever you delete', () => {
 test("once a card is done, editing its game doesn't upset the card: its panel, rating it, and the next card's game, whole again", () => {
   vi.stubGlobal('fetch', async () => new Response(null, { status: 204 })); // saving the review
   vi.stubGlobal('confirm', () => true);
-  const deck: Deck = { username: 'mugglesman1982', builtAt: '', games: { [game.id]: game }, cards: cardsOfGame(game, 'white') };
+  const deck: Deck = { username: 'mugglesman1982', builtAt: '', games: { [game.id]: game }, cards: cardsOfGame(game, 'white'), gameTimes: [game.createdAt!] };
   const history: ReviewHistory = { cards: {}, log: [] };
   // The game's other cards can come next at once, so the next card is from the same game.
   const deckCtrl = new DeckCtrl(deck, history, { ...defaultSettings, gameRestDays: 0 }, () => {});

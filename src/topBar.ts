@@ -1,13 +1,7 @@
-// topBar.ts: the site header as the page scrolls. From lila's ui/site/src/topBar.ts (master,
-// commit 27ffc8b), its "stick top bar" part. Every change from lila's version is marked with a
-// comment starting "Trim:".
-// Trim: the rest of lila's topBar.ts runs the header's menu, notifications, search, and account
-// buttons, which our header doesn't have.
-//
-// lila's stylesheet keeps the header at the top of the window while the page scrolls (on screens at
-// least 600 pixels high). This marks it `scrolled` once the page has scrolled, which gives it a
-// background, so the page doesn't show through it; and `hide` while you scroll down, which slides it
-// out of the way until you scroll back up.
+// topBar.ts: lila's ui/site/src/topBar.ts (27ffc8b), its "stick top bar" part. lila's CSS keeps the
+// header at the top of the window; this gives it a background (`scrolled`) once the page has
+// scrolled, and slides it away (`hide`) while you scroll down.
+// Trim: not the rest, which runs the header's menu, notifications, search, and account buttons.
 
 export default function (): void {
   const top = document.getElementById('top')!;
@@ -31,6 +25,5 @@ export default function (): void {
     },
     { passive: true },
   );
-  // Trim: lila also lets you double-tap the board on a touchscreen to line its top up with the
-  // window's.
+  // Trim: not lila's double-tap on the board, which lines the board up with the window's top.
 }

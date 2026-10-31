@@ -1,8 +1,6 @@
 // trainer.ts: the trainer, once there's a deck: the analysis board with the card's game, the
 // "Learn from your mistakes" panel in card mode (deckCtrl.ts), and Training settings, which shows in
 // the same page (settingsPage.ts). main.ts starts it.
-// Step 4b: the board's CSS comes from lila's stylesheets, loaded in index.html.
-// Step 9: storage.ts keeps your review history and settings.
 
 import { init, attributesModule, classModule, eventListenersModule, propsModule, type VNode } from 'snabbdom';
 
@@ -22,7 +20,7 @@ import { inBrowser, loadHistory, loadMasters, loadSettings, saveMasterMoves } fr
 import { view } from './view';
 import { YourGamesCtrl } from './yourGames';
 
-// Step 4a: the same snabbdom setup as lila's (ui/analyse/src/view/util.ts).
+// The same snabbdom setup as lila's (ui/analyse/src/view/util.ts).
 const patch = init([classModule, attributesModule, propsModule, eventListenersModule]);
 
 // Shows the trainer in `element` (the page's <main class="analyse">), with the deck's cards.
@@ -33,9 +31,8 @@ export async function startTrainer(element: HTMLElement, deck: Deck): Promise<vo
     throw e;
   });
 
-  // Step 4a: like lila's start.ts. Render into the page's <main class="analyse">, then re-render
-  // the whole view on every redraw. snabbdom compares the new view with the old one and only
-  // touches the parts of the page that changed.
+  // Like lila's start.ts: render into <main class="analyse">, then the whole view again on every
+  // redraw; snabbdom only changes what differs.
   // Not in lila: the masters database, for a card's mistake in the opening when it comes up.
   const masters = new MastersExplorer(answers, signedIn()?.token, saveMasterMoves);
   const deckCtrl = new DeckCtrl(deck, history, settings, redraw, masters);
@@ -52,15 +49,13 @@ export async function startTrainer(element: HTMLElement, deck: Deck): Promise<vo
     else vnode = patch(vnode, view(deckCtrl.analysis, deckCtrl));
   }
 
-  // Step 5: redraw to show the panel, as lila's "Learn from your mistakes" button does
-  // (bind('click', ctrl.toggleRetro, ctrl.redraw)). The redraw that retroCtrl does while it starts
-  // up is too early: toggleRetro hasn't stored it in ctrl.retro yet.
-  // Step 9: in card mode, it opens at the first card's mistake.
+  // Open "Learn from your mistakes" at the first card's mistake, and redraw, as lila's button does
+  // (bind('click', ctrl.toggleRetro, ctrl.redraw)).
   deckCtrl.analysis.toggleRetro();
   redraw();
 
-  // Step 7: keyboard shortcuts. lila binds them in AnalyseCtrl's constructor; here they're bound
-  // in the page only, so the headless scripts, which have no page, can still create an AnalysisCtrl.
+  // Keyboard shortcuts, which lila binds in AnalyseCtrl's constructor; here, so the tests, which have
+  // no page, can make one.
   const keys = keyboard.bind(deckCtrl.analysis);
 
   // Not in lila: load Stockfish in the background now, rather than when it's first needed.
@@ -82,11 +77,9 @@ export async function startTrainer(element: HTMLElement, deck: Deck): Promise<vo
   // Not in lila: a card you'd got right but not yet rated when you left comes back as you left it.
   deckCtrl.resume();
 
-  // Not in lila: Training settings shows in this page rather than on one of its own, so going there
-  // and back changes nothing in the trainer, which is only hidden meanwhile (mistakeTrainer.css):
-  // the same card, as you left it, in the same place in the game. The address says which shows
-  // (#settings for Training settings), so the browser's Back and Forward buttons go between them.
-  // Each time Training settings opens, it starts afresh from your saved settings, as a page would.
+  // Not in lila: Training settings shows in this page, at #settings, so the trainer is only hidden
+  // meanwhile (mistakeTrainer.css), and you come back to the same card as you left it; Back and
+  // Forward go between them. Each time it opens, it starts afresh from your saved settings.
   const link = document.querySelector<HTMLAnchorElement>('.site-buttons a')!;
   link.addEventListener('click', blurIfPrimaryClick); // as on lila's buttons: no focus box once you press a key
   let trainerScroll = 0; // how far down the trainer was scrolled, on a small screen

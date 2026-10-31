@@ -1,8 +1,6 @@
-// storage.ts: Not in lila. Where your data is kept, and the functions that load and save it. Running
-// the app yourself (npm run dev), the dev server keeps it in files in data (vite.config.ts); on
-// the website, which has no server of its own, the browser keeps it (browserStorage.ts). A build
-// (npm run build) is for the website; VITE_STORAGE=browser npm run dev tries that with the dev server.
-// Export and Import (backup.ts) move all of it to a file and back, in either.
+// storage.ts: Not in lila. Where your data is kept, and the functions that load and save it: in
+// files in the data folder when you run the app yourself (npm run dev, vite.config.ts), and in the
+// browser on the website (browserStorage.ts). VITE_STORAGE=browser npm run dev tries the browser's.
 
 import type { CardInput } from 'ts-fsrs';
 
@@ -45,9 +43,7 @@ export interface Storage {
 
 async function get<T>(url: string, what: string): Promise<T> {
   const response = await fetch(url);
-  // A dev server started before an address was added answers with the page itself.
-  if (!response.ok || !response.headers.get('content-type')?.includes('json'))
-    throw new Error(`Couldn't load ${what} (${response.status}). Restart the dev server (npm run dev).`);
+  if (!response.ok) throw new Error(`Couldn't load ${what} (${response.status}).`);
   return response.json();
 }
 

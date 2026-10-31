@@ -1,5 +1,5 @@
 // view.ts: the page, rendered with snabbdom using lila's elements and class names.
-// Sources in lila (master, commit 27ffc8b): ui/analyse/src/view/main.ts (analyseView),
+// Sources in lila (27ffc8b): ui/analyse/src/view/main.ts (analyseView),
 // view/components.ts (renderMain, renderBoard), view/tools.ts, view/controls.ts, and ground.ts.
 
 import { Chessground } from '@lichess-org/chessground';
@@ -27,7 +27,7 @@ import { bindNonPassive, hl } from './snabbdom';
 // Like lila's ground.ts render, followed by the relevant part of AnalyseCtrl.setChessground.
 // lila puts a counter in the class (cgv1, cgv2, ...) and raises it to force a brand-new board:
 // a different class makes snabbdom replace the element, and the insert hook makes a new board.
-// Step 9: we raise it for every card (AnalysisCtrl.loadGame).
+// We raise it for every card (AnalysisCtrl.loadGame).
 function renderGround(ctrl: AnalysisCtrl): VNode {
   return h('div.cg-wrap.cgv' + ctrl.cgVersion, {
     hook: {
@@ -39,7 +39,7 @@ function renderGround(ctrl: AnalysisCtrl): VNode {
         });
         ctrl.setAutoShapes(); // lila's setChessground ends by calling setAutoShapes too
       },
-      // Step 9: not in lila, which replaces boards rarely. Chessground listens on the whole page
+      // Not in lila, which replaces boards rarely. Chessground listens on the whole page
       // (for dragging and resizing), and destroy removes those listeners. snabbdom destroys the
       // old element before inserting the new one, so ctrl.cg is still the old board here.
       destroy: () => ctrl.cg?.destroy(),
@@ -47,7 +47,7 @@ function renderGround(ctrl: AnalysisCtrl): VNode {
   });
 }
 
-// Step 8: lila's renderPlayerStrips (view/components.ts): above and below the board, the material
+// lila's renderPlayerStrips (view/components.ts): above and below the board, the material
 // each side is up and their clocks. The CSS hides them on narrow screens.
 function renderPlayerStrips(ctrl: AnalysisCtrl): [VNode, VNode] {
   const renderPlayerStrip = (cls: string, materialDiff: VNode, clock?: VNode): VNode =>
@@ -63,10 +63,9 @@ function renderPlayerStrips(ctrl: AnalysisCtrl): [VNode, VNode] {
   ];
 }
 
-// Like lila's renderBoard. Step 8: the player strips. Trim: no promotion chooser yet, and no
-// player bars (lila shows those instead of strips in studies and broadcasts).
-// Step 7: scrolling the mouse wheel over the board steps through the moves.
-// Trim: lila lets you turn that off in the settings (scrollMoves).
+// Like lila's renderBoard, with the player strips; the mouse wheel over the board steps through
+// the moves. Trim: no promotion chooser, no player bars (lila's, in studies and broadcasts), and no
+// setting to turn the wheel off (scrollMoves).
 function renderBoard(ctrl: AnalysisCtrl): VNode {
   return h(
     'div.analyse__board.main-board',
@@ -91,13 +90,10 @@ function renderBoard(ctrl: AnalysisCtrl): VNode {
   );
 }
 
-// Like lila's renderTools (view/tools.ts). Step 5: the "Learn from your mistakes" panel.
-// Step 6: the move list above it. Step 7: the choice of continuations, and the ☰ menu, which
-// the CSS places over the move list.
-// Trim: no explorer or practice mode.
-// hl leaves out retroView's result when it's undefined, i.e. when the panel is closed.
-// The engine's box and its line, above the move list, as in lila, only once a card is done
-// (isCevalAllowed). Trim: lila doesn't show them on a phone unless you ask (showCeval).
+// Like lila's renderTools (view/tools.ts): the engine's box and line, once a card is done
+// (isCevalAllowed); the move list; the choice of continuations; the panel; and the ☰ menu, which
+// the CSS places over the move list. Trim: no explorer or practice mode, and lila hides the engine
+// on a phone unless you ask (showCeval).
 function renderTools(ctrl: AnalysisCtrl): VNode {
   const showCeval = ctrl.isCevalAllowed();
   return hl('div.analyse__tools', [
@@ -110,24 +106,19 @@ function renderTools(ctrl: AnalysisCtrl): VNode {
   ]);
 }
 
-// Step 6: like lila's renderMoveList (view/tools.ts). div.analyse__moves is the part that scrolls.
+// Like lila's renderMoveList (view/tools.ts). div.analyse__moves is the part that scrolls.
 // Trim: lila hides the moves in some studies, and adds a "next chapter" button in studies.
 const renderMoveList = (ctrl: AnalysisCtrl): VNode =>
   hl('div.analyse__moves.areplay', { hook: ctrl.treeView.hook() }, [
     hl('div', [ctrl.treeView.render(), renderResult(ctrl)]),
   ]);
 
-// Like lila's analyseView and renderMain. lila builds the class from the game's variant;
-// the fixtures are all standard chess.
-// Step 8: the advice summary (trainingView) and the side panel, in lila's order. The CSS grid
-// places them: on wide screens, the side panel left of the board, and the summary under the
-// controls. Trim: no underboard, lila's tabs under the board, whose eval chart was little use
-// here beside the evaluation gauge.
-// Step 7: the data-active-tool and data-active-mode attributes, which the phone layout's CSS
-// uses. snabbdom leaves an attribute out when its value is false.
-// Trim: of lila's state classes, only gauge-on.
+// Like lila's analyseView and renderMain, in lila's order; the CSS grid places the parts. lila
+// builds the variant class from the game; the deck's are all standard chess. data-active-tool and
+// data-active-mode are for the phone layout's CSS (snabbdom leaves out an attribute that's false).
+// Trim: no underboard (lila's tabs under the board), and of lila's state classes, only gauge-on.
 // Not in lila: with a deck, the progress box goes in the side panel, under the game's details,
-// where it's in view without scrolling on wide screens. (trainingView shows nothing for cards.)
+// where it's in view without scrolling on wide screens.
 export function view(ctrl: AnalysisCtrl, deck?: DeckCtrl): VNode {
   // The evaluation gauge, beside the board: the gauge-on class makes room for it.
   // Trim: lila also tells the board to resize when the gauge comes or goes; the board notices by

@@ -1,7 +1,6 @@
-// material.ts: Step 8. The material each side is up, shown beside the board as small pieces and a
+// material.ts: the material each side is up, shown beside the board as small pieces and a
 // score like "+3". From lila's ui/lib/src/game/material.ts (getMaterialDiff, getScore) and
-// ui/lib/src/game/view/material.ts (renderMaterialDiffs), master, commit 27ffc8b.
-// Every change from lila's version is marked with a comment starting "Trim:".
+// ui/lib/src/game/view/material.ts (renderMaterialDiffs), 27ffc8b.
 
 import { charToRole, opposite, type Color, type Role } from 'chessops';
 import { h, type VNode } from 'snabbdom';

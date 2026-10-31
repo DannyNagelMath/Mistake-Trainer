@@ -1,8 +1,7 @@
-// common.ts: small helpers from lila's ui/lib (master, commit 27ffc8b): toggle, repeater,
+// common.ts: small helpers from lila's ui/lib (27ffc8b): toggle, repeater,
 // blurIfPrimaryClick, and propWithEffect from src/common.ts, storedBooleanProp from src/storage.ts,
 // isTouchDevice, isMac, and displayColumns from src/device.ts,
 // addPointerListeners from src/pointer.ts, and stepwiseScroll from src/view/stepwiseScroll.ts.
-// Every change from lila's version is marked with a comment starting "Trim:".
 
 // ---------- common.ts ----------
 
@@ -34,9 +33,7 @@ export function repeater(f: () => void, additionalStopCond?: () => boolean): voi
   })();
   const repeat = () => {
     f();
-    // Trim: lila writes plain setTimeout. The scripts' typecheck includes Node's types, where
-    // setTimeout returns an object rather than a number; window.setTimeout is the browser's.
-    timeout = window.setTimeout(repeat, delay.next().value);
+    timeout = setTimeout(repeat, delay.next().value);
     if (additionalStopCond?.()) clearTimeout(timeout);
   };
   repeat();
@@ -97,7 +94,8 @@ export const isTouchDevice = (): boolean => !window.matchMedia('(hover: hover) a
 
 // How many columns the page is laid out in (1 on a phone, 2 or 3 wider), from lila's CSS.
 let colCache: number | undefined;
-if (typeof window !== 'undefined') window.addEventListener('resize', () => (colCache = undefined)); // Trim: not in the tests
+// Not in lila: the check, for the tests, which have no window.
+if (typeof window !== 'undefined') window.addEventListener('resize', () => (colCache = undefined));
 export function displayColumns(): number {
   if (colCache === undefined)
     colCache = Number(window.getComputedStyle(document.body).getPropertyValue('---display-columns'));

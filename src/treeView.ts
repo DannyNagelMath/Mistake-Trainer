@@ -1,6 +1,5 @@
 // treeView.ts: renders the move list and handles clicks on it. From lila's
-// ui/analyse/src/treeView/treeView.ts (master, commit 27ffc8b).
-// Every change from lila's version is marked with a comment starting "Trim:".
+// ui/analyse/src/treeView/treeView.ts (27ffc8b).
 
 import type { Hooks, VNode } from 'snabbdom';
 
@@ -38,15 +37,13 @@ export class TreeView {
         if (ctrl.path !== '') this.autoScrollRequest = 'instant';
         const ctxMenuCallback = (e: MouseEvent) => {
           // Not in lila: no menu while you're solving a card, when copying the moves would give the
-          // rest of the game away, and changing them could upset the card. The browser's own menu
-          // opens instead, as it would elsewhere.
+          // rest of the game away; the browser's own menu opens instead.
           if (ctrl.hidingHints()) return true;
           renderContextMenu(e, ctrl, eventPath(e) ?? '');
           ctrl.redraw();
           return false;
         };
-        // Trim: in lila's debug mode, a double-click opens the menu instead, to leave right-clicks
-        // to the browser's developer tools.
+        // Trim: lila's debug mode opens the menu on a double-click instead.
         el.oncontextmenu = ctxMenuCallback;
         if (isTouchDevice()) {
           el.ondblclick = ctxMenuCallback;

@@ -1,8 +1,7 @@
-// side.ts: Step 8. The panel beside the board with the game's details: time control, date,
+// side.ts: the panel beside the board with the game's details: time control, date,
 // players and ratings, and the result. lila's server writes this panel into every game page
 // (app/views/game/side.scala, `meta`, and the helpers in modules/ui/src/main/helper/GameHelper.scala,
-// master, commit 27ffc8b); this makes the same elements from the game's JSON.
-// Every change from lila's version is marked with a comment starting "Trim:".
+// 27ffc8b); this makes the same elements from the game's JSON.
 
 import type { Color } from 'chessops';
 import type { VNode } from 'snabbdom';
@@ -125,7 +124,7 @@ export function renderSide(ctrl: AnalysisCtrl, extra?: VNode): VNode {
         hl('section.status', statusOf({ winner: game.winner, status: game.status!, ply: ctrl.turns })),
       // Not in lila: where the computer analysis came from.
       hl('section', analysisSource(game)),
-      // Step 8: not in lila, which is lichess.org itself. The game there, at the move on the board.
+      // Not in lila, which is lichess.org itself. The game there, at the move on the board.
       !ctrl.hidingHints() &&
         hl(
         'section',
