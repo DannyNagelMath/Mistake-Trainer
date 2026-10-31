@@ -790,6 +790,12 @@ test('Training settings: "Recent games" says what it takes in, as you type', () 
   expect(counts(1)).toContain(`Your last game, on ${day}, has 3 cards, 3 of them not started.`);
   expect(counts(5)).toContain('That’s all your 2 games.');
   expect(counts(null)).not.toContain('Your last');
+  // With one game, and one collapse, in the singular.
+  const oneGame = textOf(
+    find(trainingSettingsView(new SettingsPageCtrl(deck, history, defaultSettings, () => {}, () => {}, notLoaded(), noUpdate())), 'form.mt-settings'),
+  );
+  expect(oneGame).toContain('That’s your only game.');
+  expect(oneGame).toContain('Of your 3 cards, 1 is a collapse, 0 are from the opening, and 0 were already won.');
   // The input with the id recentGames: empty, for all your games.
   const byId = (v: VNode | string | undefined, id: string): VNode | undefined =>
     typeof v !== 'object' || !v ? undefined : v.data?.attrs?.id === id ? v : (v.children ?? []).map(c => byId(c as VNode, id)).find(Boolean);

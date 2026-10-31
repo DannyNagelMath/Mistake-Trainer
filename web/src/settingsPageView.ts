@@ -396,7 +396,11 @@ function renderRecentCounts(ctrl: SettingsPageCtrl): VNode | undefined {
   if (s.recentGames === null) return;
   const times = gameTimesOf(ctrl.deck);
   const recent = recentGames(times, s);
-  if (!recent) return hl('p.mt-settings__counts', `That’s all your ${times.length.toLocaleString('en')} games.`);
+  if (!recent)
+    return hl(
+      'p.mt-settings__counts',
+      times.length === 1 ? 'That’s your only game.' : `That’s all your ${times.length.toLocaleString('en')} games.`,
+    );
   const cards = ctrl.deck.cards.filter(c => c.playedAt >= recent.since);
   const notStarted = activeCards(cards, ctrl.history).filter(c => !ctrl.history.cards[c.id]).length;
   const games =
@@ -412,11 +416,15 @@ function renderRecentCounts(ctrl: SettingsPageCtrl): VNode | undefined {
 // How many cards each kind of new-card order puts first, with the form's settings.
 function renderCategoryCounts(ctrl: SettingsPageCtrl): VNode {
   const s = preview(ctrl);
-  const count = (f: (c: Card) => boolean) => ctrl.deck.cards.filter(f).length;
+  const total = ctrl.deck.cards.length;
+  const count = (f: (c: Card) => boolean, one: string, other: string) => {
+    const n = ctrl.deck.cards.filter(f).length;
+    return `${n} ${n === 1 ? one : other}`;
+  };
   return hl(
     'p.mt-settings__counts',
-    `Of your ${ctrl.deck.cards.length} cards, ${count(c => isCollapse(c, s))} are collapses, ` +
-      `${count(c => isOpening(c, s))} are from the opening, and ${count(isAlreadyWon)} were already won.`,
+    `Of your ${total} card${total === 1 ? '' : 's'}, ${count(c => isCollapse(c, s), 'is a collapse', 'are collapses')}, ` +
+      `${count(c => isOpening(c, s), 'is', 'are')} from the opening, and ${count(isAlreadyWon, 'was', 'were')} already won.`,
   );
 }
 
