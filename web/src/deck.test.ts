@@ -115,7 +115,7 @@ test("gameTimesOf: when each of your games started, newest first; for an older d
   expect(gameTimesOf({ ...deck, gameTimes: [3000, 2000, 1500, 1000] })).toEqual([3000, 2000, 1500, 1000]);
 });
 
-test('buildDeck: a card for each of your mistakes in your analysed games, then the masters check of opening mistakes', async () => {
+test('buildDeck: a card for each of your mistakes in your analysed games, then the saved masters answers for opening ones', async () => {
   // real1's middlegame starting at ply 50 makes two of its mistakes, at plies 39 and 41, opening ones.
   const g1 = { ...fixture('real1'), division: { middle: 50, end: 80 } };
   const [g2, g3] = ['real2', 'real3'].map(fixture);
@@ -124,32 +124,22 @@ test('buildDeck: a card for each of your mistakes in your analysed games, then t
   const bullet = { ...g3, id: 'bullet00', speed: 'bullet' }; // analysed, but not of the kinds you chose
   const downloaded = [g1, { ...g1, analysis: undefined }, g2, g3, unanalysed, someoneElses, bullet] as LichessGameJson[];
   const expected = [...cardsOfGame(g1, 'white'), ...cardsOfGame(g2, 'black'), ...cardsOfGame(g3, 'black')];
-  // The masters database, as a stand-in: the first opening mistake was a book move.
+  // The masters database's saved answers: the first opening mistake was a book move; the second
+  // position hasn't been asked about yet, so its card stays as it is, to be checked when it comes up.
   const games: Record<string, LichessGameJson> = { [g1.id]: g1, [g2.id]: g2, [g3.id]: g3 };
   const opening = expected.filter(c => inOpening(games[c.gameId], c));
-  expect(opening.length).toBeGreaterThan(0);
+  expect(opening.length).toBe(2);
   const book = mistakeOf(games[opening[0].gameId], opening[0]);
-  const asked = new Set<string>();
-  const masters = {
-    has: (fen: string) => asked.has(fen),
-    moves: async (fen: string): Promise<MasterMove[]> => {
-      asked.add(fen);
-      return fen === book.fen ? [{ uci: book.uci, white: 2, draws: 0, black: 0 }] : [];
-    },
-  };
-  const progress: number[][] = [];
-  const { deck, report } = await buildDeck(downloaded, {}, 'MugglesMan1982', ['blitz', 'rapid'], masters, (n, of) =>
-    progress.push([n, of]),
-  );
+  const answers: Record<string, MasterMove[]> = { [book.fen]: [{ uci: book.uci, white: 2, draws: 0, black: 0 }] };
+  const { deck, report } = await buildDeck(downloaded, {}, 'MugglesMan1982', ['blitz', 'rapid'], answers);
 
   expect(deck.cards.map(c => c.id)).toEqual(expected.filter(c => c !== opening[0]).map(c => c.id));
+  expect(deck.cards.find(c => c.id === opening[1].id)!.masterMoves).toBeUndefined();
   expect(Object.keys(deck.games).sort()).toEqual([g1.id, g2.id, g3.id].sort());
   expect(deck.gameTimes).toEqual([g1, g2, g3].map(g => g.createdAt).sort((a, b) => b! - a!));
   expect(report).toEqual({
     skipped: { 'not yours, not standard chess, or saved twice': 2, 'not of the kinds you chose': 1, 'no computer analysis': 1 },
-    opening: opening.length,
+    opening: 2,
     bookMoves: 1,
   });
-  const positions = new Set(opening.map(c => mistakeOf(games[c.gameId], c).fen)).size;
-  expect(progress).toEqual([[0, positions], ...Array.from({ length: positions }, (_, i) => [i + 1, positions])]);
 });

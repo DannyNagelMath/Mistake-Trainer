@@ -284,6 +284,15 @@ body:not(.mt-settings-shown) main.mt-settings-page {
 .mt-your-deck__lichess .button {
   margin-top: 0.4em;
 }
+/* The kinds of games, just above "Update deck" (settingsPageView.ts renderYourDeck), and what they're for. */
+.mt-your-deck__games {
+  margin-top: 1em;
+}
+.mt-your-deck__games-help {
+  margin: 0.4em 0 1em;
+  color: var(--c-font-dim);
+  font-size: 0.9em;
+}
 /* "Update deck" in Training settings (settingsPageView.ts renderYourDeck): what it prints, in a
    box that scrolls. */
 .mt-your-deck__log {

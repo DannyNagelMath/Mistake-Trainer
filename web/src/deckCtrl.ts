@@ -11,7 +11,8 @@
 import { createEmptyCard, type Grade } from 'ts-fsrs';
 
 import { AnalysisCtrl } from './analysisCtrl';
-import { gameTimesOf, type Card, type Deck } from './deck';
+import { gameTimesOf, withChessopsCastling, type Card, type Deck } from './deck';
+import type { MastersExplorer } from './mastersExplorer';
 import type { CardResult, RetroCardOpts } from './retroCtrl';
 import type { ReviewEntry, ReviewHistory } from './reviews';
 import {
@@ -108,6 +109,10 @@ export class DeckCtrl {
     readonly history: ReviewHistory,
     public settings: Settings, // changed only by useSettings
     private readonly redraw: () => void,
+    // The masters database, for a card's mistake in the opening when it comes up (retroCtrl's
+    // jumpToNext): its saved answers, and Lichess's for a new position when you're signed in. By
+    // default, none, as in the tests.
+    private readonly masters: Pick<MastersExplorer, 'moves'> = { moves: async () => [] },
   ) {
     this.shuffled = shuffle(deck.cards);
     this.cards = this.inOrder(settings);
@@ -154,8 +159,16 @@ export class DeckCtrl {
       openingUcis: this.card.masterMoves ?? [],
       bestMoveOnly: () => this.settings.bestMoveOnly, // the setting as it is when you move
       lastTime: this.lastReviewOf(this.card.id),
+      fetchMasterOpening: async fen => ({ moves: withChessopsCastling(fen, await this.masters.moves(fen)) }),
+      bookMove: this.bookMove,
     };
   }
+
+  // The card's mistake was a book move (retroCtrl's jumpToNext, from the masters database): the card
+  // goes for the rest of the session, and the next deck build leaves it out, as the answer is saved.
+  private bookMove = (): void => {
+    this.cards = this.cards.filter(c => c !== this.card);
+  };
 
   // The card's latest review, if it's had one.
   private lastReviewOf(cardId: string): ReviewEntry | undefined {

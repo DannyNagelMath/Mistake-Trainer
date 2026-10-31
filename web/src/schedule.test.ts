@@ -28,7 +28,7 @@ import { defaultSettings, pawnsToChances, type Settings } from './settings';
 const now = new Date('2026-09-30T12:00:00');
 const minutes = (n: number) => new Date(now.getTime() + n * 60_000);
 
-const s = defaultSettings; // the settings the page starts with: no new-card limit, a 7-day gap
+const s = defaultSettings; // the settings the page starts with: no new-card limit, a 5-day gap
 const LIMIT = 5; // a new-card limit, for the tests that check one
 const limited: Settings = { ...s, newCardsPerDay: LIMIT };
 
@@ -232,12 +232,12 @@ test('the progress box says when the next started cards come up, and how many th
   expect(progress(deck, history(), now, s).nextDue).toBeUndefined(); // nothing started yet
 });
 
-test('no card comes back within 7 days of a review, whatever the answer; FSRS keeps its own interval', () => {
+test('no card comes back within 5 days of a review, whatever the answer; FSRS keeps its own interval', () => {
   const days = (d: Date) => (d.getTime() - now.getTime()) / (24 * 60 * 60_000);
   const results = grades.map(grade => reviewCard(createEmptyCard(now), now, grade, s).card);
-  expect(results.map(c => days(c.due))).toEqual([7, 7, 7, 8]); // Again, Hard, Good: 7; Easy: FSRS's 8
+  expect(results.map(c => days(c.due))).toEqual([5, 5, 5, 8]); // Again, Hard, Good: 5; Easy: FSRS's 8
   expect(results.map(c => c.scheduled_days)).toEqual([1, 1, 2, 8]); // FSRS's intervals, unchanged
-  expect(withMinimumGap(minutes(60 * 24 * 40), now, 7)).toEqual(minutes(60 * 24 * 40)); // later dates stay
+  expect(withMinimumGap(minutes(60 * 24 * 40), now, 5)).toEqual(minutes(60 * 24 * 40)); // later dates stay
 });
 
 test('new cards: collapses first by default, already-won positions always last, ties in deck order', () => {

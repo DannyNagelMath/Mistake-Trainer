@@ -8,6 +8,7 @@
 
 import type { Deck } from './deck';
 import type { DeckUpdateCtrl } from './deckUpdate';
+import type { Speed } from './gameDownload';
 import { signOut } from './lichessAuth';
 import type { ReviewHistory } from './reviews';
 import { defaultSettings, problems, type Settings } from './settings';
@@ -21,6 +22,8 @@ export class SettingsPageCtrl {
   formVersion = 0; // raised to fill the form in again: a new key makes snabbdom make new inputs
   message = ''; // after saving
   looking?: string; // the suspended card you clicked, shown up close (settingsPageView.ts renderLook)
+  // The kinds of games ticked beside "Update deck", outside the form: saved when you press it.
+  gameTypes: Speed[];
 
   constructor(
     readonly deck: Deck,
@@ -32,19 +35,17 @@ export class SettingsPageCtrl {
     readonly deckUpdate: DeckUpdateCtrl, // the same: an update goes on too
   ) {
     this.saved = this.filledIn = this.draft = settings;
+    this.gameTypes = settings.gameTypes;
   }
 
-  // On every change in the form.
-  update = (draft: Settings): void => {
-    this.draft = draft;
+  // On every change in the form, which has every setting but the kinds of games.
+  update = (draft: Omit<Settings, 'gameTypes'>): void => {
+    this.draft = { ...draft, gameTypes: this.saved.gameTypes };
     this.message = '';
     this.redraw();
   };
 
-  changed = (): boolean =>
-    (Object.keys(this.saved) as (keyof Settings)[]).some(
-      k => JSON.stringify(this.draft[k]) !== JSON.stringify(this.saved[k]), // as text: the game types are a list
-    );
+  changed = (): boolean => (Object.keys(this.saved) as (keyof Settings)[]).some(k => this.draft[k] !== this.saved[k]);
 
   canSave = (): boolean => this.changed() && Object.keys(problems(this.draft)).length === 0;
 
@@ -64,10 +65,37 @@ export class SettingsPageCtrl {
 
   // Fills the form in with the defaults. Nothing changes until you save.
   resetToDefaults = (): void => {
-    this.draft = this.filledIn = defaultSettings;
+    this.draft = this.filledIn = { ...defaultSettings, gameTypes: this.saved.gameTypes };
     this.formVersion++;
     this.message = '';
     this.redraw();
+  };
+
+  // The kinds of games ticked beside "Update deck".
+  chooseGameTypes = (gameTypes: Speed[]): void => {
+    this.gameTypes = gameTypes;
+    this.redraw();
+  };
+  gameTypesChanged = (): boolean => JSON.stringify(this.gameTypes) !== JSON.stringify(this.saved.gameTypes);
+
+  // "Update deck": first saves the kinds of games ticked, if they've changed, and passes them to the
+  // trainer, whose update (deckUpdate.ts) downloads and builds with them. The rest of the form, if
+  // it has changes, waits for its own Save.
+  updateDeck = async (): Promise<void> => {
+    if (!this.gameTypes.length || this.deckUpdate.state === 'running') return;
+    if (this.gameTypesChanged()) {
+      const settings = { ...this.saved, gameTypes: this.gameTypes };
+      try {
+        await saveSettings(settings);
+      } catch (e) {
+        this.message = (e as Error).message;
+        return this.redraw();
+      }
+      this.saved = settings;
+      this.draft = { ...this.draft, gameTypes: this.gameTypes };
+      this.onSave(settings);
+    }
+    await this.deckUpdate.start();
   };
 
   // Signs out of Lichess (lichessAuth.ts), and shows it.

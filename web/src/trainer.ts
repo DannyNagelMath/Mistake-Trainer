@@ -13,10 +13,12 @@ import { DeckUpdateCtrl } from './deckUpdate';
 import { onSearching, preload } from './engine';
 import { holdEngines, releaseEngines } from './fishnet';
 import * as keyboard from './keyboard';
+import { signedIn } from './lichessAuth';
+import { MastersExplorer } from './mastersExplorer';
 import { SettingsPageCtrl } from './settingsPage';
 import { view as settingsView } from './settingsPageView';
 import { hl } from './snabbdom';
-import { inBrowser, loadHistory, loadSettings } from './storage';
+import { inBrowser, loadHistory, loadMasters, loadSettings, saveMasterMoves } from './storage';
 import { view } from './view';
 import { YourGamesCtrl } from './yourGames';
 
@@ -25,7 +27,8 @@ const patch = init([classModule, attributesModule, propsModule, eventListenersMo
 
 // Shows the trainer in `element` (the page's <main class="analyse">), with the deck's cards.
 export async function startTrainer(element: HTMLElement, deck: Deck): Promise<void> {
-  const [history, settings] = await Promise.all([loadHistory(), loadSettings()]).catch((e: Error) => {
+  const loaded = Promise.all([loadHistory(), loadSettings(), loadMasters()]);
+  const [history, settings, answers] = await loaded.catch((e: Error) => {
     element.textContent = e.message;
     throw e;
   });
@@ -33,7 +36,9 @@ export async function startTrainer(element: HTMLElement, deck: Deck): Promise<vo
   // Step 4a: like lila's start.ts. Render into the page's <main class="analyse">, then re-render
   // the whole view on every redraw. snabbdom compares the new view with the old one and only
   // touches the parts of the page that changed.
-  const deckCtrl = new DeckCtrl(deck, history, settings, redraw);
+  // Not in lila: the masters database, for a card's mistake in the opening when it comes up.
+  const masters = new MastersExplorer(answers, signedIn()?.token, saveMasterMoves);
+  const deckCtrl = new DeckCtrl(deck, history, settings, redraw, masters);
   let vnode = patch(element, view(deckCtrl.analysis, deckCtrl)); // the board is created here, by renderGround's insert hook
 
   // Not in lila: Training settings, while it shows, in its own <main> (index.html; see route below).

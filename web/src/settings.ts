@@ -39,14 +39,14 @@ export interface Settings {
 
 export const defaultSettings: Settings = {
   gameTypes: ['blitz', 'rapid'],
-  recentGames: null, // all your games
+  recentGames: 50, // with 50 or fewer, all your games (schedule.ts recentGames)
   newCardOrder: 'collapses',
   newCardsPerDay: null, // no limit: you do as many as you get around to
   collapseBefore: -1.1,
   collapseAfter: -2,
   openingMoves: 12,
   desiredRetention: 0.9, // ts-fsrs's default
-  minGapDays: 7,
+  minGapDays: 5,
   gameRestDays: 1,
   bestMoveOnly: false, // any move nearly as good counts, as on Lichess
 };

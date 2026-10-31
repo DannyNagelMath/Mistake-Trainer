@@ -1,15 +1,12 @@
 // deckUpdate.ts: Not in lila. "Update deck" in Training settings, and the first deck, on the
 // first-run screen (setupView.ts): downloads the games you've played since from Lichess
-// (gameDownload.ts), builds the deck again (deck.ts buildDeck), checking new opening mistakes against
-// the masters database if you're signed in to Lichess (mastersExplorer.ts), and saves it. It all
-// happens in the page; the dev server only keeps the files (vite.config.ts).
+// (gameDownload.ts), builds the deck again (deck.ts buildDeck), and saves it. It all happens in the
+// page; the dev server only keeps the files (vite.config.ts).
 // trainer.ts makes it once, as the page opens, so an update goes on after Training settings closes.
 
 import { buildDeck, type Deck } from './deck';
 import { downloadNewGames, type Speed } from './gameDownload';
-import { signedIn } from './lichessAuth';
-import { GAP, MastersExplorer } from './mastersExplorer';
-import { loadAnalyses, loadGames, loadMasters, saveDeck, saveGames, saveMasterMoves } from './storage';
+import { loadAnalyses, loadGames, loadMasters, saveDeck, saveGames } from './storage';
 
 // e.g. "1 game", "12 games".
 const count = (n: number, noun: string): string => `${n.toLocaleString('en')} ${noun}${n === 1 ? '' : 's'}`;
@@ -55,20 +52,9 @@ export class DeckUpdateCtrl {
 
     this.say('Building your deck...');
     const [games, analyses, answers] = await Promise.all([loadGames(), loadAnalyses(), loadMasters()]);
-    const explorer = new MastersExplorer(answers, signedIn()?.token, saveMasterMoves);
-    const { deck } = await buildDeck(games, analyses, this.username, speeds, explorer, (asked, toAsk) => {
-      const minutes = Math.ceil((toAsk * GAP) / 60_000);
-      if (!asked) this.say(`Asking the masters database about ${count(toAsk, 'new opening position')} (about ${minutes} min)...`);
-      else if (asked % 10 === 0 || asked === toAsk) this.sayInstead(`Asking the masters database: ${asked} of ${toAsk}...`);
-    });
+    const { deck } = await buildDeck(games, analyses, this.username, speeds, answers);
     await saveDeck(deck);
     this.say(`Built: ${count(deck.cards.length, 'card')} from ${count(Object.keys(deck.games).length, 'game')}.`);
-    const unchecked = explorer.skipped.size;
-    if (unchecked)
-      this.say(
-        `${count(unchecked, 'new opening position')} ${unchecked === 1 ? 'wasn’t' : 'weren’t'} checked against the masters ` +
-          'database. To check them, sign in with Lichess, then update again.',
-      );
     return deck;
   }
 

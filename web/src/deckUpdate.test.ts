@@ -6,7 +6,7 @@ import type { VNode } from 'snabbdom';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 import real1 from '../fixtures/real1.json';
-import { cardsOfGame, type Deck } from './deck';
+import { cardsOfGame, mistakeOf, type Deck } from './deck';
 import { DeckUpdateCtrl } from './deckUpdate';
 import type { Speed } from './gameDownload';
 import type { ReviewHistory } from './reviews';
@@ -30,7 +30,7 @@ beforeEach(() => {
   fromLichess = [game];
   answers = {};
   asked = [];
-  posted = { '/api/games': [], '/api/masters': [], '/api/deck': [] };
+  posted = { '/api/games': [], '/api/masters': [], '/api/deck': [], '/api/settings': [] };
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: string | URL, init?: RequestInit) => {
@@ -114,24 +114,21 @@ test('an update asks Lichess only for the games since your newest saved one', as
   ]);
 });
 
-test('new opening positions: signed out, skipped, and it says so; signed in, asked about and saved', async () => {
-  fromLichess = [{ ...game, division: { middle: 40, end: 80 } }]; // makes ply 39 an opening mistake
-  const signedOut = update();
-  await signedOut.start();
+test('Update deck asks the masters database nothing: saved answers apply, and new positions wait for their card', async () => {
+  const opening = { ...game, division: { middle: 40, end: 80 } }; // makes ply 39 an opening mistake
+  fromLichess = [opening];
+  await update().start();
   expect(asked.filter(a => a.includes('explorer'))).toEqual([]);
-  expect(signedOut.lines.at(-1)).toBe(
-    '1 new opening position wasn’t checked against the masters database. To check them, sign in with Lichess, then update again.',
-  );
+  expect((posted['/api/deck'][0] as Deck).cards.map(c => c.ply)).toEqual([39, 41, 63]); // ply 39 kept, unchecked
 
+  // With an answer saved for it, which makes it a book move, its card goes.
+  const { fen, uci } = mistakeOf(opening, cardsOfGame(opening, 'white')[0]);
+  answers = { [fen]: [{ uci, white: 2, draws: 0, black: 0 }] };
   saved = [];
-  asked = [];
-  vi.stubGlobal('localStorage', { getItem: () => JSON.stringify({ token: 'lio_T', username: 'MugglesMan1982' }) });
-  const signedIn = update();
-  await signedIn.start();
-  expect(asked).toContain('GET https://explorer.lichess.org/masters');
-  expect(posted['/api/masters']).toHaveLength(1);
-  expect(signedIn.lines).toContain('Asking the masters database: 1 of 1...');
-  expect(signedIn.lines.join(' ')).not.toContain('checked against');
+  posted['/api/deck'] = [];
+  await update().start();
+  expect((posted['/api/deck'][0] as Deck).cards.map(c => c.ply)).toEqual([41, 63]);
+  expect(asked.filter(a => a.includes('explorer'))).toEqual([]);
 });
 
 test('if it fails, the page says your deck is as it was, and why, and offers to try again', async () => {
@@ -159,4 +156,29 @@ test('only the kinds of games you chose are downloaded, and make cards', async (
   expect(lichess.map(a => new URL(a).searchParams.get('perfType'))).toEqual(['rapid,classical']);
   expect((posted['/api/deck'][0] as Deck).cards).toEqual([]);
   expect(u.lines.at(-1)).toBe('Built: 0 cards from 0 games.');
+});
+
+test('Games, beside Update deck: what you tick is saved, and passed to the trainer, when you press it', async () => {
+  let trainers = defaultSettings; // the trainer's settings, which the update reads its kinds from
+  const u = new DeckUpdateCtrl('mugglesman1982', () => trainers.gameTypes, () => {});
+  const yourGames = new YourGamesCtrl(deck.username, () => trainers.gameTypes, () => {});
+  const page = new SettingsPageCtrl(deck, history, defaultSettings, () => {}, s => (trainers = s), yourGames, u);
+  const yourDeck = () => find(view(page), 'section.mt-your-deck');
+  expect(textOf(yourDeck())).not.toContain('Press “Update deck” to apply your choice.');
+
+  page.chooseGameTypes([]);
+  expect(textOf(yourDeck())).toContain('Choose at least one.');
+  expect(find(yourDeck(), 'button.button')!.data!.attrs!.disabled).toBe(true);
+  await page.updateDeck();
+  expect(asked).toEqual([]); // nothing done
+
+  page.chooseGameTypes(['rapid']);
+  expect(textOf(yourDeck())).toContain('Press “Update deck” to apply your choice.');
+  expect(page.changed()).toBe(false); // the form's own Save isn't for this
+  await page.updateDeck();
+  expect(posted['/api/settings']).toEqual([{ ...defaultSettings, gameTypes: ['rapid'] }]);
+  expect(trainers.gameTypes).toEqual(['rapid']);
+  const lichess = vi.mocked(fetch).mock.calls.map(c => String(c[0])).filter(a => a.startsWith('https://lichess.org'));
+  expect(lichess.map(a => new URL(a).searchParams.get('perfType'))).toEqual(['rapid']);
+  expect(textOf(yourDeck())).not.toContain('to apply your choice');
 });

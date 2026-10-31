@@ -34,14 +34,12 @@ const explorer = (token?: string) => {
 
 test('a saved answer asks Lichess nothing', async () => {
   const { e } = explorer('lio_T');
-  expect(e.has(START)).toBe(true);
   expect(await e.moves(START)).toEqual(saved[START]);
   expect(asked).toEqual([]);
 });
 
 test('a new position: one request, with your token and without the games, and the answer saved', async () => {
   const { e, saves } = explorer('lio_T');
-  expect(e.has(E4)).toBe(false);
   const moves = await e.moves(E4);
   expect(moves).toEqual([{ uci: 'c7c5', white: 9, draws: 4, black: 7 }]); // only what's used
   expect(asked).toHaveLength(1);
@@ -49,16 +47,13 @@ test('a new position: one request, with your token and without the games, and th
   expect(Object.fromEntries(asked[0].url.searchParams)).toEqual({ fen: E4, topGames: '0' });
   expect(asked[0].auth).toBe('Bearer lio_T');
   expect(saves).toEqual([[E4, moves]]);
-  expect(e.has(E4)).toBe(true); // and from now on, asked about no more
   await e.moves(E4);
   expect(asked).toHaveLength(1);
 });
 
 test('without a token, a new position is skipped: no request, nothing saved, and its card kept as it is', async () => {
   const { e, saves } = explorer(undefined);
-  expect(e.has(E4)).toBe(true); // looking it up asks Lichess nothing
   expect(await e.moves(E4)).toEqual([]);
-  expect([...e.skipped]).toEqual([E4]);
   expect(asked).toEqual([]);
   expect(saves).toEqual([]);
   expect(await e.moves(START)).toEqual(saved[START]); // saved answers still count

@@ -6,9 +6,10 @@
 
 import type { Color } from 'chessops';
 
+import type { MasterMove } from './deck';
 import { evalSwings } from './nodeFinder';
 import type { ReviewEntry } from './reviews';
-import type { TreeNode } from './tree';
+import type { LichessGameJson, TreeNode } from './tree';
 import * as winningChances from './winningChances';
 
 // ---------- Stand-ins for things lila provides globally or in its lib ----------
@@ -57,6 +58,7 @@ export interface RetroRoot {
   // move to check. It sets node.ceval as it searches, and calls retro.onCeval each time.
   evaluateNode(node: TreeNode): void;
   card?: RetroCardOpts; // Step 9: set when reviewing a card, rather than a whole game
+  game: LichessGameJson; // lila's root.data.game, for the opening explorer lookup
 }
 
 // Step 9: not in lila. In card mode, retroCtrl shows one given mistake. The game's other
@@ -74,7 +76,11 @@ export interface RetroCardOpts {
   // it does. Undefined once the card is graded, and in every other case.
   ratingChoices(): { label: string; rate: () => void }[] | undefined;
   suspend(): void; // "Suspend card": it never comes up again; the next card is dealt
-  openingUcis: Uci[]; // moves masters have played from the position, accepted as right answers
+  openingUcis: Uci[]; // moves masters have played from the position, accepted as right answers (saved ones)
+  // The masters database, as lila's explorer.fetchMasterOpening, for the card's mistake if it's in the
+  // opening: the answer saved, or Lichess's when you're signed in (deckCtrl.ts, mastersExplorer.ts).
+  fetchMasterOpening(fen: string): Promise<{ moves: MasterMove[] }>;
+  bookMove(): void; // the card's mistake was a book move: it goes, as lila skips it
   bestMoveOnly(): boolean; // only the analysis's best move counts, not any move nearly as good
   lastTime?: ReviewEntry; // the card's last review, if it's had one, for the panel once you've answered
 }
@@ -123,9 +129,9 @@ interface Retrospection {
 type Feedback = 'find' | 'eval' | 'win' | 'fail' | 'view' | 'offTrack';
 
 export function make(root: RetroRoot, color: Color): RetroCtrl {
-  // Trim: removed `const game = root.data.game;` (only the opening lookup used it).
+  const game = root.game; // Trim: lila's is root.data.game
   let candidateNodes: TreeNode[] = [];
-  const explorerCancelPlies: number[] = []; // stays empty until the opening lookup is added back
+  const explorerCancelPlies: number[] = [];
   let solvedPlies: number[] = [];
   const current = prop<Retrospection | null>(null);
   const feedback = prop<Feedback>('find');
@@ -173,12 +179,40 @@ export function make(root: RetroRoot, color: Color): RetroCtrl {
         node: solutionNode,
         path: prevPath + solutionNode.id,
       },
-      openingUcis: card?.openingUcis ?? [], // Step 9: a card brings them (deck.ts masterMoves)
+      openingUcis: card?.openingUcis ?? [], // Step 9: a card brings the saved ones (deck.ts masterMoves)
     });
-    // Trim: removed the opening explorer lookup. Lichess fetches master games for
-    // opening positions, skips the mistake if the played move appears there, and
-    // otherwise stores those moves in openingUcis to accept as correct answers.
-    // Step 9: for cards, deck.ts buildDeck does that lookup when it builds the deck.
+    // fetch opening explorer moves
+    // Step 9: only for a card, from the deck's masters database. Trim: lila reads game.variant.key; the
+    // game export's variant is a name, and may be missing for standard chess.
+    if (
+      card &&
+      (game.variant ?? 'standard') === 'standard' &&
+      game.division &&
+      (!game.division.middle || fault.node.ply < game.division.middle)
+    ) {
+      card
+        .fetchMasterOpening(prev.node.fen)
+        .then(res => {
+          const cur = current();
+          if (cur?.fault !== fault) return; // Step 9: the panel has moved on since
+          const ucis: Uci[] = [];
+          res.moves.forEach(m => {
+            if (m.white + m.draws + m.black > 1) ucis.push(m.uci);
+          });
+          if (ucis.includes(fault.node.uci!)) {
+            // Step 9: unless you've answered already: then the card stays, and the next deck build
+            // leaves it out.
+            if (feedback() !== 'find') return;
+            explorerCancelPlies.push(fault.node.ply);
+            card.bookMove(); // Step 9
+            setTimeout(jumpToNext, 100);
+          } else {
+            cur.openingUcis = ucis;
+            current(cur);
+          }
+        })
+        .catch(() => {});
+    }
     root.userJump(prev.path);
     safeRedraw();
   }

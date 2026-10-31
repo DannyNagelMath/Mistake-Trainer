@@ -123,35 +123,33 @@ export function mistakeOf(game: LichessGameJson, card: Card): { fen: string; uci
   return { fen: line[line.indexOf(played) - 1].fen, uci: played.uci! };
 }
 
+// Not in lila: the masters' moves, written as chessops writes moves, as yours is (see mistakeOf):
+// castling as the king taking its own rook (e1h1), where the masters database may write it the
+// usual way (e1g1). Otherwise castling would never match. For withMasterMoves, and for the trainer,
+// which asks about a position when its card comes up (deckCtrl.ts).
+export function withChessopsCastling(fen: string, moves: MasterMove[]): MasterMove[] {
+  const pos = Chess.fromSetup(parseFen(fen).unwrap()).unwrap();
+  return moves.map(m => {
+    const move = parseUci(m.uci);
+    return move ? { ...m, uci: makeUci(normalizeMove(pos, move)) } : m;
+  });
+}
+
 // lila's rule (retroCtrl's jumpToNext), with the moves masters have played from the position:
 // a move played in more than one master game is a book move, not a mistake. So if your move is
 // one, the card goes (undefined); otherwise it keeps the book moves, which count as right answers.
-// Not in lila: the masters' moves are first written as chessops writes moves, as yours is (see
-// mistakeOf): castling as the king taking its own rook (e1h1), where the masters database may write
-// it the usual way (e1g1). Otherwise castling would never match.
 export function withMasterMoves(card: Card, mistake: { fen: string; uci: string }, moves: MasterMove[]): Card | undefined {
-  const pos = Chess.fromSetup(parseFen(mistake.fen).unwrap()).unwrap();
-  const book = moves
+  const book = withChessopsCastling(mistake.fen, moves)
     .filter(m => m.white + m.draws + m.black > 1)
-    .map(m => {
-      const move = parseUci(m.uci);
-      return move ? makeUci(normalizeMove(pos, move)) : m.uci;
-    });
+    .map(m => m.uci);
   if (book.includes(mistake.uci)) return undefined;
   return book.length ? { ...card, masterMoves: book } : card;
-}
-
-// The masters database, for buildDeck: whether a position's answer is saved already, so that
-// looking it up asks Lichess nothing, and the moves masters have played from the position.
-export interface Masters {
-  has(fen: string): boolean;
-  moves(fen: string): Promise<MasterMove[]>;
 }
 
 // What buildDeck did, for reporting.
 export interface DeckReport {
   skipped: Record<string, number>; // games left out: reason -> how many
-  opening: number; // opening mistakes checked against the masters database
+  opening: number; // opening mistakes, checked against the masters database's saved answers
   bookMoves: number; // of those, left out as book moves
 }
 
@@ -161,16 +159,16 @@ const pause = () => new Promise(resolve => setTimeout(resolve));
 // Builds the deck from your downloaded games of the kinds you chose: a card for each of your
 // mistakes, from Lichess's computer analysis, or for a game Lichess hasn't analysed, from the one
 // made here (withAnalysis).
-// Then lila's check of opening mistakes against the masters database (inOpening): a book move's
-// card goes, and the others keep the masters' moves, which count as right answers. Asking about a
-// new position takes a while, so `onAsk` hears how many there are, and then each one asked.
+// Then lila's check of opening mistakes against the masters database (inOpening), with the answers
+// saved so far (mastersExplorer.ts): a book move's card goes, and the others keep the masters'
+// moves, which count as right answers. A position without an answer yet is asked about when its
+// card comes up (retroCtrl's jumpToNext), as lila asks when it gets to the mistake.
 export async function buildDeck(
   downloaded: LichessGameJson[],
   analyses: Record<string, SavedAnalysis>,
   username: string,
   speeds: Speed[], // the kinds of games you chose (settings.ts gameTypes)
-  masters: Masters,
-  onAsk: (asked: number, toAsk: number) => void = () => {},
+  answers: Record<string, MasterMove[]>, // the masters database's, saved so far, by position
 ): Promise<{ deck: Deck; report: DeckReport }> {
   const deck: Deck = { username, builtAt: new Date().toISOString(), games: {}, cards: [] };
   const report: DeckReport = { skipped: {}, opening: 0, bookMoves: 0 };
@@ -209,20 +207,12 @@ export async function buildDeck(
 
   const opening = deck.cards.filter(c => inOpening(deck.games[c.gameId], c));
   report.opening = opening.length;
-  // Each position, worked out once: mistakeOf builds the game's whole tree.
-  const mistakes = new Map<Card, { fen: string; uci: string }>();
   for (const [i, card] of opening.entries()) {
     if (i % 20 === 19) await pause();
-    mistakes.set(card, mistakeOf(deck.games[card.gameId], card));
-  }
-  const toAsk = new Set([...mistakes.values()].map(m => m.fen).filter(fen => !masters.has(fen))).size;
-  if (toAsk) onAsk(0, toAsk);
-  let asked = 0;
-  for (const card of opening) {
-    const mistake = mistakes.get(card)!;
-    const isNew = !masters.has(mistake.fen);
-    const checked = withMasterMoves(card, mistake, await masters.moves(mistake.fen));
-    if (isNew) onAsk(++asked, toAsk);
+    const mistake = mistakeOf(deck.games[card.gameId], card); // builds the game's whole tree
+    const saved = answers[mistake.fen];
+    if (!saved) continue;
+    const checked = withMasterMoves(card, mistake, saved);
     if (!checked) report.bookMoves++;
     deck.cards.splice(deck.cards.indexOf(card), 1, ...(checked ? [checked] : []));
   }

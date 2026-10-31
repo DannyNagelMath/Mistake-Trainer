@@ -56,8 +56,8 @@ function renderCounts(ctrl: SettingsPageCtrl): VNode {
   ]);
 }
 
-// When your deck was built, and "Update deck" (deckUpdate.ts): it downloads the games you've played
-// since and builds the deck again, showing how it's getting on. Once it's done, the page loads again
+// When your deck was built, the kinds of games it's made from, and "Update deck" (deckUpdate.ts): it
+// downloads the games you've played since and builds the deck again, showing how it's getting on. Once it's done, the page loads again
 // with the new deck when you say so: not by itself, as that would pause the computer analysis, if
 // it's running.
 function renderYourDeck(ctrl: SettingsPageCtrl): VNode {
@@ -71,6 +71,18 @@ function renderYourDeck(ctrl: SettingsPageCtrl): VNode {
         'analysed, and from the games analysed here (Computer analysis, below). Your reviews stay as they are.',
     ),
     renderSignIn(ctrl.signOut),
+    hl(
+      'div.mt-your-deck__games',
+      { on: { change: e => ctrl.chooseGameTypes(checkedGameTypes(e.currentTarget as HTMLElement)) } },
+      ['Games: ', ...renderGameTypes(ctrl.gameTypes)],
+    ),
+    hl(
+      'p.mt-your-deck__games-help',
+      !ctrl.gameTypes.length
+        ? hl('span.mt-run__error', 'Choose at least one.')
+        : 'The kinds of your games that are downloaded and make cards.' +
+            (ctrl.gameTypesChanged() ? ' Press “Update deck” to apply your choice.' : ''),
+    ),
     update.state === 'done'
       ? [
           hl('p', doneText(ctrl)),
@@ -81,7 +93,10 @@ function renderYourDeck(ctrl: SettingsPageCtrl): VNode {
             hl('p.mt-run__error', ['The update stopped, so your deck is as it was.', hl('br'), update.lines.at(-1)!]),
           hl(
             'button.button',
-            { attrs: { type: 'button', disabled: update.state === 'running' }, on: { click: update.start } },
+            {
+              attrs: { type: 'button', disabled: update.state === 'running' || !ctrl.gameTypes.length },
+              on: { click: ctrl.updateDeck },
+            },
             update.state === 'running' ? 'Updating…' : 'Update deck',
           ),
         ],
@@ -194,13 +209,12 @@ const scales: Partial<Record<keyof Settings, number>> = { desiredRetention: 100 
 // The settings, from the form's inputs, which are named after them. A number that's empty or
 // can't be read is NaN, which problems() reports, except that an empty new-card limit means none,
 // and empty "Recent games" means all your games.
-function readForm(form: HTMLFormElement): Settings {
+function readForm(form: HTMLFormElement): Omit<Settings, 'gameTypes'> {
   const input = (key: keyof Settings) => form.elements.namedItem(key) as HTMLInputElement;
   const num = (key: keyof Settings) => (input(key).value === '' ? NaN : Number(input(key).value) / (scales[key] ?? 1));
   const empty = (key: keyof Settings) => input(key).value === '' && !input(key).validity.badInput;
   const noLimit = empty('newCardsPerDay');
   return {
-    gameTypes: checkedGameTypes(form),
     recentGames: empty('recentGames') ? null : num('recentGames'),
     newCardOrder: input('newCardOrder').value as NewCardOrder,
     newCardsPerDay: noLimit ? null : num('newCardsPerDay'),
@@ -223,8 +237,8 @@ export const renderGameTypes = (checked: Speed[]): VNode[] =>
       i18n.site[speed],
     ]),
   );
-export const checkedGameTypes = (form: HTMLFormElement): Speed[] =>
-  [...form.querySelectorAll<HTMLInputElement>('input[name=gameTypes]:checked')].map(input => input.value as Speed);
+export const checkedGameTypes = (within: HTMLElement): Speed[] =>
+  [...within.querySelectorAll<HTMLInputElement>('input[name=gameTypes]:checked')].map(input => input.value as Speed);
 
 function renderSettings(ctrl: SettingsPageCtrl): VNode {
   const shown = ctrl.filledIn;
@@ -278,13 +292,6 @@ function renderSettings(ctrl: SettingsPageCtrl): VNode {
     },
     [
       hl('h2', 'New cards'),
-      row(
-        'Games',
-        ['gameTypes'],
-        renderGameTypes(shown.gameTypes),
-        'The kinds of your games that are downloaded and make cards. A change takes effect when you next ' +
-          'update your deck (Your deck, below).',
-      ),
       row(
         'Recent games',
         ['recentGames'],

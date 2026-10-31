@@ -14,7 +14,7 @@ import real1 from '../fixtures/real1.json';
 import type { AnalysisCtrl } from './analysisCtrl';
 import { compute as autoShapes } from './autoShape';
 import { renderCeval } from './cevalView';
-import { cardsOfGame, mistakeOf, type Card, type Deck } from './deck';
+import { cardsOfGame, mistakeOf, type Card, type Deck, type MasterMove } from './deck';
 import { DeckCtrl } from './deckCtrl';
 import { DeckUpdateCtrl } from './deckUpdate';
 import { getBestEval } from './evalGauge';
@@ -293,12 +293,12 @@ test('suspending a card records no review, saves the suspension, and deals anoth
   expect(`${ctrl.game.id}/${ctrl.retro!.card!.ply}`).not.toBe(suspended); // another card
 });
 
-test('a wrong answer comes back after 7 days, not the next day', () => {
+test('a wrong answer comes back after 5 days, not the next day', () => {
   const { history, ctrl } = start();
   playGameMove(ctrl);
   const [entry] = history.log;
   const gap = new Date(history.cards[entry.cardId].due).getTime() - new Date(entry.log.review).getTime();
-  expect(gap).toBe(7 * 24 * 60 * 60_000);
+  expect(gap).toBe(5 * 24 * 60 * 60_000);
 });
 
 test('the trainer uses your settings: here, a 3-day minimum gap', () => {
@@ -839,4 +839,48 @@ test('"Your stats", from the progress box: how often you found the move; the las
   // Not in Training settings any more.
   const page = new SettingsPageCtrl(deck, { cards: {}, log: [review('a/1', 'win', 1)] }, defaultSettings, () => {}, () => {}, notLoaded(), noUpdate());
   expect(textOf(trainingSettingsView(page))).not.toContain('How often you found the move');
+});
+
+// The masters database when an opening card comes up (retroCtrl's jumpToNext, as lila's). Here
+// ply 39 is an opening mistake (the middlegame starts at 40), and comes first ("Openings first",
+// up to move 20); then ply 41.
+const opening: LichessGameJson = { ...game, division: { middle: 40, end: 80 } };
+const [card39, card41] = cardsOfGame(opening, 'white');
+const openingFirst: Settings = { ...defaultSettings, newCardOrder: 'openings', openingMoves: 20, gameRestDays: 0 };
+function withMasters(answer: () => Promise<MasterMove[]>) {
+  const moves = vi.fn(async (_fen: string) => answer());
+  const twoCards: Deck = { ...deck, games: { [opening.id]: opening }, cards: [card39, card41] };
+  const deckCtrl = new DeckCtrl(twoCards, { cards: {}, log: [] }, openingFirst, () => {}, { moves });
+  deckCtrl.analysis.toggleRetro();
+  return { deckCtrl, ctrl: deckCtrl.analysis, moves };
+}
+const ply = (ctrl: AnalysisCtrl) => ctrl.retro!.card!.ply;
+
+test("an opening card whose mistake masters played is a book move: it goes, as on Lichess, and the next comes", async () => {
+  const { uci, fen } = mistakeOf(opening, card39);
+  const { deckCtrl, ctrl, moves } = withMasters(async () => [{ uci, white: 2, draws: 0, black: 0 }]);
+  expect(ply(ctrl)).toBe(39);
+  expect(moves.mock.calls.map(([f]) => f)).toEqual([fen]); // asked about the card's position
+  await new Promise(resolve => setTimeout(resolve, 200)); // lila moves on after 100 ms
+  expect(ply(ctrl)).toBe(41);
+  expect(deckCtrl.progress().notStarted).toBe(1); // gone for the session
+});
+
+test("otherwise, the moves masters played count as right answers, with no engine needed", async () => {
+  const masterMove = otherMove(card39);
+  const { ctrl } = withMasters(async () => [{ uci: masterMove, white: 3, draws: 1, black: 0 }]);
+  await new Promise(resolve => setTimeout(resolve, 0));
+  ctrl.playUci(masterMove);
+  expect(ctrl.retro!.feedback()).toBe('win');
+  expect(engine.asked).toEqual([]);
+});
+
+test("if you've answered before the masters database does, the card stays, even for a book move", async () => {
+  const { uci } = mistakeOf(opening, card39);
+  let answer!: (moves: MasterMove[]) => void;
+  const { ctrl } = withMasters(() => new Promise(resolve => (answer = resolve)));
+  playGameMove(ctrl); // wrong, and quick
+  answer([{ uci, white: 2, draws: 0, black: 0 }]);
+  await new Promise(resolve => setTimeout(resolve, 200));
+  expect([ply(ctrl), ctrl.retro!.feedback()]).toEqual([39, 'fail']);
 });
