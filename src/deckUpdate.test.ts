@@ -95,7 +95,7 @@ test('it downloads your new games and saves them, builds the deck in the page, s
   expect(u.built).toEqual(built);
   expect(u.lines).toEqual(['Downloaded 1 new game from Lichess.', 'Building your deck...', 'Built: 3 cards from 1 game.']);
   const done = section(u);
-  expect(textOf(done)).toContain('Done: your deck now has 3 cards, as many as before. Reload the page to train with them.');
+  expect(textOf(done)).toContain('Done. Your deck now has 3 cards (as many as before). Reload the page to train with them.');
   expect(textOf(find(done, 'button.button'))).toBe('Reload');
   expect(textOf(find(done, 'pre.mt-your-deck__log'))).toBe(u.lines.join('\n'));
 });

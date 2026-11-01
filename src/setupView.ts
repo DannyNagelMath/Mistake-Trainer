@@ -81,7 +81,7 @@ export async function showSetup(deck: Deck | undefined): Promise<void> {
     const built = update ? update.built : deck;
     return hl('main.page-small.box.box-pad.mt-settings-page', [
       hl('h1.box__top', 'Spaced repetition from your Lichess games'),
-      hl('p', 'Each card is a position where you went wrong, to solve as in Lichess’s “Learn from your mistakes”.'),
+      hl('p', 'Each card is a position where you went wrong, as in Lichess’s “Learn from your mistakes”.'),
       hl('form.mt-setup', { on: { submit: start, input: choose } }, [
         hl('div.mt-setup__row', ['Games: ', ...renderGameTypes(settings.gameTypes)]),
         hl('div.mt-setup__row', [

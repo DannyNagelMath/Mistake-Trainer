@@ -278,7 +278,7 @@ test('the side panel says where the computer analysis came from: Lichess, or you
   const deckCtrl = new DeckCtrl({ ...deck, games: { [game.id]: analysedHere } }, { cards: {}, log: [] }, defaultSettings, () => {});
   deckCtrl.analysis.toggleRetro();
   expect(textOf(renderSide(deckCtrl.analysis))).toContain(
-    'Computer analysis made on your computer: Lichess hasn’t analysed this game',
+    'Computer analysis from your computer (Lichess hasn’t analysed this game)',
   );
 });
 
@@ -566,10 +566,10 @@ test("for a game analysed here, the closer look says so, and that Lichess hasn't
   const page = new SettingsPageCtrl(here, history, defaultSettings, () => {}, () => {}, notLoaded(), noUpdate());
   click(find(trainingSettingsView(page), 'button.mt-suspended__look'));
   const look = find(trainingSettingsView(page), 'dialog.mt-look');
-  expect(textOf(look)).toContain('Computer analysis made on your computer: Lichess hasn’t analysed this game');
+  expect(textOf(look)).toContain('Computer analysis from your computer (Lichess hasn’t analysed this game)');
   expect(find(look, 'a.button.button-empty')!.data!.attrs!.title).toBe(
-    'Opens the game on Lichess, at this position, in a new tab. Lichess hasn’t analysed this game: this ' +
-      'analysis was made on your computer.',
+    'Opens the game on Lichess at this position in a new tab. This analysis was made on your computer ' +
+      'because Lichess hasn’t analysed this game.',
   );
 });
 

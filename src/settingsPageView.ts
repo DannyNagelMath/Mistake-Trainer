@@ -75,7 +75,7 @@ function renderYourDeck(ctrl: SettingsPageCtrl): VNode {
     hl(
       'p',
       `Built ${date(ctrl.deck.builtAt)}, at ${time(ctrl.deck.builtAt)}. “Update deck” adds the cards from the games ` +
-        'you’ve played since, and from games analysed here. Your reviews stay.',
+        'you’ve played since and from games analysed here. Your reviews stay.',
     ),
     renderSignIn(ctrl.signOut),
     hl(
@@ -117,33 +117,35 @@ function renderYourDeck(ctrl: SettingsPageCtrl): VNode {
 export function renderSignIn(signOut: () => void, titled = false): VNode {
   const account = signedIn();
   const why =
-    'opening mistakes are checked against the masters database, and your games download faster. Lichess ' +
-    'asks you to allow it; Mistake Trainer gets no permissions, only your username. ';
+    'lets opening mistakes be checked against Lichess’s masters database and makes your games download ' +
+    'faster. You sign in on Lichess’s own page and Mistake Trainer gets only your username and no ' +
+    'permissions. Mistake Trainer has no server that sees your data. Your data stays on your computer and ' +
+    'your sign-in is only ever sent to Lichess. ';
   return hl(
     'p.mt-your-deck__lichess',
     account
       ? [
-          `Signed in to Lichess as ${account.username}, for the masters database and faster downloads. `,
+          `Signed in to Lichess as ${account.username} for the masters database and faster downloads. `,
           hl('a', { on: { click: signOut } }, 'Sign out'),
         ]
       : [
-          (titled ? 'With it, ' : 'Sign in with Lichess (optional): ') + why,
+          (titled ? 'Signing in ' : 'Signing in with Lichess is optional. It ') + why,
           hl('button.button.button-thin', { attrs: { type: 'button' }, on: { click: signIn } }, 'Sign in with Lichess'),
         ],
   );
 }
 
-// e.g. "Done: your deck now has 3,762 cards, 12 more than before. Reload the page to train with them."
+// e.g. "Done. Your deck now has 3,762 cards (12 more than before). Reload the page to train with them."
 function doneText(ctrl: SettingsPageCtrl): string {
   const built = ctrl.deckUpdate.built;
   if (!built) return 'Done. Reload the page to train with your new deck.';
   const count = (n: number) => n.toLocaleString('en');
   const change = built.cards.length - ctrl.deck.cards.length;
   return (
-    `Done: your deck now has ${count(built.cards.length)} cards, ` +
+    `Done. Your deck now has ${count(built.cards.length)} cards (` +
     (change > 0 ? `${count(change)} more than` : change < 0 ? `${count(-change)} fewer than` : 'as many as') +
-    ' before. Reload the page to train with them.' +
-    (ctrl.yourGames.loaded?.run.running ? ' That pauses the computer analysis below: carry on after.' : '')
+    ' before). Reload the page to train with them.' +
+    (ctrl.yourGames.loaded?.run.running ? ' That pauses the computer analysis below. You can carry on after.' : '')
   );
 }
 
@@ -207,8 +209,8 @@ function renderNotInDeck(ctrl: SettingsPageCtrl, run: AnalysisRun): VNode | unde
   return hl(
     'p',
     since
-      ? `Games analysed here since your deck was built: ${since.toLocaleString('en')}. To add their cards, ` +
-          'use “Update deck”, above.'
+      ? `${since.toLocaleString('en')} ${since === 1 ? 'game has' : 'games have'} been analysed here since your ` +
+          'deck was built. Use “Update deck” above to add their cards.'
       : 'Your deck has the cards from all the games analysed here so far.',
   );
 }
@@ -367,8 +369,8 @@ function renderSettings(ctrl: SettingsPageCtrl): VNode {
             numberInput('collapseAfter', 0.1),
             ' pawns after it',
           ],
-          'The evals, from your side, that make a mistake a “collapse”: a winning or level game turned into a ' +
-            'lost one. For the order “Collapses first”.',
+          'Evals are from your side. A “collapse” is a mistake that turns a winning or level game into a lost ' +
+            'one. For the order “Collapses first”.',
         ),
         row(
           'Opening',
@@ -388,7 +390,7 @@ function renderSettings(ctrl: SettingsPageCtrl): VNode {
           'Same game',
           ['gameRestDays'],
           ['wait ', numberInput('gameRestDays', 1), ' days before another card from it'],
-          'After you answer a card, the other cards from the same game wait at least this long. 0: no wait.',
+          'The other cards from a game wait at least this long after you answer one of them. 0 means no wait.',
         ),
         row(
           'Right answers',
@@ -459,7 +461,7 @@ function renderCategoryCounts(ctrl: SettingsPageCtrl): VNode {
 const REPO = 'https://github.com/DannyNagelMath/Mistake-Trainer';
 export const renderAbout = (): VNode =>
   hl('p.mt-about', [
-    'Free software, built on Lichess’s own; not affiliated with Lichess. ',
+    'Free software, built on Lichess’s own. Not affiliated with Lichess, just a big fan. ',
     hl('a', { attrs: { href: REPO } }, 'Source code'),
     ' · ',
     hl(
@@ -643,9 +645,9 @@ function renderLook(ctrl: SettingsPageCtrl, id: string): VNode | undefined {
                       target: '_blank',
                       rel: 'noopener',
                       title:
-                        'Opens the game on Lichess, at this position, in a new tab. ' +
+                        'Opens the game on Lichess at this position in a new tab. ' +
                         (game.analysedHere
-                          ? 'Lichess hasn’t analysed this game: this analysis was made on your computer.'
+                          ? 'This analysis was made on your computer because Lichess hasn’t analysed this game.'
                           : 'Lichess shows the analysis of the whole game, so also the answers to your other ' +
                             'cards from it.'),
                     },

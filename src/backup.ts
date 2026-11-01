@@ -87,8 +87,8 @@ export function importData(): void {
       const backup = readBackup(await file.text());
       const exported = new Date(backup.exportedAt).toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' });
       const replace = confirm(
-        `Replace everything here with ${file.name}, exported ${exported}: ${count(backup.reviews.log.length, 'review')} ` +
-          `and ${count(backup.games.length, 'game')}? ` +
+        `Replace everything here with ${file.name} from ${exported} (${count(backup.reviews.log.length, 'review')} ` +
+          `and ${count(backup.games.length, 'game')})? ` +
           (inBrowser ? 'What’s here now will be gone.' : 'What’s here now is first copied to data/backups.'),
       );
       if (!replace) return;
@@ -116,8 +116,7 @@ export async function trySample(): Promise<void> {
 // answers, which are anyone's; then the first-run screen, for another account or after the sample.
 export async function startOver(): Promise<void> {
   const ok = confirm(
-    'Start over? Your deck, your reviews, your games, and the analyses made here will be gone; your settings ' +
-      'stay. ' +
+    'Start over? Your deck, reviews, games and the analyses made here will be gone but your settings stay. ' +
       (inBrowser ? 'Export first to keep a copy.' : 'What’s here now is first copied to data/backups.'),
   );
   if (!ok) return;

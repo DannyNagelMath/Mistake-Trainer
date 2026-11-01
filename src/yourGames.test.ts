@@ -99,7 +99,7 @@ test('carrying on analyses the games not analysed yet, newest first, and saves e
   expect(textOf(section(yourGames))).toContain('3 of 3 games analysed here.');
   expect(find(section(yourGames), 'button.button')).toBeUndefined(); // nothing left to do
   expect(textOf(section(yourGames))).toContain(
-    'Games analysed here since your deck was built: 2. To add their cards, use “Update deck”, above.',
+    '2 games have been analysed here since your deck was built. Use “Update deck” above to add their cards.',
   );
 });
 

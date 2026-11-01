@@ -80,7 +80,7 @@ function playerLink(player: LichessPlayer): VNode {
 // cards come from, was made (deck.ts withAnalysis).
 export const analysisSource = (game: LichessGameJson): string =>
   game.analysedHere
-    ? 'Computer analysis made on your computer: Lichess hasn’t analysed this game'
+    ? 'Computer analysis from your computer (Lichess hasn’t analysed this game)'
     : 'Computer analysis by Lichess';
 
 // Not in lila: `extra` goes under the game's details; the trainer puts its progress box there.
