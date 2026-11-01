@@ -74,9 +74,8 @@ function renderYourDeck(ctrl: SettingsPageCtrl): VNode {
     hl('h2', 'Your deck'),
     hl(
       'p',
-      `Built ${date(ctrl.deck.builtAt)}, at ${time(ctrl.deck.builtAt)}. “Update deck” downloads the games you’ve ` +
-        'played since from Lichess, then builds your deck again, with the cards from the new games Lichess has ' +
-        'analysed, and from the games analysed here (Computer analysis, below). Your reviews stay as they are.',
+      `Built ${date(ctrl.deck.builtAt)}, at ${time(ctrl.deck.builtAt)}. “Update deck” adds the cards from the games ` +
+        'you’ve played since, and from games analysed here. Your reviews stay.',
     ),
     renderSignIn(ctrl.signOut),
     hl(
@@ -183,18 +182,14 @@ export function renderComputerAnalysis(yourGames: YourGamesCtrl, after: (run: An
       ? [
           hl(
             'p',
-            `Your cards come from the computer analysis of your games. Lichess has analysed ` +
-              `${count(loaded.byLichess)} of your ${count(loaded.all)} game${loaded.all === 1 ? '' : 's'}. ` +
+            `Lichess has analysed ${count(loaded.byLichess)} of your ${count(loaded.all)} ` +
+              `game${loaded.all === 1 ? '' : 's'}. ` +
               (loaded.run.games.length === 1 ? 'The other one' : `The other ${count(loaded.run.games.length)}`) +
-              ' can be analysed here, on your computer, ' +
-              (FULL_NETWORK ? 'the way Lichess’s servers do it' : 'much as Lichess’s servers do it, with a smaller network') +
-              ', newest first. Each game is saved as soon as it’s done, so you can pause, or close the page, ' +
-              'and carry on later. It goes on while you train, stopping whenever the trainer’s own engine is ' +
-              'thinking.' +
+              ' can be analysed here, the way Lichess does it, newest first. You can pause, close the page, or ' +
+              'keep training meanwhile. Each game is saved when it’s done.' +
               (FULL_NETWORK
                 ? ''
-                : ' Running Mistake Trainer on your own computer instead (see Source code, below) uses the ' +
-                  'full network.'),
+                : ' Here it uses a smaller network. Run Mistake Trainer on your own computer for the full one.'),
           ),
           renderRun(loaded.run),
           after(loaded.run),
@@ -341,8 +336,8 @@ function renderSettings(ctrl: SettingsPageCtrl): VNode {
             hl('option', { attrs: { value: order, selected: order === shown.newCardOrder } }, orderLabels[order]),
           ),
         ),
-        'Which of the cards you haven’t started come up first. Positions that were already won ' +
-          '(about +6 before your move and still +3 after it) always come last.',
+        'Which new cards come first. Mistakes that didn’t change the result (you were winning easily before ' +
+          'and after) always come last.',
       ),
       row(
         'New cards a day',
@@ -356,8 +351,7 @@ function renderSettings(ctrl: SettingsPageCtrl): VNode {
         'Minimum gap',
         ['minGapDays'],
         [numberInput('minGapDays', 1), ' days'],
-        'No card comes back sooner than this after you review it, so you work it out rather than ' +
-          'recognise it. It applies to your reviews from now on: cards already scheduled keep their dates.',
+        'No card comes back sooner than this. Cards already scheduled keep their dates.',
       ),
 
       // The settings few people change, folded away, and opened if one of them is wrong.
@@ -369,35 +363,32 @@ function renderSettings(ctrl: SettingsPageCtrl): VNode {
           [
             'better than ',
             numberInput('collapseBefore', 0.1),
-            ' before your move, worse than ',
+            ' pawns before your move, worse than ',
             numberInput('collapseAfter', 0.1),
-            ' after it',
+            ' pawns after it',
           ],
-          'The evals that make a mistake a collapse, in pawns from your side: a winning or level game ' +
-            'turned into a lost one. For “Collapses first”.',
+          'The evals, from your side, that make a mistake a “collapse”: a winning or level game turned into a ' +
+            'lost one. For the order “Collapses first”.',
         ),
         row(
           'Opening',
           ['openingMoves'],
           ['up to move ', numberInput('openingMoves', 1)],
-          'Which mistakes count as opening mistakes, for “Openings first”.',
+          'For the order “Openings first”.',
         ),
         renderCategoryCounts(ctrl),
         row(
           'Desired retention',
           ['desiredRetention'],
           [numberInput('desiredRetention', 1), ' %'],
-          'FSRS shows you each card again when it thinks your chance of still getting it right has ' +
-            'dropped to this. Higher means shorter gaps and more reviews. It applies to your reviews from ' +
-            'now on.',
+          'Each card comes back when your chance of still getting it right has dropped to this. Higher means ' +
+            'more reviews, closer together.',
         ),
         row(
           'Same game',
           ['gameRestDays'],
           ['wait ', numberInput('gameRestDays', 1), ' days before another card from it'],
-          'After you review a card, the other cards from its game wait this long, so you don’t see two ' +
-            'positions from one game too close together. 0 means no wait. They only wait in the queue: ' +
-            'their schedules don’t change.',
+          'After you answer a card, the other cards from the same game wait at least this long. 0: no wait.',
         ),
         row(
           'Right answers',
@@ -406,8 +397,8 @@ function renderSettings(ctrl: SettingsPageCtrl): VNode {
             hl('input', { attrs: { type: 'checkbox', id: 'bestMoveOnly', name: 'bestMoveOnly', checked: shown.bestMoveOnly } }),
             ' only the engine’s best move',
           ],
-          'On: only the engine’s best move counts as right. Off: moves nearly as good also count, as on ' +
-            'Lichess. Either way, a checkmate counts, and so do moves masters have played in the opening.',
+          'On: only the engine’s best move counts. Off: moves nearly as good count too (same as Lichess’s ' +
+            '“Learn from your mistakes”).',
         ),
       ]),
 
@@ -485,16 +476,15 @@ function renderYourData(): VNode {
     hl(
       'p',
       inBrowser
-        ? 'Everything is kept in this browser: your reviews, settings, games, and analyses. Clearing this ' +
-            'site’s data in your browser deletes it, so export it now and then. Export saves it all in one ' +
-            'file, and Import brings a file back, here or in another browser. Running Mistake Trainer on your ' +
-            'own computer instead (see Source code, below) keeps it all in files, with a copy of your reviews ' +
-            'made each day.'
-        : 'Everything is kept in files in data, on your computer, with a copy of your reviews made each ' +
-            'day. Export saves it all in one file, to keep, or to move to the website; Import replaces it ' +
-            'with a file’s, first copying what’s there to data/backups.',
+        ? 'Everything is kept in this browser, and clearing this site’s data in your browser deletes it. Export ' +
+            'now and then to keep a copy. Import brings an export back, here or in another browser. Start over ' +
+            'empties everything but your settings. If you choose to run Mistake Trainer on your own computer, it ' +
+            'keeps everything in files, with daily backups.'
+        : 'Everything is kept in files in the data folder, with a copy of your reviews made each day. Export ' +
+            'saves it all in one file, so you can keep it or move it to the website. Import replaces it with a ' +
+            'file’s contents, after first copying what’s there to data/backups. Start over empties everything ' +
+            'but your settings, after copying it there too.',
     ),
-    hl('p', 'Start over empties it all but your settings: for another Lichess account, or after the sample deck.'),
     hl('div.mt-settings__actions', [
       hl(
         'button.button',

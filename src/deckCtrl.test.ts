@@ -620,7 +620,7 @@ test("Training settings' Right answers: only the engine's best move, or also mov
   const { history, deckCtrl } = start();
   const text = textOf(trainingSettingsView(trainingSettings(deckCtrl, history)));
   expect(text).toContain('only the engine’s best move');
-  expect(text).toContain('On: only the engine’s best move counts as right. Off: moves nearly as good also count');
+  expect(text).toContain('On: only the engine’s best move counts. Off: moves nearly as good count too');
 });
 
 test("with 'only the engine's best move' on, any other move is wrong at once, without the engine", () => {

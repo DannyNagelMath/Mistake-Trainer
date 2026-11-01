@@ -72,7 +72,7 @@ const update = (speeds: Speed[] = ['blitz', 'rapid']) => new DeckUpdateCtrl('mug
 test('Your deck says when it was built, and what "Update deck" does, and offers it', () => {
   const text = textOf(section(update()));
   expect(text).toContain(`Built ${new Date(deck.builtAt).toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' })}`);
-  expect(text).toContain('“Update deck” downloads the games you’ve played since from Lichess');
+  expect(text).toContain('“Update deck” adds the cards from the games you’ve played since');
   expect(textOf(find(section(update()), 'button.button'))).toBe('Update deck');
 });
 
