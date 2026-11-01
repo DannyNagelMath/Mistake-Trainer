@@ -313,13 +313,6 @@ details.mt-fold[open] > summary {
 .mt-setup input {
   padding: 0.4em 0.6em;
 }
-.mt-setup input[type='number'] {
-  width: 6em;
-}
-.mt-setup__note {
-  color: var(--c-font-dim);
-  font-size: 0.9em;
-}
 /* "Try a sample deck" and "Import it": links without an address. */
 .mt-setup__link a {
   cursor: pointer;

@@ -12,7 +12,7 @@ import { DeckUpdateCtrl } from './deckUpdate';
 import type { Speed } from './gameDownload';
 import { renderHowItWorks } from './howItWorks';
 import { signedIn, signOut } from './lichessAuth';
-import { defaultSettings, problems, type Settings } from './settings';
+import { defaultSettings } from './settings';
 import {
   checkedGameTypes,
   openWhen,
@@ -28,24 +28,9 @@ import { YourGamesCtrl } from './yourGames';
 
 const patch = init([classModule, attributesModule, propsModule, eventListenersModule]);
 
-// Your choices on this screen, as settings, or what's wrong with them. Empty "Recent games" means
-// all your games.
-export function firstRunChoices(
-  saved: Settings,
-  gameTypes: Speed[],
-  recentGames: string,
-): { settings: Settings } | { problem: string } {
-  const settings = { ...saved, gameTypes, recentGames: recentGames.trim() ? Number(recentGames) : null };
-  const wrong = problems(settings);
-  if (wrong.gameTypes) return { problem: 'Choose at least one kind of game.' };
-  if (wrong.recentGames)
-    return { problem: `New cards from your last … games: ${wrong.recentGames.toLowerCase()}, or empty for all.` };
-  return { settings };
-}
-
 // `deck`: the deck there is, if any, which has no cards.
 export async function showSetup(deck: Deck | undefined): Promise<void> {
-  let settings = await loadSettings().catch(() => defaultSettings); // for your choices below
+  let settings = await loadSettings().catch(() => defaultSettings); // for the kinds of games
   document.body.classList.add('mt-settings-shown'); // this page's <main>, not the trainer's
   document.querySelector<HTMLElement>('.site-buttons')!.style.display = 'none'; // Training settings needs a deck
   let vnode: VNode | Element = document.querySelector('main.mt-settings-page')!;
@@ -62,30 +47,26 @@ export async function showSetup(deck: Deck | undefined): Promise<void> {
     vnode = patch(vnode, view());
     if (update?.state === 'done' && update.built?.cards.length) location.reload(); // on to the trainer
   };
-  const choicesOf = (form: HTMLFormElement) =>
-    firstRunChoices(settings, checkedGameTypes(form), (form.elements.namedItem('recentGames') as HTMLInputElement).value);
-  // Your choices are saved as you make them, so that they're still here after signing in, which
-  // goes to Lichess's page and back.
+  // The kinds of games you tick are saved as you tick them, so that they're still ticked after
+  // signing in, which goes to Lichess's page and back.
   const choose = (e: Event): void => {
-    if (!['gameTypes', 'recentGames'].includes((e.target as HTMLInputElement).name)) return;
-    const chosen = choicesOf(e.currentTarget as HTMLFormElement);
-    if ('settings' in chosen) {
-      settings = chosen.settings;
-      saveSettings(settings).catch(() => {}); // Start saves them again, and says if that fails
-    }
+    if ((e.target as HTMLInputElement).name !== 'gameTypes') return;
+    const gameTypes = checkedGameTypes(e.currentTarget as HTMLFormElement);
+    if (!gameTypes.length) return;
+    settings = { ...settings, gameTypes };
+    saveSettings(settings).catch(() => {}); // Start saves them again, and says if that fails
   };
-  // Saves your choices, for later updates too, then builds your deck.
+  // Saves the kinds of games you chose, for later updates too, then builds your deck.
   const start = async (e: SubmitEvent): Promise<void> => {
     e.preventDefault();
     const form = e.currentTarget as HTMLFormElement;
     const username = (form.elements.namedItem('username') as HTMLInputElement).value.trim();
+    const gameTypes = checkedGameTypes(form);
     if (update?.state === 'running' || !username) return;
-    const chosen = choicesOf(form);
-    problem = 'problem' in chosen ? chosen.problem : '';
-    if ('problem' in chosen) return redraw();
-    settings = chosen.settings;
+    problem = gameTypes.length ? '' : 'Choose at least one kind of game.';
+    if (problem) return redraw();
+    settings = { ...settings, gameTypes };
     await saveSettings(settings);
-    const gameTypes = settings.gameTypes;
     update = new DeckUpdateCtrl(username, () => gameTypes, redraw);
     await update.start();
     if (update.built && !update.built.cards.length) analyseHere(username, gameTypes);
@@ -95,7 +76,7 @@ export async function showSetup(deck: Deck | undefined): Promise<void> {
     const running = update?.state === 'running';
     const built = update ? update.built : deck;
     return hl('main.page-small.box.box-pad.mt-settings-page', [
-      hl('h1.box__top', 'Spaced repetition on mistakes from your Lichess games'),
+      hl('h1.box__top', 'Spaced repetition from your Lichess games'),
       hl('p', 'Each card is a position where you went wrong, to solve as in Lichess’s “Learn from your mistakes”.'),
       hl('form.mt-setup', { on: { submit: start, input: choose } }, [
         hl('div.mt-setup__row', [
@@ -117,18 +98,10 @@ export async function showSetup(deck: Deck | undefined): Promise<void> {
             '.',
           ]),
         renderHowItWorks(),
-        // Everything else, folded away, and opened if one of your choices won't do.
+        // Everything else, folded away, and opened if your choice of games won't do.
         hl('details.mt-fold.mt-setup__options', { hook: openWhen(!!problem) }, [
           hl('summary', 'Options'),
           hl('div.mt-setup__row', ['Games: ', ...renderGameTypes(settings.gameTypes)]),
-          hl('div.mt-setup__row', [
-            hl('label', { attrs: { for: 'recentGames' } }, 'New cards from your last'),
-            hl('input', {
-              attrs: { id: 'recentGames', name: 'recentGames', type: 'number', min: 1, step: 1, value: settings.recentGames ?? '' },
-            }),
-            'games',
-            hl('span.mt-setup__note', '(empty for all)'),
-          ]),
           renderSignIn(async () => {
             await signOut();
             redraw();
