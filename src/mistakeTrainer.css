@@ -119,7 +119,7 @@ main.mt-settings-page {
   cursor: pointer;
 }
 
-/* Fold-outs (<details>): How it works (howItWorks.ts), the first-run screen's Options
+/* Fold-outs (<details>): How it works (howItWorks.ts), the first-run screen's Sign in with Lichess
    (setupView.ts), and Training settings' More settings. */
 details.mt-fold {
   margin: 1em 0;
@@ -130,9 +130,6 @@ details.mt-fold > summary {
 }
 details.mt-fold[open] > summary {
   margin-bottom: 0.8em;
-}
-.mt-setup__options > :not(summary) {
-  margin: 0 0 0.8em;
 }
 
 /* The settings page (settings.html, settingsPageView.ts). lila's own settings pages use its form

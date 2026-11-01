@@ -1,8 +1,8 @@
 // setupView.ts: Not in lila. The first-run screen, until there's a deck with cards: you give your
 // Lichess username, the page downloads your games and builds your deck (deckUpdate.ts), and then
 // loads again, with the trainer. If none of your games has computer analysis, it offers to analyse
-// them here first (yourGames.ts). Only the username shows at first; How it works and Options are
-// folded away. It shows in Training settings' <main> (index.html), in its style.
+// them here first (yourGames.ts). Only the kinds of games and your username show at first; How it
+// works and signing in are folded away. It shows in Training settings' <main> (index.html), in its style.
 
 import { init, attributesModule, classModule, eventListenersModule, propsModule, type VNode } from 'snabbdom';
 
@@ -15,7 +15,6 @@ import { signedIn, signOut } from './lichessAuth';
 import { defaultSettings } from './settings';
 import {
   checkedGameTypes,
-  openWhen,
   renderAbout,
   renderComputerAnalysis,
   renderGameTypes,
@@ -72,6 +71,11 @@ export async function showSetup(deck: Deck | undefined): Promise<void> {
     if (update.built && !update.built.cards.length) analyseHere(username, gameTypes);
   };
 
+  const signOutAndRedraw = async (): Promise<void> => {
+    await signOut();
+    redraw();
+  };
+
   const view = (): VNode => {
     const running = update?.state === 'running';
     const built = update ? update.built : deck;
@@ -79,6 +83,7 @@ export async function showSetup(deck: Deck | undefined): Promise<void> {
       hl('h1.box__top', 'Spaced repetition from your Lichess games'),
       hl('p', 'Each card is a position where you went wrong, to solve as in Lichess’s “Learn from your mistakes”.'),
       hl('form.mt-setup', { on: { submit: start, input: choose } }, [
+        hl('div.mt-setup__row', ['Games: ', ...renderGameTypes(settings.gameTypes)]),
         hl('div.mt-setup__row', [
           hl('label', { attrs: { for: 'username' } }, 'Your Lichess username'),
           hl('input', {
@@ -90,24 +95,23 @@ export async function showSetup(deck: Deck | undefined): Promise<void> {
             running ? 'Building your deck…' : yourGames ? 'Build my deck' : 'Start',
           ),
         ]),
-        // Only before there's a deck: a deck without cards has your account, and maybe analyses made here.
-        !deck &&
-          hl('p.mt-setup__link', [
+        hl('p.mt-setup__link', [
+          // The sample only before there's a deck: a deck without cards has your account, and maybe
+          // analyses made here.
+          !deck && [
             'Just looking? ',
             hl('a', { attrs: { title: 'Made from 20 of the author’s Lichess games' }, on: { click: trySample } }, 'Try a sample deck'),
-            '.',
-          ]),
-        renderHowItWorks(),
-        // Everything else, folded away, and opened if your choice of games won't do.
-        hl('details.mt-fold.mt-setup__options', { hook: openWhen(!!problem) }, [
-          hl('summary', 'Options'),
-          hl('div.mt-setup__row', ['Games: ', ...renderGameTypes(settings.gameTypes)]),
-          renderSignIn(async () => {
-            await signOut();
-            redraw();
-          }),
-          hl('p.mt-setup__link', ['Moving here with an exported file? ', hl('a', { on: { click: importData } }, 'Import it')]),
+            '. ',
+          ],
+          'Have an export? ',
+          hl('a', { on: { click: importData } }, 'Import it'),
+          '.',
         ]),
+        renderHowItWorks(),
+        // Signing in, which few need at first, folded away; once you have, who as, and Sign out.
+        signedIn()
+          ? renderSignIn(signOutAndRedraw)
+          : hl('details.mt-fold', [hl('summary', 'Sign in with Lichess (optional)'), renderSignIn(signOutAndRedraw, true)]),
       ]),
       problem && hl('p.mt-run__error', problem),
       built && !built.cards.length && [
