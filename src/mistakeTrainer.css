@@ -6,6 +6,22 @@
 div.site-title:hover {
   color: var(--c-font);
 }
+/* lila shows the name only on screens 1120px wide or more: on smaller ones, its logo, and on a
+   phone, nothing, beside its menu button. Our header has no logo or menu, so the name always
+   shows, smaller on a phone. */
+#top .site-title {
+  display: flex;
+  margin-inline-start: 0.5rem;
+}
+#top .site-title .site-name {
+  display: block;
+}
+@media (width < 500px) {
+  #top .site-title {
+    font-size: 20px;
+    padding: 0 0.5rem;
+  }
+}
 
 /* Training settings and the trainer are in the same page, each in its own <main> (index.html).
    While Training settings or the first-run screen shows, trainer.ts or setupView.ts adds this

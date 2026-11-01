@@ -95,8 +95,8 @@ export async function showSetup(deck: Deck | undefined): Promise<void> {
     const running = update?.state === 'running';
     const built = update ? update.built : deck;
     return hl('main.page-small.box.box-pad.mt-settings-page', [
-      hl('h1.box__top', 'Mistake Trainer'),
-      hl('p', 'Practise the mistakes from your own Lichess games, with spaced repetition.'),
+      hl('h1.box__top', 'Spaced repetition on mistakes from your Lichess games'),
+      hl('p', 'Each card is a position where you went wrong, to solve as in Lichess’s “Learn from your mistakes”.'),
       hl('form.mt-setup', { on: { submit: start, input: choose } }, [
         hl('div.mt-setup__row', [
           hl('label', { attrs: { for: 'username' } }, 'Your Lichess username'),
