@@ -1,7 +1,8 @@
 // common.ts: small helpers from lila's ui/lib (27ffc8b): toggle, repeater,
 // blurIfPrimaryClick, and propWithEffect from src/common.ts, storedBooleanProp from src/storage.ts,
 // isTouchDevice, isMac, and displayColumns from src/device.ts,
-// addPointerListeners from src/pointer.ts, and stepwiseScroll from src/view/stepwiseScroll.ts.
+// addPointerListeners from src/pointer.ts, and stepwiseScroll from src/view/stepwiseScroll.ts;
+// and trackViewportHeight, from ui/site/src/domHandlers.ts.
 
 // ---------- common.ts ----------
 
@@ -183,4 +184,20 @@ export function stepwiseScroll(
     accumulatedDeltaPixelMode = 0;
     scrollAction(e);
   };
+}
+
+// ---------- ui/site/src/domHandlers.ts ----------
+
+// The window's height, in the CSS variable ---viewport-height, by which lila's stylesheets fit a
+// dialog in the window and let it scroll ("ios safari vh correction", lila's addWindowHandlers).
+// Trim: lila sets it on resize, and as each dialog opens (lib/view/dialog.ts); here, at the start
+// and on resize, which comes to the same.
+export function trackViewportHeight(): void {
+  let animFrame: number;
+  const setViewportHeight = () => document.body.style.setProperty('---viewport-height', `${window.innerHeight}px`);
+  setViewportHeight();
+  window.addEventListener('resize', () => {
+    cancelAnimationFrame(animFrame);
+    animFrame = requestAnimationFrame(setViewportHeight);
+  });
 }

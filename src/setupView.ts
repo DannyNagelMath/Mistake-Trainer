@@ -1,7 +1,8 @@
 // setupView.ts: Not in lila. The first-run screen, until there's a deck with cards: you give your
 // Lichess username, the page downloads your games and builds your deck (deckUpdate.ts), and then
 // loads again, with the trainer. If none of your games has computer analysis, it offers to analyse
-// them here first (yourGames.ts). It shows in Training settings' <main> (index.html), in its style.
+// them here first (yourGames.ts). Only the username shows at first; How it works and Options are
+// folded away. It shows in Training settings' <main> (index.html), in its style.
 
 import { init, attributesModule, classModule, eventListenersModule, propsModule, type VNode } from 'snabbdom';
 
@@ -9,11 +10,12 @@ import { importData, trySample } from './backup';
 import type { Deck } from './deck';
 import { DeckUpdateCtrl } from './deckUpdate';
 import type { Speed } from './gameDownload';
-import { showHowItWorks } from './howItWorks';
+import { renderHowItWorks } from './howItWorks';
 import { signedIn, signOut } from './lichessAuth';
 import { defaultSettings, problems, type Settings } from './settings';
 import {
   checkedGameTypes,
+  openWhen,
   renderAbout,
   renderComputerAnalysis,
   renderGameTypes,
@@ -94,30 +96,8 @@ export async function showSetup(deck: Deck | undefined): Promise<void> {
     const built = update ? update.built : deck;
     return hl('main.page-small.box.box-pad.mt-settings-page', [
       hl('h1.box__top', 'Mistake Trainer'),
-      hl('p', [
-        'Practise the mistakes from your own Lichess games, with spaced repetition. Each card is a position ' +
-          'where you went wrong, to solve as in Lichess’s “Learn from your mistakes”. ',
-        hl('a.mt-how', { on: { click: showHowItWorks } }, 'How it works'),
-      ]),
-      hl(
-        'p',
-        'To begin, the page downloads your games of the kinds you choose from Lichess, and finds your ' +
-          'mistakes in the ones with computer analysis.',
-      ),
-      renderSignIn(async () => {
-        await signOut();
-        redraw();
-      }),
+      hl('p', 'Practise the mistakes from your own Lichess games, with spaced repetition.'),
       hl('form.mt-setup', { on: { submit: start, input: choose } }, [
-        hl('div.mt-setup__row', ['Games: ', ...renderGameTypes(settings.gameTypes)]),
-        hl('div.mt-setup__row', [
-          hl('label', { attrs: { for: 'recentGames' } }, 'New cards from your last'),
-          hl('input', {
-            attrs: { id: 'recentGames', name: 'recentGames', type: 'number', min: 1, step: 1, value: settings.recentGames ?? '' },
-          }),
-          'games',
-          hl('span.mt-setup__note', 'Leave it empty for all of them. You can change it later in Training settings.'),
-        ]),
         hl('div.mt-setup__row', [
           hl('label', { attrs: { for: 'username' } }, 'Your Lichess username'),
           hl('input', {
@@ -129,17 +109,32 @@ export async function showSetup(deck: Deck | undefined): Promise<void> {
             running ? 'Building your deck…' : yourGames ? 'Build my deck' : 'Start',
           ),
         ]),
-      ]),
-      // Only before there's a deck: a deck without cards has your account, and maybe analyses made here.
-      !deck &&
-        hl('p.mt-setup__import', [
-          'Just looking? ',
-          hl('a', { on: { click: trySample } }, 'Try a sample deck'),
-          ', made from 20 of the author’s Lichess games.',
+        // Only before there's a deck: a deck without cards has your account, and maybe analyses made here.
+        !deck &&
+          hl('p.mt-setup__link', [
+            'Just looking? ',
+            hl('a', { attrs: { title: 'Made from 20 of the author’s Lichess games' }, on: { click: trySample } }, 'Try a sample deck'),
+            '.',
+          ]),
+        renderHowItWorks(),
+        // Everything else, folded away, and opened if one of your choices won't do.
+        hl('details.mt-fold.mt-setup__options', { hook: openWhen(!!problem) }, [
+          hl('summary', 'Options'),
+          hl('div.mt-setup__row', ['Games: ', ...renderGameTypes(settings.gameTypes)]),
+          hl('div.mt-setup__row', [
+            hl('label', { attrs: { for: 'recentGames' } }, 'New cards from your last'),
+            hl('input', {
+              attrs: { id: 'recentGames', name: 'recentGames', type: 'number', min: 1, step: 1, value: settings.recentGames ?? '' },
+            }),
+            'games',
+            hl('span.mt-setup__note', '(empty for all)'),
+          ]),
+          renderSignIn(async () => {
+            await signOut();
+            redraw();
+          }),
+          hl('p.mt-setup__link', ['Moving here with an exported file? ', hl('a', { on: { click: importData } }, 'Import it')]),
         ]),
-      hl('p.mt-setup__import', [
-        'Moving here with a file you exported from Mistake Trainer? ',
-        hl('a', { on: { click: importData } }, 'Import it'),
       ]),
       problem && hl('p.mt-run__error', problem),
       built && !built.cards.length && [

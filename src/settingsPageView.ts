@@ -6,7 +6,7 @@ import { Chessground } from '@lichess-org/chessground';
 import type { DrawShape } from '@lichess-org/chessground/draw';
 import { uciToMove } from '@lichess-org/chessground/util';
 import { opposite, type Color } from 'chessops';
-import type { VNode } from 'snabbdom';
+import type { Hooks, VNode } from 'snabbdom';
 
 import type { AnalysisRun } from './analysisRun';
 import { renderRun } from './analysisRunView';
@@ -18,6 +18,7 @@ import type { SettingsPageCtrl } from './settingsPage';
 import type { Card } from './deck';
 import { speeds, type Speed } from './gameDownload';
 import { FULL_NETWORK } from './engine';
+import { renderHowItWorks } from './howItWorks';
 import { i18n } from './i18n';
 import { signedIn, signIn } from './lichessAuth';
 import { licon } from './licon';
@@ -33,6 +34,7 @@ export function view(ctrl: SettingsPageCtrl): VNode {
   return hl('main.page-small.box.box-pad.mt-settings-page', [
     hl('h1.box__top', 'Training settings'),
     renderCounts(ctrl),
+    renderHowItWorks(),
     renderSettings(ctrl),
     renderYourDeck(ctrl),
     renderComputerAnalysis(ctrl.yourGames, run => renderNotInDeck(ctrl, run)),
@@ -46,6 +48,13 @@ export function view(ctrl: SettingsPageCtrl): VNode {
 // The settings the counts are worked out with: the form's, so you can see what a change would do
 // before saving it, except that the saved one stands in for any that doesn't make sense yet.
 const preview = (ctrl: SettingsPageCtrl): Settings => fixProblems(ctrl.draft, ctrl.saved);
+
+// Opens a fold-out (<details>) when `open`, e.g. to show a problem in it; otherwise it stays as you
+// left it, so it doesn't fold away as you put the problem right. Also on the first-run screen.
+export const openWhen = (open: boolean): Hooks => ({
+  insert: vnode => open && ((vnode.elm as HTMLDetailsElement).open = true),
+  update: (_, vnode) => open && ((vnode.elm as HTMLDetailsElement).open = true),
+});
 
 // The same counts as the trainer's progress box.
 function renderCounts(ctrl: SettingsPageCtrl): VNode {
@@ -116,9 +125,9 @@ export function renderSignIn(signOut: () => void): VNode {
           hl('a', { on: { click: signOut } }, 'Sign out'),
         ]
       : [
-          'Optional: sign in with Lichess, so that opening mistakes are checked against the masters database, ' +
-            'as on Lichess, and your games download faster. Lichess’s own page asks you to allow it; Mistake ' +
-            'Trainer gets no permissions, only your username. ',
+          'Sign in with Lichess (optional): opening mistakes are checked against the masters database, and ' +
+            'your games download faster. Lichess asks you to allow it; Mistake Trainer gets no permissions, ' +
+            'only your username. ',
           hl('button.button.button-thin', { attrs: { type: 'button' }, on: { click: signIn } }, 'Sign in with Lichess'),
         ],
   );
@@ -252,6 +261,16 @@ export const renderGameTypes = (checked: Speed[]): VNode[] =>
 export const checkedGameTypes = (within: HTMLElement): Speed[] =>
   [...within.querySelectorAll<HTMLInputElement>('input[name=gameTypes]:checked')].map(input => input.value as Speed);
 
+// The settings under "More settings".
+const moreKeys: (keyof Settings)[] = [
+  'collapseBefore',
+  'collapseAfter',
+  'openingMoves',
+  'desiredRetention',
+  'gameRestDays',
+  'bestMoveOnly',
+];
+
 function renderSettings(ctrl: SettingsPageCtrl): VNode {
   const shown = ctrl.filledIn;
   const wrong = problems(ctrl.draft);
@@ -325,26 +344,6 @@ function renderSettings(ctrl: SettingsPageCtrl): VNode {
           '(about +6 before your move and still +3 after it) always come last.',
       ),
       row(
-        'Collapse',
-        ['collapseBefore', 'collapseAfter'],
-        [
-          'better than ',
-          numberInput('collapseBefore', 0.1),
-          ' before your move, worse than ',
-          numberInput('collapseAfter', 0.1),
-          ' after it',
-        ],
-        'The evals that make a mistake a collapse, in pawns from your side: a winning or level game ' +
-          'turned into a lost one. For “Collapses first”.',
-      ),
-      row(
-        'Opening',
-        ['openingMoves'],
-        ['up to move ', numberInput('openingMoves', 1)],
-        'Which mistakes count as opening mistakes, for “Openings first”.',
-      ),
-      renderCategoryCounts(ctrl),
-      row(
         'New cards a day',
         ['newCardsPerDay'],
         numberInput('newCardsPerDay', 1, 'No limit'),
@@ -353,40 +352,63 @@ function renderSettings(ctrl: SettingsPageCtrl): VNode {
 
       hl('h2', 'Reviews'),
       row(
-        'Desired retention',
-        ['desiredRetention'],
-        [numberInput('desiredRetention', 1), ' %'],
-        'FSRS shows you each card again when it thinks your chance of still getting it right has ' +
-          'dropped to this. Higher means shorter gaps and more reviews. It applies to your reviews from ' +
-          'now on.',
-      ),
-      row(
         'Minimum gap',
         ['minGapDays'],
         [numberInput('minGapDays', 1), ' days'],
         'No card comes back sooner than this after you review it, so you work it out rather than ' +
           'recognise it. It applies to your reviews from now on: cards already scheduled keep their dates.',
       ),
-      row(
-        'Same game',
-        ['gameRestDays'],
-        ['wait ', numberInput('gameRestDays', 1), ' days before another card from it'],
-        'After you review a card, the other cards from its game wait this long, so you don’t see two ' +
-          'positions from one game too close together. 0 means no wait. They only wait in the queue: ' +
-          'their schedules don’t change.',
-      ),
 
-      hl('h2', 'Answers'),
-      row(
-        'Right answers',
-        ['bestMoveOnly'],
-        [
-          hl('input', { attrs: { type: 'checkbox', id: 'bestMoveOnly', name: 'bestMoveOnly', checked: shown.bestMoveOnly } }),
-          ' only the engine’s best move',
-        ],
-        'On: only the engine’s best move counts as right. Off: moves nearly as good also count, as on ' +
-          'Lichess. Either way, a checkmate counts, and so do moves masters have played in the opening.',
-      ),
+      // The settings few people change, folded away, and opened if one of them is wrong.
+      hl('details.mt-fold.mt-settings__more', { hook: openWhen(moreKeys.some(key => wrong[key])) }, [
+        hl('summary', 'More settings'),
+        row(
+          'Collapse',
+          ['collapseBefore', 'collapseAfter'],
+          [
+            'better than ',
+            numberInput('collapseBefore', 0.1),
+            ' before your move, worse than ',
+            numberInput('collapseAfter', 0.1),
+            ' after it',
+          ],
+          'The evals that make a mistake a collapse, in pawns from your side: a winning or level game ' +
+            'turned into a lost one. For “Collapses first”.',
+        ),
+        row(
+          'Opening',
+          ['openingMoves'],
+          ['up to move ', numberInput('openingMoves', 1)],
+          'Which mistakes count as opening mistakes, for “Openings first”.',
+        ),
+        renderCategoryCounts(ctrl),
+        row(
+          'Desired retention',
+          ['desiredRetention'],
+          [numberInput('desiredRetention', 1), ' %'],
+          'FSRS shows you each card again when it thinks your chance of still getting it right has ' +
+            'dropped to this. Higher means shorter gaps and more reviews. It applies to your reviews from ' +
+            'now on.',
+        ),
+        row(
+          'Same game',
+          ['gameRestDays'],
+          ['wait ', numberInput('gameRestDays', 1), ' days before another card from it'],
+          'After you review a card, the other cards from its game wait this long, so you don’t see two ' +
+            'positions from one game too close together. 0 means no wait. They only wait in the queue: ' +
+            'their schedules don’t change.',
+        ),
+        row(
+          'Right answers',
+          ['bestMoveOnly'],
+          [
+            hl('input', { attrs: { type: 'checkbox', id: 'bestMoveOnly', name: 'bestMoveOnly', checked: shown.bestMoveOnly } }),
+            ' only the engine’s best move',
+          ],
+          'On: only the engine’s best move counts as right. Off: moves nearly as good also count, as on ' +
+            'Lichess. Either way, a checkmate counts, and so do moves masters have played in the opening.',
+        ),
+      ]),
 
       hl('div.mt-settings__actions', [
         hl('button.button', { attrs: { type: 'submit', disabled: !ctrl.canSave() } }, 'Save'),
@@ -445,7 +467,7 @@ function renderCategoryCounts(ctrl: SettingsPageCtrl): VNode {
 const REPO = 'https://github.com/DannyNagelMath/Mistake-Trainer';
 export const renderAbout = (): VNode =>
   hl('p.mt-about', [
-    'Mistake Trainer is free software, built on Lichess’s own, and not affiliated with Lichess. ',
+    'Free software, built on Lichess’s own; not affiliated with Lichess. ',
     hl('a', { attrs: { href: REPO } }, 'Source code'),
     ' · ',
     hl(

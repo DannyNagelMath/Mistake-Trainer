@@ -5,6 +5,7 @@
 
 import './mistakeTrainer.css';
 
+import { trackViewportHeight } from './common';
 import { finishSignIn } from './lichessAuth';
 import { showSetup } from './setupView';
 import { loadDeck } from './storage';
@@ -12,8 +13,9 @@ import { followSystem } from './theme';
 import topBar from './topBar';
 import { startTrainer } from './trainer';
 
-// From lila's site script: the header, as the page scrolls.
+// From lila's site script: the header, as the page scrolls, and the window's height for dialogs.
 topBar();
+trackViewportHeight();
 followSystem(); // the background, with System, as your computer's changes (theme.ts)
 
 const signInProblem = await finishSignIn();

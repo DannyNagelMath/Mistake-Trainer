@@ -149,15 +149,18 @@ export function view(ctrl: AnalysisCtrl): VNode {
 }
 
 function settingsView(ctrl: AnalysisCtrl): VNode {
-  const grouped = (group: string, ...more: VNode[]) =>
+  const grouped = (group: string) =>
     hl('fieldset', [
       hl('legend', group),
       (Object.keys(settings) as SettingKey[]).filter(key => settings[key].group === group).map(key => toggle(ctrl, key)),
-      ...more,
     ]);
   return hl('div.analysis-settings-view', [
-    hl('div.column', [helpView(), grouped(i18n.preferences.generalSettings, backgroundChoice())]),
-    hl('div.column', [grouped(i18n.preferences.moveListSettings), grouped(i18n.preferences.boardSettings)]),
+    hl('div.column', [helpView(), grouped(i18n.preferences.generalSettings)]),
+    hl('div.column', [
+      grouped(i18n.preferences.moveListSettings),
+      grouped(i18n.preferences.boardSettings),
+      hl('fieldset', [hl('legend', 'Page'), backgroundChoice()]), // in this column, which has room
+    ]),
   ]);
 }
 

@@ -14,6 +14,14 @@ body.mt-settings-shown main.analyse,
 body:not(.mt-settings-shown) main.mt-settings-page {
   display: none;
 }
+/* lila's page grid makes a boxed page as wide as what's in it, so the first-run screen would widen
+   when you open Options. Instead, as wide as lila's widest (1000px), or the page. */
+body.mt-settings-shown #main-wrap {
+  container-type: inline-size;
+}
+main.mt-settings-page {
+  width: min(1000px, 100cqw - 2 * var(---main-margin));
+}
 
 /* A card's panel has no title in its bar (retroView.ts), only "Show my move" on the left and
    "Suspend card" on the right, where lila's close button is. The bar keeps its height when
@@ -90,15 +98,25 @@ body:not(.mt-settings-shown) main.mt-settings-page {
 .mt-progress__now {
   color: var(--c-font-dim);
 }
-.mt-progress__links {
+.mt-progress__stats {
   align-self: flex-start;
-}
-.mt-progress__links a {
   cursor: pointer;
 }
-.mt-how-it-works .dialog-content {
-  max-width: 40em;
-  text-align: start;
+
+/* Fold-outs (<details>): How it works (howItWorks.ts), the first-run screen's Options
+   (setupView.ts), and Training settings' More settings. */
+details.mt-fold {
+  margin: 1em 0;
+}
+details.mt-fold > summary {
+  cursor: pointer;
+  color: var(--c-link);
+}
+details.mt-fold[open] > summary {
+  margin-bottom: 0.8em;
+}
+.mt-setup__options > :not(summary) {
+  margin: 0 0 0.8em;
 }
 
 /* The settings page (settings.html, settingsPageView.ts). lila's own settings pages use its form
@@ -286,9 +304,8 @@ body:not(.mt-settings-shown) main.mt-settings-page {
   color: var(--c-font-dim);
   font-size: 0.9em;
 }
-/* "How it works", "Try a sample deck", and "Import it": links without an address. */
-.mt-setup__import a,
-a.mt-how {
+/* "Try a sample deck" and "Import it": links without an address. */
+.mt-setup__link a {
   cursor: pointer;
 }
 /* "Sign out" of Lichess, in Your deck (settingsPageView.ts renderSignIn): a link without an address. */
