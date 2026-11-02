@@ -38,8 +38,8 @@ export function view(ctrl: SettingsPageCtrl): VNode {
     renderSettings(ctrl),
     renderYourDeck(ctrl),
     renderComputerAnalysis(ctrl.yourGames, run => renderNotInDeck(ctrl, run)),
-    renderSuspended(ctrl),
     renderYourData(),
+    renderSuspended(ctrl),
     renderAbout(),
     ctrl.looking && renderLook(ctrl, ctrl.looking),
   ]);
@@ -457,18 +457,18 @@ function renderCategoryCounts(ctrl: SettingsPageCtrl): VNode {
 }
 
 // What this is, where its source code is, which the AGPL asks a website running it to offer, and
-// where to report a problem or suggest something. Also on the first-run screen (setupView.ts).
+// where to report a problem or suggest something: GitHub's issues, or by email for those without a
+// GitHub account. Also on the first-run screen (setupView.ts).
 const REPO = 'https://github.com/DannyNagelMath/Mistake-Trainer';
+const EMAIL = 'dannynagelmath@gmail.com';
 export const renderAbout = (): VNode =>
   hl('p.mt-about', [
     'Free software, built on Lichess’s own. Not affiliated with Lichess, just a big fan. ',
     hl('a', { attrs: { href: REPO } }, 'Source code'),
-    ' · ',
-    hl(
-      'a',
-      { attrs: { href: `${REPO}/issues`, title: 'Report a problem or suggest something, on GitHub' } },
-      'Feedback',
-    ),
+    ' · Feedback on ',
+    hl('a', { attrs: { href: `${REPO}/issues`, title: 'Report a problem or suggest something on GitHub' } }, 'GitHub'),
+    ' or by ',
+    hl('a', { attrs: { href: `mailto:${EMAIL}?subject=Mistake%20Trainer`, title: EMAIL } }, 'email'),
   ]);
 
 // Where your data is kept (storage.ts), and Export, Import, and Start over (backup.ts).
