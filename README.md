@@ -1,51 +1,85 @@
 # Mistake Trainer
 
-Spaced-repetition practice on the mistakes from your own Lichess games.
+Spaced repetition on the mistakes from your own Lichess games.
 
-Lichess's analysis board has "Learn from your mistakes": it steps through one game, showing each
-position where you went wrong and asking you to find a better move. Mistake Trainer takes that
-feature and turns every mistake from all your analysed games into a flashcard. It then schedules
-the cards with spaced repetition (FSRS, the algorithm Anki uses), so each position comes back just
-as you're about to forget it.
+**Try it at [mistake-trainer.pages.dev](https://mistake-trainer.pages.dev).** There's nothing to
+install and you don't need an account. A sample deck lets you look around first.
 
-It is an unofficial personal project, and isn't affiliated with or endorsed by Lichess. It's built
-on Lichess's open-source code, with gratitude: if you find it useful, please consider
-[supporting Lichess](https://lichess.org/patron).
+<p>
+  <img src="screenshots/card.png" width="49%" alt="A card: a position from one of your games where you went wrong, asking for a better move for White">
+  <img src="screenshots/solved.png" width="49%" alt="After a right move: the game's computer analysis, and three buttons to say how you found it">
+</p>
+
+On the left a card asks for a better move than the one you played. On the right you've found one
+and say how it went.
+
+## What it is
+
+Lichess's analysis board has "Learn from your mistakes". It steps through one game and asks you to
+find a better move at each position where you went wrong. Mistake Trainer does this for all your
+analysed games at once. Each mistake becomes a card and FSRS (the scheduler Anki uses) brings it
+back just before you'd forget it.
+
+The board and the panel beside it are Lichess's own, ported from
+[lila](https://github.com/lichess-org/lila), the software behind lichess.org. Mistakes are found
+by the same rules and your answers are judged the same way. So it should feel like Lichess.
+
+It's a personal project and isn't affiliated with or endorsed by Lichess. If you find it useful
+please consider [supporting Lichess](https://lichess.org/patron).
 
 ## How it works
 
-- The page downloads your games, with their computer analysis, from the
-  [Lichess API](https://lichess.org/api), and finds your mistakes in them, the same way Lichess's
-  "Learn from your mistakes" does: a card for each. For a game Lichess hasn't analysed, it uses
-  the analysis made on your computer, if there is one (see Training settings below). Like Lichess,
-  it looks opening mistakes up in the [masters database](https://lichess.org/analysis#explorer),
-  if you sign in with Lichess: a move masters have played isn't a mistake, and their other moves
-  count as right answers. It asks about each position only once.
-- The review page is Lichess's analysis board and "Learn from your mistakes" panel, ported
-  from [lila](https://github.com/lichess-org/lila) (the software behind lichess.org), dealing the
-  cards in spaced-repetition order. As on Lichess, a move other than the engine's best is checked by
-  [Stockfish](https://stockfishchess.org/), running in the browser with its full network on
-  several threads: it counts as right if it's nearly as good. Once a card is done, you can switch
-  the engine on to analyse any position. Your review history is saved to `data/reviews.json`.
-  Its Training settings page (the link at the top right) is where you choose, for example, which
-  new cards come first and how far apart reviews are (saved to `data/settings.json`), and
-  where you can bring back cards you've suspended. It's also where your games without Lichess's
-  analysis can be analysed on your computer, the way Lichess's servers do it: Stockfish 19,
-  1,000,000 positions a move, one thread per engine, as in
-  [fishnet](https://github.com/lichess-org/fishnet). Each game's analysis is saved to
-  `data/analysis.json`.
+- You give your Lichess username. Mistake Trainer downloads your games with their computer
+  analysis from the [Lichess API](https://lichess.org/api) and makes a card for each mistake. New
+  cards come from your 20 most recent games to begin with.
+- Only your first try counts. A move other than the engine's best is checked by
+  [Stockfish](https://stockfishchess.org/) and counts if it's nearly as good. After a right move
+  you say how it went with Worked it out, Looked familiar or Knew it instantly.
+- Once a card is done you see the game's analysis and can switch the engine on to look further.
+- If you sign in with Lichess, opening mistakes are checked against its
+  [masters database](https://lichess.org/analysis#explorer). A move masters have played isn't a
+  mistake and their other moves count as right answers.
+- Games Lichess hasn't analysed can be analysed in your browser the way Lichess's servers do it,
+  as in [fishnet](https://github.com/lichess-org/fishnet).
+- In Training settings you choose which cards come first, how many new cards you get a day and how
+  far apart reviews are.
 
-## Running it
+## Your data
 
-You need Node.js and git.
+Mistake Trainer has no server that sees your data. The website keeps everything in your browser.
+Export saves it all in one file and Import brings it back, there or in another browser. Your
+browser can delete a site's data (Safari may after seven days without a visit) so export now and
+then to keep a copy.
 
-1. Install the page's dependencies with `npm install`.
-2. Start the page with `npm run dev`, open the address it prints, and give your Lichess username:
-   the page downloads your games and builds your deck. Everything it saves is in `data`.
+Signing in with Lichess is optional. It lets opening mistakes be checked against the masters
+database and makes your games download faster. You sign in on Lichess's own page and Mistake
+Trainer gets only your username and no permissions. Your sign-in is only ever sent to Lichess.
 
-Later, to add the games you've played since, and the games analysed in Training settings since,
-press **Update deck** in Training settings: it downloads the new games and builds the deck again. Your review history is backed up once a day, in
-`data/backups`; to go back to a backup, stop the page and copy it over `data/reviews.json`.
+## Running it on your own computer
+
+Running it yourself gives Stockfish's full network rather than the website's smaller "lite" one,
+and keeps everything in files. You need [Node.js](https://nodejs.org/) 22.12 or newer and git.
+
+```sh
+git clone https://github.com/DannyNagelMath/Mistake-Trainer.git
+cd Mistake-Trainer
+npm install
+npm run dev
+```
+
+Then open the address it prints. Everything is saved in the `data` folder and a copy of your
+reviews is made each day in `data/backups`. Export and Import work here too, so you can move your
+deck between your computer and the website.
+
+## Development
+
+```sh
+npm test         # the tests, with Vitest
+npm run check    # type checks
+npm run build    # the website, in dist
+```
+
+GitHub runs all three on every push, on Linux, macOS and Windows.
 
 ## Licence
 
@@ -85,8 +119,8 @@ you must offer them its source code.
   some of lila's are non-free or non-commercial.
 - Mistake Trainer doesn't use the Lichess name or logo as its own; lila's COPYING.md reserves the
   logo for referring to lichess.org.
-- The games in `fixtures` are from lichess.org, whose game database Lichess releases under
-  [CC0](https://database.lichess.org/).
+- The games in `fixtures` and in the sample deck (`public/sample.json`) are from lichess.org,
+  whose game database Lichess releases under [CC0](https://database.lichess.org/).
 
 ## AI assistance
 
