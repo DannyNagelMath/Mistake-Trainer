@@ -5,13 +5,13 @@ Spaced repetition on the mistakes from your own Lichess games.
 **Try it at [mistake-trainer.pages.dev](https://mistake-trainer.pages.dev).** There's nothing to
 install and you don't need an account. A sample deck lets you look around first.
 
-<p>
-  <img src="screenshots/card.png" width="49%" alt="A card: a position from one of your games where you went wrong, asking for a better move for White">
-  <img src="screenshots/solved.png" width="49%" alt="After a right move: the game's computer analysis, and three buttons to say how you found it">
-</p>
+![A card: a position from one of your games where you went wrong, asking for a better move for White](screenshots/card.png)
 
-On the left a card asks for a better move than the one you played. On the right you've found one
-and say how it went.
+A card asks for a better move than the one you played.
+
+![After a right move: the game's computer analysis, and three buttons to say how you found it](screenshots/solved.png)
+
+Once you've found one you say how it went.
 
 ## What it is
 
