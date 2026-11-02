@@ -1,6 +1,6 @@
 # Mistake Trainer
 
-Spaced repetition on the mistakes from your own Lichess games.
+Spaced repetition on mistakes from your own Lichess games.
 
 **Try it at [mistake-trainer.pages.dev](https://mistake-trainer.pages.dev).** There's nothing to
 install and you don't need an account. A sample deck lets you look around first.
